@@ -154,7 +154,7 @@ def SIR(lambda_t_log, pr_beta_I_begin=100, pr_median_mu=1 / 8,
 
 
 def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_scale_delay = 0.3,
-                pr_sigma_scale_delay = 0.3, model=None, save_in_trace=True):
+                pr_sigma_scale_delay = None, model=None, save_in_trace=True):
     """
     
     Parameters
@@ -177,11 +177,14 @@ def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_s
                                           pr_sigma_delay,
                                           len_delay,
                                           w=0.9)
-    scale_delay_L2_log, _ = hierarchical_normal('scale_delay', 'sigma_scale_delay',
-                                              np.log(pr_median_scale_delay),
-                                              pr_sigma_scale_delay,
-                                              len_delay,
-                                              w=0.9)
+    if pr_sigma_scale_delay is not None:
+        scale_delay_L2_log, _ = hierarchical_normal('scale_delay', 'sigma_scale_delay',
+                                                  np.log(pr_median_scale_delay),
+                                                  pr_sigma_scale_delay,
+                                                  len_delay,
+                                                  w=0.9)
+    else:
+        scale_delay_L2_log=np.log(pr_median_scale_delay)
     num_days_sim = model.shape_sim[0]
     diff_data_sim = model.diff_data_sim
     new_cases_inferred = mh.delay_cases_lognormal(input_arr=new_I_t,
@@ -361,6 +364,7 @@ def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lamb
             tr_time_list, tr_len_list, lambda_list[1:]
     ):
         t = np.arange(num_days_sim)
+        tr_len = tr_len + 1e-5
         if len(shape_sim) == 2:
             t = np.repeat(t[:, None], shape_sim[1], axis=-1)
         lambda_t = tt.nnet.sigmoid((t - tr_time) / tr_len * 4) * (lambda_after - lambda_before)
