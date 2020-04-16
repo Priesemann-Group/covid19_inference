@@ -28,4 +28,6 @@ setup(
     url='https://github.com/Priesemann-Group/covid19_inference_forecast',
     python_requires='>=3.6.0',
     version = verstr,
+    install_requires=["pymc3", "matplotlib","numpy","pandas","theano",],
+
 )
