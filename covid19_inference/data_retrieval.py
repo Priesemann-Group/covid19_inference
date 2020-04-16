@@ -6,7 +6,6 @@ import pandas as pd
 
 import urllib, json
 
-
 def _jhu_to_iso(fp_csv:str) -> pd.DataFrame:
     """Convert Johns Hopkins University dataset to nicely formatted DataFrame.
 

@@ -15,7 +15,6 @@ class Cov19_Model(Model):
     Model class used to create a covid-19 propagation dynamics model
     """
 
-
     def __init__(self, new_cases_obs, date_begin_data, num_days_forecast,
                  diff_data_sim, N_population, name='', model=None):
         super().__init__(name=name, model=model)
@@ -40,9 +39,6 @@ class Cov19_Model(Model):
         self.N_population = N_population
 
 
-pm.sample
-
-
 def modelcontext(model):
     """return the given model or try to find it in the context if there was
     none supplied.
@@ -63,6 +59,7 @@ def student_t_likelihood(new_cases_inferred, pr_beta_sigma_obs = 30, nu=4, offse
     model
 
     """
+
     model = modelcontext(model)
 
     len_sigma_obs = 1 if model.ndim_sim == 1 else model.shape_sim[1]
@@ -114,14 +111,14 @@ def SIR(lambda_t_log, pr_beta_I_begin=100, pr_median_mu=1 / 8,
     # Build prior distrubutions:
     mu = pm.Lognormal(
         name="mu",
-        mu=np.log(pr_beta_I_begin),
-        sigma=pr_median_mu,
+        mu=np.log(pr_median_mu),
+        sigma=pr_sigma_mu,
     )
     N = model.N_population
 
     num_regions = 1 if model.ndim_sim == 1 else model.shape_sim[1]
 
-    I_begin = pm.HalfCauchy(name="I_begin", beta=pr_sigma_mu, shape=num_regions)
+    I_begin = pm.HalfCauchy(name="I_begin", beta=pr_beta_I_begin, shape=num_regions)
     S_begin = N - I_begin
 
     lambda_t = tt.exp(lambda_t_log)
