@@ -5,16 +5,21 @@ import theano
 import theano.tensor as tt
 import numpy as np
 import pymc3 as pm
+from pymc3 import Model
 
 from . import model_helper as mh
 
 
-class Cov19_Model(pm.Model):
+class Cov19_Model(Model):
     """
     Model class used to create a covid-19 propagation dynamics model
     """
+
+
     def __init__(self, new_cases_obs, date_begin_data, num_days_forecast,
-                 diff_data_sim, N_population, *args, **kwargs):
+                 diff_data_sim, N_population, name='', model=None):
+        super().__init__(name=name, model=model)
+
         self.new_cases_obs = np.array(new_cases_obs)
         self.ndim_sim = new_cases_obs.ndim
         self.num_days_forecast = num_days_forecast
@@ -34,8 +39,8 @@ class Cov19_Model(pm.Model):
         self.diff_data_sim = diff_data_sim
         self.N_population = N_population
 
-        super().__init__(*args, **kwargs)
 
+pm.sample
 
 
 def modelcontext(model):
