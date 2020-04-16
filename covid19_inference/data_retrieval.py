@@ -6,6 +6,9 @@ import pandas as pd
 
 import urllib, json
 
+_format_date = lambda date_py: "{}/{}/{}".format(
+    date_py.month, date_py.day, str(date_py.year)[2:4]
+)
 
 def _jhu_to_iso(fp_csv:str) -> pd.DataFrame:
     """Convert Johns Hopkins University dataset to nicely formatted DataFrame.
@@ -30,7 +33,6 @@ def _jhu_to_iso(fp_csv:str) -> pd.DataFrame:
     # datetime columns
     df.columns = [datetime.datetime.strptime(d, '%m/%d/%y') for d in df.columns]
     return df
-
 
 def get_jhu_cdr(
         country:str, state:str,
@@ -71,7 +73,6 @@ def get_jhu_cdr(
 
     return df
 
-
 def get_jhu_confirmed_cases():
     """
         Attempts to download the most current data from the online repository of the
@@ -96,7 +97,6 @@ def get_jhu_confirmed_cases():
 
     return confirmed_cases
 
-
 def get_jhu_deaths():
     """
         Attempts to download the most current data from the online repository of the
@@ -120,7 +120,6 @@ def get_jhu_deaths():
         )
 
     return deaths
-
 
 def filter_one_country(data_df, country, begin_date, end_date):
     """
@@ -151,12 +150,10 @@ def filter_one_country(data_df, country, begin_date, end_date):
 
     return np.array(cases_obs).flatten()
 
-
 def get_last_date(data_df):
     last_date = data_df.columns[-1]
     month, day, year = map(int, last_date.split("/"))
     return datetime.datetime(year + 2000, month, day)
-
 
 def get_rki(try_max = 10):
 
@@ -305,6 +302,46 @@ def filter_rki_all_bundesland(df, begin_date, end_date, variable = 'AnzahlFall')
     #Returns cumsum of variable
     return df2[begin_date:end_date].cumsum()
 
-_format_date = lambda date_py: "{}/{}/{}".format(
-    date_py.month, date_py.day, str(date_py.year)[2:4]
-)
+def get_mobility_reports_apple(value, transportation_list, path_data = 'data/applemobilitytrends-2020-04-13.csv'):
+
+    if not all(elem in ['walking', 'driving', 'transit']  for elem in transportation_list):
+        raise ValueError('transportation_type contains elements outside of ["walking", "driving", "transit"]')
+
+    # if transportation_type not in ['walking', 'driving', 'transit']:
+    #     raise ValueError('Invalid value. Valid options: "walking", "driving", "transit"')
+
+    df = pd.read_csv(path_data)
+
+    series_list = []
+    for transport in transportation_list:
+        series = df[(df['region']==value) & (df['transportation_type']==transport)].iloc[0][3:].rename(transport)
+        series_list.append(series/100)
+
+    df2 = pd.concat(series_list,axis=1)
+
+    df2.index = df2.index.map(datetime.datetime.fromisoformat)
+
+    return df2
+    
+def get_mobility_reports_google(region, field_list, subregion=False):
+
+    valid_fields = ['retail_and_recreation','grocery_and_pharmacy', 'parks', 'transit_stations', 'workplaces','residential']
+
+    if not all(elem in valid_fields  for elem in field_list):
+        raise ValueError('field_list contains invalid elements')
+
+
+    url = 'https://raw.githubusercontent.com/vitorbaptista/google-covid19-mobility-reports/master/data/processed/mobility_reports.csv'
+    df = pd.read_csv(url)
+
+    if subregion is not False:
+        series_df = df[(df['region']==region) & (df['subregion'] == subregion)]
+    else:
+        series_df = df[(df['region']==region) & (df['subregion'].isnull())]
+
+    series_df = series_df.set_index('updated_at')[field_list]
+    series_df.index.name = 'date'
+    series_df.index = series_df.index.map(datetime.datetime.fromisoformat)
+    series_df = series_df + 1
+
+    return series_df
