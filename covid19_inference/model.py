@@ -130,12 +130,13 @@ def SIR(lambda_t_log, pr_beta_I_begin=100, pr_median_mu=1 / 8,
         S_t = S_t - new_I_t
         I_t = I_t + new_I_t - mu * I_t
         I_t = tt.clip(I_t, 0, N)  # for stability
+        S_t = tt.clip(S_t, N, 0)
         return S_t, I_t, new_I_t
 
     # theano scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, I, new_I
     outputs, _ = theano.scan(
-        fn=next_day,
+        fn  =next_day,
         sequences=[lambda_t],
         outputs_info=[S_begin, I_begin, new_I_0],
         non_sequences=[mu, N],
@@ -155,7 +156,7 @@ def SIR(lambda_t_log, pr_beta_I_begin=100, pr_median_mu=1 / 8,
 def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_scale_delay = 0.3,
                 pr_sigma_scale_delay = 0.3, model=None, save_in_trace=True):
     """
-
+    
     Parameters
     ----------
     new_I_t
@@ -187,7 +188,7 @@ def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_s
                                                 len_input_arr=num_days_sim,
                                                 len_output_arr=num_days_sim - diff_data_sim,
                                                 median_delay=tt.exp(delay_L2_log),
-                                                scale_delay=scale_delay_L2_log,
+                                                scale_delay=tt.exp(scale_delay_L2_log),
                                                 delay_betw_input_output=diff_data_sim)
     if save_in_trace:
         pm.Deterministic('new_cases_raw', new_cases_inferred)
@@ -282,7 +283,7 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
     tr_len_list = []
 
     #
-    lambda_0_L2_log, _ = hierarchical_normal('lambda_0_L2', 'sigma_lambda_0_L2',
+    lambda_0_L2_log, _ = hierarchical_normal('lambda_0', 'sigma_lambda_0',
                                              np.log(pr_median_lambda_0),
                                              pr_sigma_lambda_0,
                                              shape_sim[1], w=0.4)
@@ -345,7 +346,7 @@ def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lamb
     model = modelcontext(model)
     shape_sim = model.shape_sim
 
-    lambda_list, tr_time_list, tr_len_list = make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=1, model=model)
+    lambda_list, tr_time_list, tr_len_list = make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambda_0, model=model)
 
     num_days_sim = shape_sim[0]
 
@@ -396,11 +397,12 @@ def hierarchical_normal(name, name_sigma, pr_mean, pr_sigma, len_L2, w=0.0):
         return Y, None
     else:
         w = 1.0  # not-centered; partially not-centered not implemented yet.
-        sigma_Y = pm.HalfCauchy(name_sigma + '_L2', beta=2 * pr_sigma, shape=1)
+        sigma_Y = pm.HalfCauchy(name_sigma + '_L2', beta=2 * pr_sigma)
 
         X = pm.Normal(name + '_L1' , mu=pr_mean, sigma=pr_sigma)
-        phi = pm.Normal(name + '_L2', mu=(1 - w) * X, sigma=1, shape=len_L2)  # (1-w**2)*sigma_X+1*w**2, shape=len_Y)
+        phi = pm.Normal(name + '_L2_raw', mu=0, sigma=1, shape=len_L2)  # (1-w**2)*sigma_X+1*w**2, shape=len_Y)
         Y = w * X + phi * sigma_Y
+        pm.Deterministic(name + '_L2', Y)
         return Y, X
 
 def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2):
