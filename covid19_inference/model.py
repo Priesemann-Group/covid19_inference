@@ -9,7 +9,7 @@ import pymc3 as pm
 from . import model_helper as mh
 
 
-class Cov19_Model(pm.Model):
+class Model(pm.Model):
     """
     Model class used to create a covid-19 propagation dynamics model
     """
