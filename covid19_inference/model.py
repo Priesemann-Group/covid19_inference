@@ -13,10 +13,35 @@ from . import model_helper as mh
 class Cov19_Model(Model):
     """
     Model class used to create a covid-19 propagation dynamics model
+    Usage:
+    with Cov19_model(params)
     """
+
+
 
     def __init__(self, new_cases_obs, date_begin_data, num_days_forecast,
                  diff_data_sim, N_population, name='', model=None):
+        """
+
+        Parameters
+        ----------
+        new_cases_obs : 1 or 2d array
+            If the array is two-dimensional, an hierarchical model will be constructed. First dimension is then time,
+            the second the region/country.
+        date_begin_data : datatime.datetime
+            Date of the first data point
+        num_days_forecast : int
+            Number of days the simulations runs longer than the data
+        diff_data_sim : int
+            Number of days the simulation starts earlier than the data. Should be significantly longer than the delay
+            between infection and report of cases.
+        N_population : number or 1d array
+            Number of inhabitance, needed for the S(E)IR model. Is idealy 1 dimensional if new_cases_obs is 2 dimensional
+        name : string
+            suffix appended to the name of random variables saved in the trace
+        model :
+            specify a model, if this one should expand another
+        """
         super().__init__(name=name, model=model)
 
         self.new_cases_obs = np.array(new_cases_obs)
@@ -40,7 +65,8 @@ class Cov19_Model(Model):
 
 
 def modelcontext(model):
-    """return the given model or try to find it in the context if there was
+    """
+    return the given model or try to find it in the context if there was
     none supplied.
     """
     if model is None:
@@ -49,17 +75,21 @@ def modelcontext(model):
 
 def student_t_likelihood(new_cases_inferred, pr_beta_sigma_obs = 30, nu=4, offset_sigma=1, model=None):
     """
-
+    Builds a student-t distribution with mean new_cases_inferred and as observations the new_cases_obs of the model.
     Parameters
     ----------
-    new_cases_inferred
+    new_cases_inferred : 1 or 2d array/random
+        If 2 dimensional, the first dimension is time and the second are the regions/countries
+    pr_beta_sigma_obs : number
+
     nu
     offset_sigma
-    priors_dict
     model
 
-    """
+    Returns
+    -------
 
+    """
     model = modelcontext(model)
 
     len_sigma_obs = 1 if model.ndim_sim == 1 else model.shape_sim[1]
@@ -156,7 +186,7 @@ def SIR(lambda_t_log, pr_beta_I_begin=100, pr_median_mu=1 / 8,
 def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_scale_delay = 0.3,
                 pr_sigma_scale_delay = None, model=None, save_in_trace=True):
     """
-    
+
     Parameters
     ----------
     new_I_t
@@ -222,10 +252,13 @@ def week_modulation(new_cases_inferred, week_modulation_type='abs_sine', pr_mean
     shape_modulation[0] -= diff_data_sim
     date_begin_sim = model.date_begin_sim
 
+    len_L2 = 1 if model.ndim_sim == 1 else model.shape_sim[1]
+
+
     week_end_factor, _ = hierarchical_beta('weekend_factor', 'sigma_weekend_factor',
                                         pr_mean=pr_mean_weekend_factor,
                                         pr_sigma=pr_sigma_weekend_factor,
-                                        len_L2=model.shape_sim[1])
+                                        len_L2=len_L2)
     if week_modulation_type == 'step':
         modulation = np.zeros(shape_modulation[0])
         for i in range(shape_modulation[0]):
@@ -278,7 +311,7 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
         mh.set_missing_with_default(cp_priors, default_priors_change_points)
 
     model = modelcontext(model)
-    shape_sim = model.shape_sim
+    len_L2 = 1 if model.ndim_sim == 1 else model.shape_sim[1]
 
 
     lambda_log_list = []
@@ -289,14 +322,14 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
     lambda_0_L2_log, _ = hierarchical_normal('lambda_0', 'sigma_lambda_0',
                                              np.log(pr_median_lambda_0),
                                              pr_sigma_lambda_0,
-                                             shape_sim[1], w=0.4)
+                                             len_L2, w=0.4)
     lambda_log_list.append(lambda_0_L2_log)
     for i, cp in enumerate(change_points_list):
         lambda_cp_L2, _ = hierarchical_normal(f'lambda_{i + 1}',
                                                f'sigma_lambda_{i + 1}',
                                                np.log(cp["pr_median_lambda"]),
                                                cp["pr_sigma_lambda"],
-                                               shape_sim[1],
+                                               len_L2,
                                                w=0.7)
         lambda_log_list.append(lambda_cp_L2)
 
@@ -313,7 +346,7 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
                                                f'sigma_transient_day_{i + 1}',
                                                prior_mean,
                                                cp["pr_sigma_date_transient"],
-                                               shape_sim[1],
+                                               len_L2,
                                                w=0.5)
         tr_time_list.append(tr_time_L2)
 
@@ -323,7 +356,7 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
                                              f'sigma_transient_len_{i + 1}',
                                              np.log(cp["pr_median_transient_len"]),
                                              cp["pr_sigma_transient_len"],
-                                             shape_sim[1],
+                                             len_L2,
                                              w=0.7)
         tr_len_list.append(tt.exp(tr_len_L2))
     return lambda_log_list, tr_time_list, tr_len_list
