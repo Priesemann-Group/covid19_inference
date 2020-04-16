@@ -5,7 +5,7 @@
 
 This is a Bayesian python toolbox for inference and forecast of the spread of the Coronavirus.  
 
-An example notebook is [here](scripts/example_bundeslaender.ipynb)
+An example notebook is [here](scripts/example_bundeslaender.ipynb) (not working yet)
 
 The research article [is available on arXiv](https://arxiv.org/abs/2004.01105) (**updated on April 13**).
 The code used to produce the figures is available in the other repository [here](https://github.com/Priesemann-Group/covid19_inference_forecast)
