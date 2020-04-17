@@ -406,7 +406,8 @@ def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lamb
         lambda_t_list.append(lambda_t)
     lambda_t_log = sum(lambda_t_list)
 
-    pm.Deterministic('lambda_t_log', lambda_t_log)
+    pm.Deterministic('lambda_t', tt.exp(lambda_t_log))
+    
     return lambda_t_log
 
 
