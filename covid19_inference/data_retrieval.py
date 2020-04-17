@@ -372,3 +372,152 @@ def get_mobility_reports_google(region, field_list, subregion=False):
     series_df = series_df + 1
 
     return series_df
+
+
+
+class jhu(object):
+    """Class containing everything one needs to retrieve and filter the files from the Johns Hopkins University
+    """
+
+    def _to_iso(df) -> pd.DataFrame:
+        """
+        Convert Johns Hopkins University dataset to nicely formatted DataFrame.
+        Drops Lat/Long columns and reformats to a multi-index of (country, state).
+
+        Parameters
+        ----------
+        df : pandas.DataFrame
+            Dataframe to convert to the iso format
+
+        Returns
+        -------
+        : pandas.DataFrame
+        """
+
+        # change columns & index
+        df = df.drop(columns=['Lat', 'Long']).rename(columns={
+            'Province/State': 'state',
+            'Country/Region': 'country'
+        })
+        df = df.set_index(['country', 'state'])
+        # datetime columns
+        df.columns = [datetime.datetime.strptime(d, '%m/%d/%y') for d in df.columns]
+        return df
+
+
+    def get_cdr(country:str, state:str,
+        fp_confirmed:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv',
+        fp_deaths:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv',
+        fp_recovered:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
+        ) -> pd.DataFrame:
+        """
+        Retrieves all confirmed, deaths and recovered Johns Hopkins University dataset as a DataFrame with datetime index. Can be filtered by state and country.
+
+        Parameters
+        ----------
+        country : str, optional
+            name of the country (the "Country/Region" column), can be None if state is set
+        state : str, optional
+            name of the state (the "Province/State" column), can be None if country is set
+
+        Returns
+        -------
+        : pandas.DataFrame
+        """
+
+        # load & transform
+
+        df_confirmed = self._to_iso(self.get_confirmed_cases(fp_confirmed))
+        df_deaths    = self._to_iso(self.get_deaths(fp_deaths))
+        df_recovered = self._to_iso(self.get_recovered_cases(fp_recovered))
+
+        # filter
+        df = pd.DataFrame(columns=['date', 'confirmed', 'deaths', 'recovered']).set_index('date')
+        df['confirmed'] = self.df_confirmed.loc[(country, state)]
+        df['deaths'] = self.df_deaths.loc[(country, state)]
+        df['recovered'] = self.df_recovered.loc[(country, state)]
+        df.index.name = 'date'
+
+        return df
+
+    def get_confirmed_cases(url:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'):
+        """
+        Attempts to download the most current data for the confirmed cases from the online repository of the
+        Coronavirus Visual Dashboard operated by the Johns Hopkins University
+        and falls back to the backup provided with our repo if it fails.
+        Only works if the module is located in the repo directory.
+
+        Parameters
+        ----------
+        url : str, optional
+            filepath or URL pointing to the original CSV of global confirmed cases
+
+        Returns
+        -------
+        : pandas.DataFrame
+            table with confirmed cases
+        """
+
+        try:
+            confirmed = pd.read_csv(url, sep=",")
+        except Exception as e:
+            print("Failed to download current data, using local copy.")
+            this_dir = os.path.dirname(__file__)
+            confirmed = pd.read_csv(
+                this_dir + "/../data/confirmed_global_fallback_2020-04-07.csv", sep=","
+            )
+        return confirmed
+
+    def get_deaths(url:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'):
+        """
+        Attempts to download the most current data for the confirmed deaths from the online repository of the
+        Coronavirus Visual Dashboard operated by the Johns Hopkins University
+        and falls back to the backup provided with our repo if it fails.
+        Only works if the module is located in the repo directory.
+
+        Parameters
+        ----------
+        url : str, optional
+            filepath or URL pointing to the original CSV of global deaths
+
+        Returns
+        -------
+        : pandas.DataFrame
+            table with confirmed cases
+        """
+
+        try:
+            deaths = pd.read_csv(url, sep=",")
+        except Exception as e:
+            print("Failed to download current data, using local copy.")
+            this_dir = os.path.dirname(__file__)
+            deaths = pd.read_csv(
+                this_dir + "/../data/deaths_global_fallback_2020-04-07.csv", sep=","
+            )
+        return deaths
+
+    def get_recovered_cases(url:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'):
+        """
+        Attempts to download the most current data for the confirmed recoveries from the online repository of the
+        Coronavirus Visual Dashboard operated by the Johns Hopkins University
+        and falls back to the backup provided with our repo if it fails.
+        Only works if the module is located in the repo directory.
+
+        Parameters
+        ----------
+        url : str, optional
+            filepath or URL pointing to the original CSV of global recovered cases
+        Returns
+        -------
+        : pandas.DataFrame
+            table with confirmed cases
+        """
+        try:
+            recovered = pd.read_csv(url, sep=",")
+        except Exception as e:
+            print("Failed to download current data, using local copy.")
+            this_dir = os.path.dirname(__file__)
+            recovered = pd.read_csv(
+                this_dir + "/../data/recovered_global_fallback_2020-04-07.csv", sep=","
+            )
+        return recovered
