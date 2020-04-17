@@ -186,14 +186,14 @@ def get_rki(try_max = 10):
         print('Downloading {:d} unique Landkreise. May take a while.\n'.format(n_data))
 
         df_keys = ['Bundesland', 'Landkreis', 'Altersgruppe', 'Geschlecht', 'AnzahlFall',
-           'AnzahlTodesfall', 'Meldedatum', 'NeuerFall', 'NeuGenesen', 'AnzahlGenesen']
+           'AnzahlTodesfall', 'Meldedatum', 'NeuerFall', 'NeuGenesen', 'AnzahlGenesen','Refdatum']
 
         df = pd.DataFrame(columns=df_keys)
 
         #Fills DF with data from all landkreise
         for idlandkreis in unique_ids:
             
-            url_str = 'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0//query?where=IdLandkreis%3D'+ idlandkreis + '&objectIds=&time=&resultType=none&outFields=Bundesland%2C+Landkreis%2C+Altersgruppe%2C+Geschlecht%2C+AnzahlFall%2C+AnzahlTodesfall%2C+Meldedatum%2C+NeuerFall%2C+NeuGenesen%2C+AnzahlGenesen&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=false&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token='
+            url_str = 'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0//query?where=IdLandkreis%3D'+ idlandkreis + '&objectIds=&time=&resultType=none&outFields=Bundesland%2C+Landkreis%2C+Altersgruppe%2C+Geschlecht%2C+AnzahlFall%2C+AnzahlTodesfall%2C+Meldedatum%2C+NeuerFall%2C+Refdatum%2C+NeuGenesen%2C+AnzahlGenesen&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=false&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token='
 
             count_try = 0
 
@@ -223,17 +223,19 @@ def get_rki(try_max = 10):
             df = pd.concat([df, df_temp], ignore_index=True)
 
         df['date'] = df['Meldedatum'].apply(lambda x: datetime.datetime.fromtimestamp(x/1e3))   
+        df['date_ref'] = df['Refdatum'].apply(lambda x: datetime.datetime.fromtimestamp(x/1e3))   
 
     else:
 
         print("Warning: Query returned {:d} landkreise (out of {:d}), likely being updated at the moment. Using fallback (outdated) copy.".format(n_data, landkreise_max))
         this_dir = os.path.dirname(__file__)
-        df = pd.read_csv(this_dir + "/../data/rki_fallback.csv", sep=",")
+        df = pd.read_csv(this_dir + "/../data/rki_fallback_gzip.dat", sep=",", compression='gzip')
         df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
+        df['date_ref'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
 
     return df
 
-def filter_rki(df, begin_date, end_date, variable = 'AnzahlFall', level = None, value = None):
+def filter_rki(df, begin_date, end_date, variable = 'AnzahlFall', date_type='date', level = None, value = None):
     """Filters the RKI dataframe.
     
     Parameters
@@ -246,6 +248,8 @@ def filter_rki(df, begin_date, end_date, variable = 'AnzahlFall', level = None, 
         last date to return, in 'YYYY-MM-DD'
     variable : str, optional
         type of variable to return: cases ("AnzahlFall"), deaths ("AnzahlTodesfall"), recovered ("AnzahlGenesen")
+    date : str, optional
+        type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
     level : None, optional
         whether to return data from all Germany (None), a state ("Bundesland") or a region ("Landkreis")
     value : None, optional
@@ -264,15 +268,18 @@ def filter_rki(df, begin_date, end_date, variable = 'AnzahlFall', level = None, 
     if level not in ['Landkreis', 'Bundesland', None]:
         ValueError('Invalid level. Valid options: "Landkreis", "Bundesland", None')
 
+    if date_type not in ['date', 'date_ref']:
+        ValueError('Invalid date_type. Valid options: "date", "date_ref"')
+
     #Keeps only the relevant data
     if level is not None:
-        df = df[df[level]==value][['date', value]]
+        df = df[df[level]==value][[date_type, variable]]
 
-    df_series = df.groupby('date')[variable].sum().cumsum()
+    df_series = df.groupby(date_type)[variable].sum().cumsum()
 
     return np.array(df_series[begin_date:end_date])
 
-def filter_rki_all_bundesland(df, begin_date, end_date, variable = 'AnzahlFall'):
+def filter_rki_all_bundesland(df, begin_date, end_date, variable = 'AnzahlFall', date_type='date'):
 
     """Filters the full RKI dataset     
     
@@ -286,18 +293,23 @@ def filter_rki_all_bundesland(df, begin_date, end_date, variable = 'AnzahlFall')
         last date to return, in 'YYYY-MM-DD'
     variable : str, optional
         type of variable to return: cases ("AnzahlFall"), deaths ("AnzahlTodesfall"), recovered ("AnzahlGenesen")
+    date_type : str, optional
+        type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
     
     Returns
     -------
     DataFrame
         DataFrame with datetime dates as index, and all German Bundesland as columns
-    """   
+    """
 
     if variable not in ['AnzahlFall', 'AnzahlTodesfall', 'AnzahlGenesen']:
         ValueError('Invalid variable. Valid options: "AnzahlFall", "AnzahlTodesfall", "AnzahlGenesen"')
 
+    if date_type not in ['date', 'date_ref']:
+        ValueError('Invalid date_type. Valid options: "date", "date_ref"')
+
     #Nifty, if slightly unreadable one-liner
-    df2 = df.groupby(['date','Bundesland'])[variable].sum().reset_index().pivot(index='date',columns='Bundesland', values=variable).fillna(0)
+    df2 = df.groupby([date_type,'Bundesland'])[variable].sum().reset_index().pivot(index=date_type,columns='Bundesland', values=variable).fillna(0)
 
     #Returns cumsum of variable
     return df2[begin_date:end_date].cumsum()
