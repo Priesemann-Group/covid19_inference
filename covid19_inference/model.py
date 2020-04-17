@@ -17,8 +17,6 @@ class Cov19_Model(Model):
     with Cov19_model(params)
     """
 
-
-
     def __init__(self, new_cases_obs, date_begin_data, num_days_forecast,
                  diff_data_sim, N_population, name='', model=None):
         """
@@ -73,6 +71,7 @@ def modelcontext(model):
         return Cov19_Model.get_context()
     return model
 
+
 def student_t_likelihood(new_cases_inferred, pr_beta_sigma_obs = 30, nu=4, offset_sigma=1, model=None):
     """
     Builds a student-t distribution with mean new_cases_inferred and as observations the new_cases_obs of the model.
@@ -103,6 +102,7 @@ def student_t_likelihood(new_cases_inferred, pr_beta_sigma_obs = 30, nu=4, offse
         sigma=tt.abs_(new_cases_inferred[:num_days_data] + offset_sigma) ** 0.5 * sigma_obs,  # offset and tt.abs to avoid nans
         observed=model.new_cases_obs,
     )
+
 
 def SIR(lambda_t_log, pr_beta_I_begin=100, pr_median_mu=1 / 8,
         pr_sigma_mu=0.2, model=None, return_all=False,
@@ -283,6 +283,7 @@ def week_modulation(new_cases_inferred, week_modulation_type='abs_sine', pr_mean
         pm.Deterministic('new_cases', new_cases_inferred_eff)
     return new_cases_inferred_eff
 
+
 def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=1, model=None):
     """
 
@@ -362,7 +363,6 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
     return lambda_log_list, tr_time_list, tr_len_list
 
 
-
 def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=1, model=None):
     """
 
@@ -409,6 +409,7 @@ def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lamb
     pm.Deterministic('lambda_t_log', lambda_t_log)
     return lambda_t_log
 
+
 def hierarchical_normal(name, name_sigma, pr_mean, pr_sigma, len_L2, w=0.0):
     """
     Takes ideas from https://arxiv.org/pdf/1312.0906.pdf (see also https://arxiv.org/pdf/0708.3797.pdf and
@@ -441,6 +442,7 @@ def hierarchical_normal(name, name_sigma, pr_mean, pr_sigma, len_L2, w=0.0):
         Y = w * X + phi * sigma_Y
         pm.Deterministic(name + '_L2', Y)
         return Y, X
+
 
 def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2):
 
