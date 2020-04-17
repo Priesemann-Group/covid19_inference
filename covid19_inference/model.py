@@ -92,7 +92,7 @@ def student_t_likelihood(new_cases_inferred, pr_beta_sigma_obs = 30, nu=4, offse
     """
     model = modelcontext(model)
 
-    len_sigma_obs = 1 if model.ndim_sim == 1 else model.shape_sim[1]
+    len_sigma_obs = () if model.ndim_sim == 1 else model.shape_sim[1]
     sigma_obs = pm.HalfCauchy("sigma_obs", beta=pr_beta_sigma_obs, shape=len_sigma_obs)
 
     num_days_data = model.new_cases_obs.shape[0]
@@ -146,7 +146,7 @@ def SIR(lambda_t_log, pr_beta_I_begin=100, pr_median_mu=1 / 8,
     )
     N = model.N_population
 
-    num_regions = 1 if model.ndim_sim == 1 else model.shape_sim[1]
+    num_regions = () if model.ndim_sim == 1 else model.shape_sim[1]
 
     I_begin = pm.HalfCauchy(name="I_begin", beta=pr_beta_I_begin, shape=num_regions)
     S_begin = N - I_begin
@@ -201,7 +201,7 @@ def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_s
     """
     model = modelcontext(model)
 
-    len_delay = 1 if model.ndim_sim == 1 else model.shape_sim[1]
+    len_delay = () if model.ndim_sim == 1 else model.shape_sim[1]
     delay_L2_log, _ = hierarchical_normal('delay', 'sigma_delay',
                                           np.log(pr_median_delay),
                                           pr_sigma_delay,
@@ -252,7 +252,7 @@ def week_modulation(new_cases_inferred, week_modulation_type='abs_sine', pr_mean
     shape_modulation[0] -= diff_data_sim
     date_begin_sim = model.date_begin_sim
 
-    len_L2 = 1 if model.ndim_sim == 1 else model.shape_sim[1]
+    len_L2 = () if model.ndim_sim == 1 else model.shape_sim[1]
 
 
     week_end_factor, _ = hierarchical_beta('weekend_factor', 'sigma_weekend_factor',
@@ -311,7 +311,7 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
         mh.set_missing_with_default(cp_priors, default_priors_change_points)
 
     model = modelcontext(model)
-    len_L2 = 1 if model.ndim_sim == 1 else model.shape_sim[1]
+    len_L2 = () if model.ndim_sim == 1 else model.shape_sim[1]
 
 
     lambda_log_list = []
@@ -429,7 +429,7 @@ def hierarchical_normal(name, name_sigma, pr_mean, pr_sigma, len_L2, w=0.0):
     -------
 
     """
-    if len_L2 == 1: # not hierarchical
+    if not len_L2: # not hierarchical
         Y = pm.Normal(name, mu=pr_mean, sigma=pr_sigma)
         return Y, None
     else:
@@ -444,7 +444,7 @@ def hierarchical_normal(name, name_sigma, pr_mean, pr_sigma, len_L2, w=0.0):
 
 def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2):
 
-    if len_L2 == 1: # not hierarchical
+    if not len_L2: # not hierarchical
         Y = pm.Beta(name, mu=pr_mean, sigma=pr_sigma)
         return Y, None
     else:
