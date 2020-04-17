@@ -75,15 +75,15 @@ def get_jhu_cdr(
 
 def get_jhu_confirmed_cases():
     """
-        Attempts to download the most current data from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University
-        and falls back to the backup provided with our repo if it fails.
-        Only works if the module is located in the repo directory.
+    Attempts to download the most current data from the online repository of the
+    Coronavirus Visual Dashboard operated by the Johns Hopkins University
+    and falls back to the backup provided with our repo if it fails.
+    Only works if the module is located in the repo directory.
 
-        Returns
-        -------
-        : confirmed_cases
-            pandas table with confirmed cases
+    Returns
+    -------
+    : confirmed_cases
+        pandas table with confirmed cases
     """
     try:
         url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"
@@ -99,15 +99,15 @@ def get_jhu_confirmed_cases():
 
 def get_jhu_deaths():
     """
-        Attempts to download the most current data from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University
-        and falls back to the backup provided with our repo if it fails.
-        Only works if the module is located in the repo directory.
+    Attempts to download the most current data from the online repository of the
+    Coronavirus Visual Dashboard operated by the Johns Hopkins University
+    and falls back to the backup provided with our repo if it fails.
+    Only works if the module is located in the repo directory.
 
-        Returns
-        -------
-        : deaths
-            pandas table with reported deaths
+    Returns
+    -------
+    : deaths
+        pandas table with reported deaths
     """
     try:
         url = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
@@ -133,7 +133,7 @@ def filter_one_country(data_df, country, begin_date, end_date):
 
     Returns
     -------
-    : array
+    : np.array
     """
     date_formatted_begin = _format_date(begin_date)
     date_formatted_end = _format_date(end_date)
@@ -156,23 +156,24 @@ def get_last_date(data_df):
     return datetime.datetime(year + 2000, month, day)
 
 def get_rki(try_max = 10):
-
     '''
-    Downloads Robert Koch Institute data, separated by region (landkreis)
-    
-    Returns
-    -------
-    dataframe
-        dataframe containing all the RKI data from arcgis.
+    Attempts to download the most current data from the Robert Koch Institute. Separated into the different regions (landkreise).
     
     Parameters
     ----------
     try_max : int, optional
         Maximum number of tries for each query.
+    
+    Returns
+    -------
+    : pandas.DataFrame
+        Containing all the RKI data from arcgis website.
+        In the format:
+            [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, 
+            Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref]
     '''
 
-    landkreise_max = 412
-
+    landkreise_max = 412 #Strangely there are 412 regions defined by the Robert Koch Insitute in contrast to the offical 294 rural districts or the 401 administrative districts.
     #Gets all unique landkreis_id from data
     url_id = 'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0/query?where=0%3D0&objectIds=&time=&resultType=none&outFields=idLandkreis&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=true&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token='
     url = urllib.request.urlopen(url_id)
@@ -226,7 +227,6 @@ def get_rki(try_max = 10):
         df['date_ref'] = df['Refdatum'].apply(lambda x: datetime.datetime.fromtimestamp(x/1e3))   
 
     else:
-
         print("Warning: Query returned {:d} landkreise (out of {:d}), likely being updated at the moment. Using fallback (outdated) copy.".format(n_data, landkreise_max))
         this_dir = os.path.dirname(__file__)
         df = pd.read_csv(this_dir + "/../data/rki_fallback_gzip.dat", sep=",", compression='gzip')
@@ -236,31 +236,39 @@ def get_rki(try_max = 10):
     return df
 
 def filter_rki(df, begin_date, end_date, variable = 'AnzahlFall', date_type='date', level = None, value = None):
-    """Filters the RKI dataframe.
+    """
+    Filters the obtained dataset for a given time period and returns an array ONLY containing only the desired variable.
     
     Parameters
     ----------
-    df : dataframe
-        dataframe obtained from get_rki()
+    df : pandas.DataFrame
+        normally obtained from the get_rki() function
     begin_date : DateTime
         initial date to return, in 'YYYY-MM-DD'
     end_date : DateTime
         last date to return, in 'YYYY-MM-DD'
     variable : str, optional
-        type of variable to return: cases ("AnzahlFall"), deaths ("AnzahlTodesfall"), recovered ("AnzahlGenesen")
+        type of variable to return, possible types are:
+            "AnzahlFall"      : cases (default)
+            "AnzahlTodesfall" : deaths
+            "AnzahlGenesen"   : recovered
     date : str, optional
-        type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
-    level : None, optional
-        whether to return data from all Germany (None), a state ("Bundesland") or a region ("Landkreis")
+        type of date to use, the possible types are:
+            "date"     : reported date (Meldedatum in the original dataset) (default)
+            "date_ref" : symptom date  (Refdatum in the original dataset)
+    level : str, optional
+        possible levels are:
+            "None"       : return data from all Germany (default)
+            "Bundesland" : a state 
+            "Landkreis"  : a region
     value : None, optional
         string of the state/region
-    
+        e.g. "Sachsen"
     Returns
     -------
-    np.array
-        array with the requested variable, in the requested range.
+    : np.array
+        array with ONLY the requested variable, in the requested range. (one dimensional)
     """
-
     #Input parsing
     if variable not in ['AnzahlFall', 'AnzahlTodesfall', 'AnzahlGenesen']:
         ValueError('Invalid variable. Valid options: "AnzahlFall", "AnzahlTodesfall", "AnzahlGenesen"')
@@ -272,7 +280,9 @@ def filter_rki(df, begin_date, end_date, variable = 'AnzahlFall', date_type='dat
         ValueError('Invalid date_type. Valid options: "date", "date_ref"')
 
     #Keeps only the relevant data
-    if level is not None:
+    if level is None:
+        level = ""
+    if (level is not "") and (level is not "None"):
         df = df[df[level]==value][[date_type, variable]]
 
     df_series = df.groupby(date_type)[variable].sum().cumsum()
@@ -280,25 +290,30 @@ def filter_rki(df, begin_date, end_date, variable = 'AnzahlFall', date_type='dat
     return np.array(df_series[begin_date:end_date])
 
 def filter_rki_all_bundesland(df, begin_date, end_date, variable = 'AnzahlFall', date_type='date'):
-
-    """Filters the full RKI dataset     
-    
+    """
+    Filters the obtained data for a given time period and returns a dataset containing only the desired variable grouped by every state (Bundesland).
+      
     Parameters
     ----------
-    df : DataFrame
-        RKI dataframe, from get_rki()
-    begin_date : str
+    df : pandas.DataFrame
+        normally obtained from the get_rki() function
+    begin_date : DateTime
         initial date to return, in 'YYYY-MM-DD'
-    end_date : str
+    end_date : DateTime
         last date to return, in 'YYYY-MM-DD'
     variable : str, optional
-        type of variable to return: cases ("AnzahlFall"), deaths ("AnzahlTodesfall"), recovered ("AnzahlGenesen")
-    date_type : str, optional
-        type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
-    
+        type of variable to return, possible types are:
+            "AnzahlFall"      : cases (default)
+            "AnzahlTodesfall" : deaths
+            "AnzahlGenesen"   : recovered
+    date : str, optional
+        type of date to use, the possible types are:
+            "date"     : reported date (Meldedatum in the original dataset) (default)
+            "date_ref" : symptom date  (Refdatum in the original dataset)
+
     Returns
     -------
-    DataFrame
+    : pandas.DataFrame
         DataFrame with datetime dates as index, and all German Bundesland as columns
     """
 
