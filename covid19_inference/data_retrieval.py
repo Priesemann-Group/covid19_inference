@@ -10,19 +10,6 @@ _format_date = lambda date_py: "{}/{}/{}".format(
     date_py.month, date_py.day, str(date_py.year)[2:4]
 )
 
-
-
-def get_last_date(data_df):
-    last_date = data_df.columns[-1]
-    month, day, year = map(int, last_date.split("/"))
-    return datetime.datetime(year + 2000, month, day)
-
-def get_first_date(data_df):
-    last_date = data_df.columns[-1]
-    month, day, year = map(int, last_date.split("/"))
-    return datetime.datetime(year + 2000, month, day)
-
-
 class JHU():
     """
     Contains all functions for downloading, filtering and manipulating data from the Johns Hopkins University.
@@ -404,7 +391,6 @@ class JHU():
     def __get_last_date(self,df):
         return df.index[-1]
 
-
 class RKI():
     """
     Data retrieval for the Robert Koch Institute
@@ -647,47 +633,3 @@ class RKI():
 
         #Returns cumsum of variable
         return df2[begin_date:end_date].cumsum()
-
-def get_mobility_reports_apple(value, transportation_list, path_data = 'data/applemobilitytrends-2020-04-13.csv'):
-
-    if not all(elem in ['walking', 'driving', 'transit']  for elem in transportation_list):
-        raise ValueError('transportation_type contains elements outside of ["walking", "driving", "transit"]')
-
-    # if transportation_type not in ['walking', 'driving', 'transit']:
-    #     raise ValueError('Invalid value. Valid options: "walking", "driving", "transit"')
-
-    df = pd.read_csv(path_data)
-
-    series_list = []
-    for transport in transportation_list:
-        series = df[(df['region']==value) & (df['transportation_type']==transport)].iloc[0][3:].rename(transport)
-        series_list.append(series/100)
-
-    df2 = pd.concat(series_list,axis=1)
-
-    df2.index = df2.index.map(datetime.datetime.fromisoformat)
-
-    return df2
-    
-def get_mobility_reports_google(region, field_list, subregion=False):
-
-    valid_fields = ['retail_and_recreation','grocery_and_pharmacy', 'parks', 'transit_stations', 'workplaces','residential']
-
-    if not all(elem in valid_fields  for elem in field_list):
-        raise ValueError('field_list contains invalid elements')
-
-
-    url = 'https://raw.githubusercontent.com/vitorbaptista/google-covid19-mobility-reports/master/data/processed/mobility_reports.csv'
-    df = pd.read_csv(url)
-
-    if subregion is not False:
-        series_df = df[(df['region']==region) & (df['subregion'] == subregion)]
-    else:
-        series_df = df[(df['region']==region) & (df['subregion'].isnull())]
-
-    series_df = series_df.set_index('updated_at')[field_list]
-    series_df.index.name = 'date'
-    series_df.index = series_df.index.map(datetime.datetime.fromisoformat)
-    series_df = series_df + 1
-
-    return series_df
