@@ -23,7 +23,7 @@ def get_first_date(data_df):
     return datetime.datetime(year + 2000, month, day)
 
 
-class Jhu():
+class JHU():
     """
     Contains all functions for downloading, filtering and manipulating data from the Johns Hopkins University.
     https://coronavirus.jhu.edu/
@@ -215,9 +215,9 @@ class Jhu():
         Parameters
         ----------
         country : str, optional
-            name of the country (the "Country/Region" column), can be None if state is set
+            name of the country (the "Country/Region" column), can be None if the whole summed up data is wanted (why would you do this?)
         state : str, optional
-            name of the state (the "Province/State" column), can be None if country is set
+            name of the state (the "Province/State" column), can be None if country is set or the whole summed up data is wanted
         begin_date : str, optional
             First day that should be filtered, in format '%m/%d/%y' 
         end_date : str, optional
@@ -405,7 +405,7 @@ class Jhu():
         return df.index[-1]
 
 
-class Rki():
+class RKI():
     """
     Data retrieval for the Robert Koch Institute
     https://www.rki.de/.
@@ -413,12 +413,11 @@ class Rki():
     The data gets retrieved from the arcgis dashboard.
     Features:
         - download the full dataset
-        - filter by deaths, confirmed cases and recovered cases
         - filter by date
         see the methods in this class for more infos on the features and how to use them
 
     ToDo:
-        - fix return of filter function to be a pd.DataFrame instead of an array --> convention
+        - fix return of filter(...) function to be a pd.DataFrame instead of an array --> convention
         - maybe if possible rewrite to code to use the same syntax as the jhu class (get_confirmed, get_confirmed_deaths_recovered, etc.)
     """
     def __init__(self, auto_download = False):
@@ -507,14 +506,68 @@ class Rki():
         self.data=df
         return df
 
-    def filter(self,begin_date, end_date, variable = 'AnzahlFall', date_type='date', level = None, value = None) -> pd.DataFrame:
+    def get_confirmed(self, bundesland:str = None, landkreis:str = None, begin_date:str = None, end_date:str = None, date_type:str='date')-> pd.DataFrame:
+
+        # Set level for filter use bundesland if no landkreis is supplied else us landkreis
+        level = None
+        value = None
+        if bundesland is not None:
+            level = "Bundesland"
+            value = bundesland
+        if landkreis is not None:
+            level = "Landkreis"
+            value = landkreis
+
+        if begin_date is None:
+            begin_date = self.data[date_type].iloc[0]
+        if end_date is None:
+            end_date = self.data[date_type].iloc[-1]
+
+        df = self.filter(begin_date,end_date,'AnzahlFall',date_type,level,value)
+        return df
+
+    def get_deaths(self, bundesland:str, landkreis:str, begin_date:str = None, end_date:str = None, date_type:str='date')-> pd.DataFrame:
+        # Set level for filter use bundesland if no landkreis is supplied else us landkreis
+        level = None
+        value = None
+        if bundesland is not None:
+            level = "Bundesland"
+            value = bundesland
+        if landkreis is not None:
+            level = "Landkreis"
+            value = landkreis
+
+        if begin_date is None:
+            begin_date = self.data[date_type].iloc[0]
+        if end_date is None:
+            end_date = self.data[date_type].iloc[-1]
+
+        df = self.filter(begin_date,end_date,'AnzahlTodesfall',date_type,level,value)
+        return df
+    def get_recovered(self, bundesland:str, landkreis:str, begin_date:str = None, end_date:str = None, date_type:str='date')-> pd.DataFrame:
+        # Set level for filter use bundesland if no landkreis is supplied else us landkreis
+        level = None
+        value = None
+        if bundesland is not None:
+            level = "Bundesland"
+            value = bundesland
+        if landkreis is not None:
+            level = "Landkreis"
+            value = landkreis
+
+        if begin_date is None:
+            begin_date = self.data[date_type].iloc[0]
+        if end_date is None:
+            end_date = self.data[date_type].iloc[-1]
+
+        df = self.filter(begin_date,end_date,'AnzahlGenesen',date_type,level,value)
+        return df
+    def filter(self, begin_date, end_date, variable = 'AnzahlFall', date_type='date', level = None, value = None) -> pd.DataFrame:
         """
         Filters the obtained dataset for a given time period and returns an array ONLY containing only the desired variable.
         
         Parameters
         ----------
-        df : pandas.DataFrame
-            normally obtained from the get_rki() function
         begin_date : DateTime
             initial date to return, in 'YYYY-MM-DD'
         end_date : DateTime
@@ -537,7 +590,7 @@ class Rki():
             e.g. "Sachsen"
         Returns
         -------
-        : np.array
+        : pd.DataFrame
             array with ONLY the requested variable, in the requested range. (one dimensional)
         """
         #Input parsing
@@ -558,10 +611,11 @@ class Rki():
 
         df_series = df.groupby(date_type)[variable].sum().cumsum()
 
-        return np.array(df_series[begin_date:end_date])
+        return df_series[begin_date:end_date]
 
     def filter_all_bundesland(self, begin_date, end_date, variable = 'AnzahlFall', date_type='date') -> pd.DataFrame:
-        """Filters the full RKI dataset     
+        """
+        Filters the full RKI dataset     
 
         Parameters
         ----------
@@ -579,7 +633,7 @@ class Rki():
         Returns
         -------
         : pd.DataFrame
-            DataFrame with datetime dates as index, and all German Bundesland as columns
+            DataFrame with datetime dates as index, and all German regions (bundesländer) as columns
         """
         if variable not in ['AnzahlFall', 'AnzahlTodesfall', 'AnzahlGenesen']:
             ValueError('Invalid variable. Valid options: "AnzahlFall", "AnzahlTodesfall", "AnzahlGenesen"')
