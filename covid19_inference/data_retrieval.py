@@ -23,10 +23,16 @@ def get_first_date(data_df):
     return datetime.datetime(year + 2000, month, day)
 
 
-class Johns_hopkins_university():
+class Jhu():
     """
     Contains all functions for downloading, filtering and manipulating data from the Johns Hopkins University.
-    Automatically downloads all files from the online repository of the Coronavirus Visual Dashboard operated by the Johns Hopkins University.
+    https://coronavirus.jhu.edu/
+
+    Features:
+        - download all files from the online repository of the coronavirus visual dashboard operated by the Johns Hopkins University.
+        - filter by deaths, confirmed cases and recovered cases
+        - filter by country and state
+        - filter by date
 
     Parameters
     ----------
@@ -402,15 +408,30 @@ class Johns_hopkins_university():
         return df.index[-1]
 
 
-class Robert_Koch_Insitute():
-    """docstring for Robert_Koch_Insitute"""
+class Rki():
+    """
+    Data retrieval for the Robert Koch Institute
+    https://www.rki.de/.
+
+    The data gets retrieved from the arcgis dashboard.
+    Features:
+        - download the full dataset
+        - filter by deaths, confirmed cases and recovered cases
+        - filter by date
+        see the methods in this class for more infos on the features and how to use them
+
+    ToDo:
+        - fix return of filter function to be a pd.DataFrame instead of an array --> convention
+        - maybe if possible rewrite to code to use the same syntax as the jhu class (get_confirmed, get_confirmed_deaths_recovered, etc.)
+        - the filter function could use the data attribute self.data instead of a given dataframe as argument
+    """
     def __init__(self, auto_download = False):
         self.data: pd.DataFrame
 
         if auto_download:
             self.download_all_available_data()
 
-    def download_all_available_data(self, try_max=10 save_to_attributes:bool = True)-> pd.DataFrame:
+    def download_all_available_data(self, try_max=10, save_to_attributes:bool = True)-> pd.DataFrame:
         '''
         Attempts to download the most current data from the Robert Koch Institute. Separated into the different regions (landkreise).
         
@@ -491,6 +512,7 @@ class Robert_Koch_Insitute():
 
         if save_to_attributes:
             self.data=df
+        print("Finished downloading")
         return df
 
     def filter(self, df, begin_date, end_date, variable = 'AnzahlFall', date_type='date', level = None, value = None) -> pd.DataFrame:
@@ -499,8 +521,6 @@ class Robert_Koch_Insitute():
         
         Parameters
         ----------
-        df : dataframe
-            dataframe obtained from get_rki()
         df : pandas.DataFrame
             normally obtained from the get_rki() function
         begin_date : DateTime
@@ -508,18 +528,12 @@ class Robert_Koch_Insitute():
         end_date : DateTime
             last date to return, in 'YYYY-MM-DD'
         variable : str, optional
-            type of variable to return: cases ("AnzahlFall"), deaths ("AnzahlTodesfall"), recovered ("AnzahlGenesen")
-            type of variable to return, possible types are:
+                type of variable to return, possible types are:
                 "AnzahlFall"      : cases (default)
                 "AnzahlTodesfall" : deaths
                 "AnzahlGenesen"   : recovered
         date : str, optional
             type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
-        level : None, optional
-            whether to return data from all Germany (None), a state ("Bundesland") or a region ("Landkreis")
-            type of date to use, the possible types are:
-                "date"     : reported date (Meldedatum in the original dataset) (default)
-                "date_ref" : symptom date  (Refdatum in the original dataset)
         level : str, optional
             possible levels are:
                 "None"       : return data from all Germany (default)
@@ -531,8 +545,6 @@ class Robert_Koch_Insitute():
             e.g. "Sachsen"
         Returns
         -------
-        np.array
-            array with the requested variable, in the requested range.
         : np.array
             array with ONLY the requested variable, in the requested range. (one dimensional)
         """
@@ -572,7 +584,7 @@ class Robert_Koch_Insitute():
         
         Returns
         -------
-        DataFrame
+        :pd.DataFrame
             DataFrame with datetime dates as index, and all German Bundesland as columns
         """
         if variable not in ['AnzahlFall', 'AnzahlTodesfall', 'AnzahlGenesen']:
