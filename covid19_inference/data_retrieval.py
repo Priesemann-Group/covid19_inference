@@ -35,7 +35,9 @@ class Johns_hopkins_university():
 
     """
     def __init__(self, auto_download = False):
-        self.confirmed, self.deaths, self.recovered : pd.DataFrame
+        self.confirmed : pd.DataFrame
+        self.deaths : pd.DataFrame
+        self.recovered : pd.DataFrame
 
         if auto_download:
             self.download_all_available_data()
@@ -398,3 +400,233 @@ class Johns_hopkins_university():
         return df.index[0]
     def __get_last_date(self,df):
         return df.index[-1]
+
+
+class Robert_Koch_Insitute():
+    """docstring for Robert_Koch_Insitute"""
+    def __init__(self, auto_download = False):
+        self.data: pd.DataFrame
+
+        if auto_download:
+            self.download_all_available_data()
+
+    def download_all_available_data(self, try_max=10 save_to_attributes:bool = True)-> pd.DataFrame:
+        '''
+        Attempts to download the most current data from the Robert Koch Institute. Separated into the different regions (landkreise).
+        
+        Parameters
+        ----------
+        try_max : int, optional
+            Maximum number of tries for each query. (default:10)
+        save_to_attributes : bool
+            Should the returned dataframe be saved as attribute? (default:true)
+        Returns
+        -------
+        : pandas.DataFrame
+            Containing all the RKI data from arcgis website.
+            In the format:
+            [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, 
+            Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref]        
+        '''
+        landkreise_max=412#Strangely there are 412 regions defined by the Robert Koch Insitute in contrast to the offical 294 rural districts or the 401 administrative districts.
+        url_id = 'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0/query?where=0%3D0&objectIds=&time=&resultType=none&outFields=idLandkreis&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=true&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token='
+        url = urllib.request.urlopen(url_id)
+        json_data = json.loads(url.read().decode())
+        n_data = len(json_data['features'])
+        unique_ids = [json_data['features'][i]['attributes']['IdLandkreis'] for i in range(n_data)]
+
+        #If the number of landkreise is smaller than landkreise_max, uses local copy (query system can behave weirdly during updates)
+        if n_data >= landkreise_max:
+
+            print('Downloading {:d} unique Landkreise. May take a while.\n'.format(n_data))
+
+            df_keys = ['Bundesland', 'Landkreis', 'Altersgruppe', 'Geschlecht', 'AnzahlFall',
+               'AnzahlTodesfall', 'Meldedatum', 'NeuerFall', 'NeuGenesen', 'AnzahlGenesen','Refdatum']
+
+            df = pd.DataFrame(columns=df_keys)
+
+            #Fills DF with data from all landkreise
+            for idlandkreis in unique_ids:
+                
+                url_str = 'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0//query?where=IdLandkreis%3D'+ idlandkreis + '&objectIds=&time=&resultType=none&outFields=Bundesland%2C+Landkreis%2C+Altersgruppe%2C+Geschlecht%2C+AnzahlFall%2C+AnzahlTodesfall%2C+Meldedatum%2C+NeuerFall%2C+Refdatum%2C+NeuGenesen%2C+AnzahlGenesen&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=false&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token='
+
+                count_try = 0
+
+                while count_try < try_max:
+                    try:
+                        with urllib.request.urlopen(url_str) as url:
+                            json_data = json.loads(url.read().decode())
+
+                        n_data = len(json_data['features'])
+
+                        if n_data > 5000:
+                            raise ValueError('Query limit exceeded')
+
+                        data_flat = [json_data['features'][i]['attributes'] for i in range(n_data)]
+
+                        break
+
+                    except:
+                        count_try += 1           
+
+                if count_try == try_max:
+                    raise ValueError('Maximum limit of tries exceeded.')
+
+                df_temp = pd.DataFrame(data_flat)
+            
+                #Very inneficient, but it will do
+                df = pd.concat([df, df_temp], ignore_index=True)
+
+            df['date'] = df['Meldedatum'].apply(lambda x: datetime.datetime.fromtimestamp(x/1e3))   
+            df['date_ref'] = df['Refdatum'].apply(lambda x: datetime.datetime.fromtimestamp(x/1e3))   
+
+        else:
+
+            print("Warning: Query returned {:d} landkreise (out of {:d}), likely being updated at the moment. Using fallback (outdated) copy.".format(n_data, landkreise_max))
+            this_dir = os.path.dirname(__file__)
+            df = pd.read_csv(this_dir + "/../data/rki_fallback_gzip.dat", sep=",", compression='gzip')
+            df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
+            df['date_ref'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
+
+
+        if save_to_attributes:
+            self.data=df
+        return df
+
+    def filter(self, df, begin_date, end_date, variable = 'AnzahlFall', date_type='date', level = None, value = None) -> pd.DataFrame:
+        """
+        Filters the obtained dataset for a given time period and returns an array ONLY containing only the desired variable.
+        
+        Parameters
+        ----------
+        df : dataframe
+            dataframe obtained from get_rki()
+        df : pandas.DataFrame
+            normally obtained from the get_rki() function
+        begin_date : DateTime
+            initial date to return, in 'YYYY-MM-DD'
+        end_date : DateTime
+            last date to return, in 'YYYY-MM-DD'
+        variable : str, optional
+            type of variable to return: cases ("AnzahlFall"), deaths ("AnzahlTodesfall"), recovered ("AnzahlGenesen")
+            type of variable to return, possible types are:
+                "AnzahlFall"      : cases (default)
+                "AnzahlTodesfall" : deaths
+                "AnzahlGenesen"   : recovered
+        date : str, optional
+            type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
+        level : None, optional
+            whether to return data from all Germany (None), a state ("Bundesland") or a region ("Landkreis")
+            type of date to use, the possible types are:
+                "date"     : reported date (Meldedatum in the original dataset) (default)
+                "date_ref" : symptom date  (Refdatum in the original dataset)
+        level : str, optional
+            possible levels are:
+                "None"       : return data from all Germany (default)
+                "Bundesland" : a state 
+                "Landkreis"  : a region
+        value : None, optional
+            string of the state/region
+        
+            e.g. "Sachsen"
+        Returns
+        -------
+        np.array
+            array with the requested variable, in the requested range.
+        : np.array
+            array with ONLY the requested variable, in the requested range. (one dimensional)
+        """
+        #Input parsing
+        if variable not in ['AnzahlFall', 'AnzahlTodesfall', 'AnzahlGenesen']:
+            ValueError('Invalid variable. Valid options: "AnzahlFall", "AnzahlTodesfall", "AnzahlGenesen"')
+
+        if level not in ['Landkreis', 'Bundesland', None]:
+            ValueError('Invalid level. Valid options: "Landkreis", "Bundesland", None')
+
+        if date_type not in ['date', 'date_ref']:
+            ValueError('Invalid date_type. Valid options: "date", "date_ref"')
+
+        #Keeps only the relevant data
+        if level is not None:
+            df = df[df[level]==value][[date_type, variable]]
+
+        df_series = df.groupby(date_type)[variable].sum().cumsum()
+
+        return np.array(df_series[begin_date:end_date])
+
+    def filter_all_bundesland(self, df, begin_date, end_date, variable = 'AnzahlFall', date_type='date') -> pd.DataFrame:
+        """Filters the full RKI dataset     
+
+        Parameters
+        ----------
+        df : DataFrame
+            RKI dataframe, from get_rki()
+        begin_date : str
+            initial date to return, in 'YYYY-MM-DD'
+        end_date : str
+            last date to return, in 'YYYY-MM-DD'
+        variable : str, optional
+            type of variable to return: cases ("AnzahlFall"), deaths ("AnzahlTodesfall"), recovered ("AnzahlGenesen")
+        date_type : str, optional
+            type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
+        
+        Returns
+        -------
+        DataFrame
+            DataFrame with datetime dates as index, and all German Bundesland as columns
+        """
+        if variable not in ['AnzahlFall', 'AnzahlTodesfall', 'AnzahlGenesen']:
+            ValueError('Invalid variable. Valid options: "AnzahlFall", "AnzahlTodesfall", "AnzahlGenesen"')
+
+        if date_type not in ['date', 'date_ref']:
+            ValueError('Invalid date_type. Valid options: "date", "date_ref"')
+
+        #Nifty, if slightly unreadable one-liner
+        df2 = df.groupby([date_type,'Bundesland'])[variable].sum().reset_index().pivot(index=date_type,columns='Bundesland', values=variable).fillna(0)
+
+        #Returns cumsum of variable
+        return df2[begin_date:end_date].cumsum()
+
+def get_mobility_reports_apple(value, transportation_list, path_data = 'data/applemobilitytrends-2020-04-13.csv'):
+
+    if not all(elem in ['walking', 'driving', 'transit']  for elem in transportation_list):
+        raise ValueError('transportation_type contains elements outside of ["walking", "driving", "transit"]')
+
+    # if transportation_type not in ['walking', 'driving', 'transit']:
+    #     raise ValueError('Invalid value. Valid options: "walking", "driving", "transit"')
+
+    df = pd.read_csv(path_data)
+
+    series_list = []
+    for transport in transportation_list:
+        series = df[(df['region']==value) & (df['transportation_type']==transport)].iloc[0][3:].rename(transport)
+        series_list.append(series/100)
+
+    df2 = pd.concat(series_list,axis=1)
+
+    df2.index = df2.index.map(datetime.datetime.fromisoformat)
+
+    return df2
+    
+def get_mobility_reports_google(region, field_list, subregion=False):
+
+    valid_fields = ['retail_and_recreation','grocery_and_pharmacy', 'parks', 'transit_stations', 'workplaces','residential']
+
+    if not all(elem in valid_fields  for elem in field_list):
+        raise ValueError('field_list contains invalid elements')
+
+
+    url = 'https://raw.githubusercontent.com/vitorbaptista/google-covid19-mobility-reports/master/data/processed/mobility_reports.csv'
+    df = pd.read_csv(url)
+
+    if subregion is not False:
+        series_df = df[(df['region']==region) & (df['subregion'] == subregion)]
+    else:
+        series_df = df[(df['region']==region) & (df['subregion'].isnull())]
+
+    series_df = series_df.set_index('updated_at')[field_list]
+    series_df.index.name = 'date'
+    series_df.index = series_df.index.map(datetime.datetime.fromisoformat)
+    series_df = series_df + 1
+
+    return series_df
