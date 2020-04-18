@@ -48,7 +48,6 @@ class Jhu():
         if auto_download:
             self.download_all_available_data()
 
-
     def download_all_available_data(self,
         fp_confirmed:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv',
         fp_deaths:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv',
@@ -207,7 +206,6 @@ class Jhu():
         # datetime columns
         df.columns = [datetime.datetime.strptime(d, '%m/%d/%y') for d in df.columns]
         return df
-
 
     def get_confirmed_deaths_recovered(self, country:str = None, state:str = None, begin_date:str = None, end_date:str = None) -> pd.DataFrame:
         """
@@ -401,7 +399,6 @@ class Jhu():
         print(begin_date)
         print(df[begin_date:end_date])
 
-
     def __get_first_date(self,df):
         return df.index[0]
     def __get_last_date(self,df):
@@ -423,7 +420,6 @@ class Rki():
     ToDo:
         - fix return of filter function to be a pd.DataFrame instead of an array --> convention
         - maybe if possible rewrite to code to use the same syntax as the jhu class (get_confirmed, get_confirmed_deaths_recovered, etc.)
-        - the filter function could use the data attribute self.data instead of a given dataframe as argument
     """
     def __init__(self, auto_download = False):
         self.data: pd.DataFrame
@@ -431,7 +427,7 @@ class Rki():
         if auto_download:
             self.download_all_available_data()
 
-    def download_all_available_data(self, try_max=10, save_to_attributes:bool = True)-> pd.DataFrame:
+    def download_all_available_data(self, try_max=10)-> pd.DataFrame:
         '''
         Attempts to download the most current data from the Robert Koch Institute. Separated into the different regions (landkreise).
         
@@ -439,8 +435,6 @@ class Rki():
         ----------
         try_max : int, optional
             Maximum number of tries for each query. (default:10)
-        save_to_attributes : bool
-            Should the returned dataframe be saved as attribute? (default:true)
         Returns
         -------
         : pandas.DataFrame
@@ -509,13 +503,11 @@ class Rki():
             df['date'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
             df['date_ref'] = pd.to_datetime(df['date'], format='%d-%m-%Y')
 
-
-        if save_to_attributes:
-            self.data=df
         print("Finished downloading")
+        self.data=df
         return df
 
-    def filter(self, df, begin_date, end_date, variable = 'AnzahlFall', date_type='date', level = None, value = None) -> pd.DataFrame:
+    def filter(self,begin_date, end_date, variable = 'AnzahlFall', date_type='date', level = None, value = None) -> pd.DataFrame:
         """
         Filters the obtained dataset for a given time period and returns an array ONLY containing only the desired variable.
         
@@ -559,6 +551,8 @@ class Rki():
             ValueError('Invalid date_type. Valid options: "date", "date_ref"')
 
         #Keeps only the relevant data
+        df = self.data
+
         if level is not None:
             df = df[df[level]==value][[date_type, variable]]
 
@@ -566,7 +560,7 @@ class Rki():
 
         return np.array(df_series[begin_date:end_date])
 
-    def filter_all_bundesland(self, df, begin_date, end_date, variable = 'AnzahlFall', date_type='date') -> pd.DataFrame:
+    def filter_all_bundesland(self, begin_date, end_date, variable = 'AnzahlFall', date_type='date') -> pd.DataFrame:
         """Filters the full RKI dataset     
 
         Parameters
@@ -584,7 +578,7 @@ class Rki():
         
         Returns
         -------
-        :pd.DataFrame
+        : pd.DataFrame
             DataFrame with datetime dates as index, and all German Bundesland as columns
         """
         if variable not in ['AnzahlFall', 'AnzahlTodesfall', 'AnzahlGenesen']:
@@ -594,6 +588,7 @@ class Rki():
             ValueError('Invalid date_type. Valid options: "date", "date_ref"')
 
         #Nifty, if slightly unreadable one-liner
+        df = self.data
         df2 = df.groupby([date_type,'Bundesland'])[variable].sum().reset_index().pivot(index=date_type,columns='Bundesland', values=variable).fillna(0)
 
         #Returns cumsum of variable
