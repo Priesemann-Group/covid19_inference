@@ -35,3 +35,11 @@ To get started, we recommend to look at one of the currently two example noteboo
 
 2. `Hierarchical model of the German states  <https://github.com/Priesemann-Group/covid19_inference/blob/master/scripts/example_bundeslaender.ipynb>`_
     This builds a hierarchical bayesian model of the states of Germany
+
+We can for example recommend the following articles about bayesian modeling:
+
+As a introduction to Bayesian statistics and the python package (PyMC3) that we use:
+https://docs.pymc.io/notebooks/api_quickstart.html
+
+This is a good post about hierarchical Bayesian models in general:
+https://statmodeling.stat.columbia.edu/2014/01/21/everything-need-know-bayesian-statistics-learned-eight-schools/

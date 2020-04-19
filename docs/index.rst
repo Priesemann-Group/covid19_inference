@@ -25,6 +25,12 @@
     doc/data_retrieval
     doc/plotting
 
+.. toctree::
+    :titlesonly:
+    :maxdepth: 2
+    :caption: For developpers
+
+    doc/debugging
 
 
 Indices and tables
