@@ -160,7 +160,7 @@ def SIR(lambda_t_log, pr_beta_I_begin=100, pr_median_mu=1 / 8,
         S_t = S_t - new_I_t
         I_t = I_t + new_I_t - mu * I_t
         I_t = tt.clip(I_t, 0, N)  # for stability
-        S_t = tt.clip(S_t, N, 0)
+        S_t = tt.clip(S_t, 0, N)
         return S_t, I_t, new_I_t
 
     # theano scan returns two tuples, first one containing a time series of
