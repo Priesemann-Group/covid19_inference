@@ -230,7 +230,7 @@ def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_s
 
 
 def week_modulation(new_cases_inferred, week_modulation_type='abs_sine', pr_mean_weekend_factor=0.7,
-                    pr_sigma_weekend_factor=0.17, week_end_days = (6,7), model=None, save_in_trace=True):
+                    pr_sigma_weekend_factor=0.2, week_end_days = (6,7), model=None, save_in_trace=True):
     """
 
     Parameters
@@ -349,19 +349,23 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
                                                cp["pr_sigma_date_transient"],
                                                len_L2,
                                                w=0.5)
+
+
         tr_time_list.append(tr_time_L2)
 
 
     for i, cp in enumerate(change_points_list):
+        #if model.ndim_sim == 1:
         tr_len_L2, _ = hierarchical_normal(f'transient_len_{i + 1}',
                                              f'sigma_transient_len_{i + 1}',
                                              np.log(cp["pr_median_transient_len"]),
                                              cp["pr_sigma_transient_len"],
                                              len_L2,
                                              w=0.7)
+        #else:
+        #    tr_len_L2 = np.log(cp["pr_median_transient_len"]) * tt.ones(model.shape_sim[1])
         tr_len_list.append(tt.exp(tr_len_L2))
     return lambda_log_list, tr_time_list, tr_len_list
-
 
 def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=1, model=None):
     """
@@ -411,7 +415,7 @@ def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lamb
     return lambda_t_log
 
 
-def hierarchical_normal(name, name_sigma, pr_mean, pr_sigma, len_L2, w=0.0):
+def hierarchical_normal(name, name_sigma, pr_mean, pr_sigma, len_L2, w=1.0, beta_fact = 2.):
     """
     Takes ideas from https://arxiv.org/pdf/1312.0906.pdf (see also https://arxiv.org/pdf/0708.3797.pdf and
      https://pdfs.semanticscholar.org/7b85/fb48a077c679c325433fbe13b87560e12886.pdf)
@@ -435,12 +439,12 @@ def hierarchical_normal(name, name_sigma, pr_mean, pr_sigma, len_L2, w=0.0):
         Y = pm.Normal(name, mu=pr_mean, sigma=pr_sigma)
         return Y, None
     else:
-        w = 1.0  # not-centered; partially not-centered not implemented yet.
-        sigma_Y = pm.HalfCauchy(name_sigma + '_L2', beta=2 * pr_sigma)
+        w=1.
+        sigma_Y = pm.HalfCauchy(name_sigma + '_L2', beta=beta_fact * pr_sigma)
 
         X = pm.Normal(name + '_L1' , mu=pr_mean, sigma=pr_sigma)
         phi = pm.Normal(name + '_L2_raw', mu=0, sigma=1, shape=len_L2)  # (1-w**2)*sigma_X+1*w**2, shape=len_Y)
-        Y = w * X + phi * sigma_Y
+        Y = w * X + phi*sigma_Y
         pm.Deterministic(name + '_L2', Y)
         return Y, X
 
@@ -448,12 +452,10 @@ def hierarchical_normal(name, name_sigma, pr_mean, pr_sigma, len_L2, w=0.0):
 def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2):
 
     if not len_L2: # not hierarchical
-        Y = pm.Beta(name, mu=pr_mean, sigma=pr_sigma)
+        Y = pm.Beta(name, alpha=pr_mean/pr_sigma, beta=1/pr_sigma*(1-pr_mean))
         return Y, None
     else:
-        w = 1.0  # not-centered; partially not-centered not implemented yet.
-        sigma_Y = pm.HalfCauchy(name_sigma + '_L2', beta=2*pr_sigma, shape=1)
-
-        X = pm.Beta(name + '_L1' , mu=pr_mean, sigma=pr_sigma)
-        Y = pm.Beta(name + '_L2', mu=X, sigma=sigma_Y, shape=len_L2)  # (1-w**2)*sigma_X+1*w**2, shape=len_Y)
+        sigma_Y = pm.HalfCauchy(name_sigma + '_L2', beta=pr_sigma, shape=1)
+        X = pm.Beta(name + '_L1' , alpha=pr_mean/pr_sigma, beta=1/pr_sigma*(1-pr_mean))
+        Y = pm.Beta(name + '_L2', alpha=X/sigma_Y, beta=1/sigma_Y*(1-X), shape=len_L2)
         return Y, X
