@@ -1,9 +1,11 @@
 # Bayesian inference and forecast of COVID-19, code repository
 
-[![Documentation Status](https://readthedocs.org/projects/covid19-inference-forecast/badge/?version=latest)](https://covid19-inference-forecast.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/covid19-inference/badge/?version=latest)](https://covid19-inference-forecast.readthedocs.io/en/latest/?badge=latest)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 This is a Bayesian python toolbox for inference and forecast of the spread of the Coronavirus.
+
+Check out our [documentation](https://covid19-inference.readthedocs.io/en/latest/).
 
 An example notebook for one bundesland is [here](scripts/example_one_bundesland.ipynb), and for an hierarchical analysis of the bundeslaender [here](scripts/example_bundeslaender.ipynb) (could still have some problems).
 

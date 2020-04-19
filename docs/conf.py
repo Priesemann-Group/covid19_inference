@@ -156,8 +156,8 @@ html_static_path = ['_static']
 # html_sidebars = {}
 
 # icons
-html_favicon = 'media/favicon.ico'
-html_logo = 'media/logo.png'
+#html_favicon = 'media/favicon.ico'
+#html_logo = 'media/logo.png'
 
 
 # -- Options for HTMLHelp output ---------------------------------------------
