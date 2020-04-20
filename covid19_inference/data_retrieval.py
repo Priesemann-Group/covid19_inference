@@ -303,16 +303,8 @@ class JHU():
         -------
         : pandas.DataFrame
             table with daily new recovered cases and the date as index
-        """
-        if begin_date is not None:
-            begin_date = begin_date - datetime.timedelta(days=1)
-
-        df = self.get_confirmed(bundesland, landkreis, begin_date, end_date, date_type)
-        #Get difference to the days beforehand
-
-        #append a 0 row for consistency in the shape of the data output !HACKY!
-        if begin_date is None:
-            df.loc[pd.Timestamp.min.to_pydatetime()] = 0    
+        """        
+        df = self.get_confirmed(country,state,begin_date,end_date)
         df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
 
@@ -375,17 +367,8 @@ class JHU():
         -------
         : pandas.DataFrame
             table with daily new recovered cases and the date as index
-        """
-        if begin_date is not None:
-            begin_date = begin_date - datetime.timedelta(days=1)
-
-        df = self.get_deaths(bundesland, landkreis, begin_date, end_date, date_type)
-        #Get difference to the days beforehand
-
-        #append a 0 row for consistency in the shape of the data output !HACKY!
-        if begin_date is None:
-            df.loc[pd.Timestamp.min.to_pydatetime()] = 0    
-
+        """        
+        df = self.get_deaths(country,state,begin_date,end_date)
         df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
 
@@ -448,17 +431,8 @@ class JHU():
         -------
         : pandas.DataFrame
             table with daily new recovered cases and the date as index
-        """
-        if begin_date is not None:
-            begin_date = begin_date - datetime.timedelta(days=1)
-
-        df = self.get_recovered(bundesland, landkreis, begin_date, end_date, date_type)
-        #Get difference to the days beforehand
-
-        #append a 0 row for consistency in the shape of the data output !HACKY!
-        if begin_date is None:
-            df.loc[pd.Timestamp.min.to_pydatetime()] = 0
-        #Get difference to the days beforehand
+        """        
+        df = self.get_recovered(country,state,begin_date,end_date)
 
         df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
@@ -657,16 +631,8 @@ class RKI():
         -------
         : pandas.DataFrame
             table with daily new confirmed and the date as index
-        """
-        if begin_date is not None:
-            begin_date = begin_date - datetime.timedelta(days=1)
-
-        df = self.get_deaths(bundesland, landkreis, begin_date, end_date, date_type)
-        #Get difference to the days beforehand
-
-        #append a 0 row for consistency in the shape of the data output !HACKY!
-        if begin_date is None:
-            df.loc[pd.Timestamp.min.to_pydatetime()] = 0
+        """        
+        df = self.get_confirmed(bundesland, landkreis, begin_date, end_date, date_type)
         #Get difference to the days beforehand
         df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
@@ -724,18 +690,8 @@ class RKI():
         -------
         : pandas.DataFrame
             table with daily new deaths and the date as index
-        """
-
-        if begin_date is not None:
-            begin_date = begin_date - datetime.timedelta(days=1)
-
+        """        
         df = self.get_deaths(bundesland, landkreis, begin_date, end_date, date_type)
-        #Get difference to the days beforehand
-
-        #append a 0 row for consistency in the shape of the data output !HACKY!
-        if begin_date is None:
-            df.loc[pd.Timestamp.min.to_pydatetime()] = 0
-
         #Get difference to the days beforehand
         df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
@@ -795,16 +751,9 @@ class RKI():
         : pandas.DataFrame
             table with daily new recovered cases and the date as index
         """        
-        if begin_date is not None:
-            begin_date = begin_date - datetime.timedelta(days=1)
-
         df = self.get_recovered(bundesland, landkreis, begin_date, end_date, date_type)
         #Get difference to the days beforehand
-
-        #append a 0 row for consistency in the shape of the data output !HACKY!
-        if begin_date is None:
-            df.loc[pd.Timestamp.min.to_pydatetime()] = 0
-
+        print(df.index)
         df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
 
