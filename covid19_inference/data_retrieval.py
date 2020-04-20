@@ -932,3 +932,132 @@ class RKI():
 
         #Returns cumsum of variable
         return df2[begin_date:end_date].cumsum()
+
+class GOOGLE():
+    """
+    Google mobility data
+
+    https://www.google.com/covid19/mobility/
+
+    """
+    def __init__(self, auto_download = False):
+        self.data : pd.DataFrame
+        if auto_download:
+            self.download_all_available_data()
+
+    def download_all_available_data(self,url:str=None) -> pd.DataFrame:
+        '''
+        Attempts to download the most current data from the Google mobility report.
+        
+        Parameters
+        ----------
+        try_max : int, optional
+            Maximum number of tries for each query. (default:10)
+        Returns
+        -------
+        : pandas.DataFrame
+            Containing all the RKI data from arcgis website.
+            In the format:
+                [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref]        
+        '''
+        if url is None:
+            url = 'https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv'
+        self.data = self.__to_iso(self.__download_from_source(url))
+        return self.data
+
+    def __download_from_source(self, url, fallback=None) -> pd.DataFrame:
+        """
+        Private method
+        Downloads one csv file from an url and converts it into a pandas dataframe. A fallback source can also be given.
+
+        Parameters
+        ----------
+        url : str
+            Where to download the csv file from
+        fallback : str, optional
+            Fallback source for the csv file, filename of file that is located in /data/
+
+        Returns
+        -------
+        : pandas.DataFrame
+            Raw data from the source url as dataframe
+        """
+
+        try:
+            data = pd.read_csv(url, sep=",")
+        except Exception as e:
+            print("Failed to download current data 'confirmed cases', using local copy.")
+            this_dir = os.path.dirname(__file__)
+            data = pd.read_csv(
+                this_dir + "/../data/" + fallback, sep=","
+            )
+        return data
+
+    def __to_iso(self,df) -> pd.DataFrame:
+        # change columns & index
+        df = df.rename(columns={
+            'country_region': 'country',
+            'sub_region_1': 'state',
+            'sub_region_2': 'region'
+        })
+        df = df.set_index(["country","state","region"])
+        # datetime columns
+        df["date"] = [datetime.datetime.strptime(d, '%Y-%m-%d') for d in df["date"]]
+        return df
+
+    def get_changes(self, country:str, state:str = None, region:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None) -> pd.DataFrame:
+        """
+        Returns a dataframe with the relative changes in mobility to a baseline, provided by google.
+        They are separated into "retail and recreation", "grocery and pharmacy", "parks", "transit", "workplaces" and "residental". 
+        Filterable for country, state and region and date.
+        Parameters
+        ----------
+        country : str
+            Selected country for the mobility data.
+        state : str, optional
+            State for the selected data if no value is selected the whole country is chosen
+        region : str, optional
+            Region for the selected data if  no value is selected the whole region/country is chosen
+        begin_date, end_date : datetime.datetime, optional
+            Filter for the desired time period
+        Returns
+        -------
+        : pandas.DataFrame
+        """        
+        if country not in self.data.index:
+            raise ValueError("Invalid country!")
+        if state not in self.data.index and state is not None:
+            raise ValueError("Invalid state!")
+        if region not in self.data.index and region is not None:
+            raise ValueError("Invalid region!")
+        if begin_date is not None and isinstance(begin_date,datetime.datetime):
+            raise ValueError("Invalid begin_date!")
+        if end_date is not None and isinstance(end_date,datetime.datetime):
+            raise ValueError("Invalid end_date!")
+
+        #Select everything with that country
+        if state is None:
+            df = self.data.iloc[self.data.index.get_level_values("region").isnull()]
+        else:
+            df = self.data.iloc[self.data.index.get_level_values("region") == region]
+
+        if state is None:
+            df = df.iloc[df.index.get_level_values("state").isnull()]
+        else:
+            df = df.iloc[df.index.get_level_values("state") == state]
+
+        df = df.iloc[df.index.get_level_values("country")== country]
+
+        df = df.set_index("date")
+
+        return df.drop(columns=["country_region_code"])[begin_date:end_date]
+
+    def get_possible_counties_states_regions(self) -> pd.DataFrame:
+        """
+        Can be used to obtain all different possible countries with there corresponding possible states and regions.
+
+        Returns
+        -------
+        : pandas.DataFrame 
+        """ 
+        return self.data.index.unique()
