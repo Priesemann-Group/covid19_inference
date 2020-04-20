@@ -4,7 +4,86 @@ Debugging
 =========
 
 
-This is some pointer to help debugging models, sampling issues
+This is some pointer to help debugging models and sampling issues
+
+
+General approach for nans/infs during sampling
+----------------------------------------------
+
+The idea of this approach is to sample from the prior and then run the model. If the
+log likelihood is then -inf, there is a problem, and the output of the theano functions is
+inspected.
+
+Sample from prior:
+
+::
+
+    from pymc3.util import (
+        get_untransformed_name,
+        is_transformed_name)
+
+    varnames = list(map(str, model.vars))
+
+    for name in varnames:
+        if is_transformed_name(name):
+            varnames.append(get_untransformed_name(name))
+
+    with model:
+        points = pm.sample_prior_predictive(var_names = varnames)
+        points_list = []
+        for i in range(len(next(iter(points.values())))):
+            point_dict = {}
+            for name, val in points.items():
+                    point_dict[name] = val[i]
+            points_list.append(point_dict)
+
+points_list is a list of the starting points for the model, sampled from the prior.
+Then to run the model and print the log-likelihood:
+
+::
+
+    fn = model.fn(model.logpt)
+
+    for point in points_list[:]:
+        print(fn(point))
+
+To monitor the output and save it in a file (for use in ipython).
+Learned from:
+http://deeplearning.net/software/theano/tutorial/debug_faq.html#how-do-i-step-through-a-compiled-function
+
+::
+
+    %%capture cap --no-stderr
+    def inspect_inputs(i, node, fn):
+        print(i, node, "input(s) value(s):", [input[0] for input in fn.inputs],
+              end='')
+
+    def inspect_outputs(i, node, fn):
+        print(" output(s) value(s):", [output[0] for output in fn.outputs])
+
+    fn_monitor = model.fn(model.logpt,
+                          mode=theano.compile.MonitorMode(
+                               pre_func=inspect_inputs,
+                               post_func=inspect_outputs).excluding(
+                                     'local_elemwise_fusion', 'inplace'))
+
+    fn = model.fn(model.logpt)
+
+    for point in points_list[:]:
+        if fn(point) < -1e10:
+            print(fn_monitor(point))
+            break
+
+In a new cell:
+
+::
+
+    with open('output.txt', 'w') as f:
+        f.write(cap.stdout)
+
+Then one can open output.txt in a text editor, and follow from where infs or nans come from
+by following the inputs and outputs up through the graph
+
 
 Sampler: MCMC (Nuts)
 --------------------
