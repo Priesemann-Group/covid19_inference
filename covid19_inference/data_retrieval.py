@@ -280,8 +280,8 @@ class JHU():
             else:
                 df['confirmed'] = self.confirmed[(country,state)]
         df.index.name = 'date'
-
-        return self.filter_date(df,begin_date,end_date)
+        df = self.filter_date(df,begin_date,end_date)
+        return df.drop(df.index[0])
 
     def get_new_confirmed(self, country:str = None, state:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None) -> pd.DataFrame:
         """
@@ -304,7 +304,20 @@ class JHU():
         : pandas.DataFrame
             table with daily new recovered cases and the date as index
         """        
-        df = self.get_confirmed(country,state,begin_date,end_date)
+        if country == "None":
+            country = None
+        if state == "None":
+            state = None
+        df = pd.DataFrame(columns=['date', 'confirmed']).set_index('date')
+        if country is None:
+            df['confirmed'] = self.confirmed.sum(axis = 1, skipna = True)
+        else:
+            if state is None:
+                df['confirmed'] = self.confirmed[country].sum(axis = 1, skipna = True)         
+            else:
+                df['confirmed'] = self.confirmed[(country,state)]
+        df.index.name = 'date'
+        df = self.filter_date(df,begin_date,end_date)
         df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
 
@@ -344,8 +357,8 @@ class JHU():
                 df['deaths'] = self.deaths[(country,state)]
         
         df.index.name = 'date'
-
-        return self.filter_date(df,begin_date,end_date)
+        df = self.filter_date(df,begin_date,end_date)
+        return df.drop(df.index[0])
 
     def get_new_deaths(self, country:str = None, state:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None) -> pd.DataFrame:
         """
@@ -368,7 +381,22 @@ class JHU():
         : pandas.DataFrame
             table with daily new recovered cases and the date as index
         """        
-        df = self.get_deaths(country,state,begin_date,end_date)
+        if country == "None":
+            country = None
+        if state == "None":
+            state = None
+
+        df = pd.DataFrame(columns=['date', 'deaths']).set_index('date')
+        if country is None:
+            df['deaths'] = self.deaths.sum(axis = 1, skipna = True)
+        else:
+            if state is None:
+                df['deaths'] = self.deaths[country].sum(axis = 1, skipna = True)              
+            else:
+                df['deaths'] = self.deaths[(country,state)]
+        
+        df.index.name = 'date'
+        df = self.filter_date(df,begin_date,end_date)
         df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
 
@@ -409,7 +437,8 @@ class JHU():
 
         df.index.name = 'date'
 
-        return self.filter_date(df,begin_date,end_date)
+        df = self.filter_date(df,begin_date,end_date)
+        return df.drop(df.index[0])
 
     def get_new_recovered(self, country:str = None, state:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None) -> pd.DataFrame:
         """
@@ -432,7 +461,23 @@ class JHU():
         : pandas.DataFrame
             table with daily new recovered cases and the date as index
         """        
-        df = self.get_recovered(country,state,begin_date,end_date)
+        if country == "None":
+            country = None
+        if state == "None":
+            state = None
+
+        df = pd.DataFrame(columns=['date', 'recovered']).set_index('date')
+        if country is None:
+            df['recovered'] = self.recovered.sum()
+        else:
+            if state is None:
+                df['recovered'] = self.recovered.loc[country].sum()              
+            else:
+                df['recovered'] = self.recovered.loc[(country,state)]
+
+        df.index.name = 'date'
+
+        df = self.filter_date(df,begin_date,end_date)
 
         df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
@@ -609,7 +654,7 @@ class RKI():
             value = landkreis
 
         df = self.filter(begin_date,end_date,'AnzahlFall',date_type,level,value)
-        return df
+        return df.drop(df.index[0])
 
     def get_new_confirmed(self, bundesland:str = None, landkreis:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None, date_type:str='date')-> pd.DataFrame:
         """
@@ -632,7 +677,16 @@ class RKI():
         : pandas.DataFrame
             table with daily new confirmed and the date as index
         """        
-        df = self.get_confirmed(bundesland, landkreis, begin_date, end_date, date_type)
+        level = None
+        value = None
+        if bundesland is not None:
+            level = "Bundesland"
+            value = bundesland
+        if landkreis is not None:
+            level = "Landkreis"
+            value = landkreis
+
+        df = self.filter(begin_date,end_date,'AnzahlFall',date_type,level,value)
         #Get difference to the days beforehand
         df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
@@ -668,7 +722,7 @@ class RKI():
             value = landkreis
 
         df = self.filter(begin_date,end_date,'AnzahlTodesfall',date_type,level,value)
-        return df
+        return df.drop(df.index[0])
 
     def get_new_deaths(self, bundesland:str = None, landkreis:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None, date_type:str='date')-> pd.DataFrame:
         """
@@ -690,8 +744,18 @@ class RKI():
         -------
         : pandas.DataFrame
             table with daily new deaths and the date as index
-        """        
-        df = self.get_deaths(bundesland, landkreis, begin_date, end_date, date_type)
+        """
+        
+        level = None
+        value = None
+        if bundesland is not None:
+            level = "Bundesland"
+            value = bundesland
+        if landkreis is not None:
+            level = "Landkreis"
+            value = landkreis
+
+        df = self.filter(begin_date,end_date,'AnzahlTodesfall',date_type,level,value)
         #Get difference to the days beforehand
         df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
@@ -728,7 +792,7 @@ class RKI():
             value = landkreis
 
         df = self.filter(begin_date,end_date,'AnzahlGenesen',date_type,level,value)
-        return df
+        return df.drop(df.index[0])
 
     def get_new_recovered(self, bundesland:str = None, landkreis:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None, date_type:str='date')-> pd.DataFrame:
         """
@@ -751,9 +815,17 @@ class RKI():
         : pandas.DataFrame
             table with daily new recovered cases and the date as index
         """        
-        df = self.get_recovered(bundesland, landkreis, begin_date, end_date, date_type)
+        level = None
+        value = None
+        if bundesland is not None:
+            level = "Bundesland"
+            value = bundesland
+        if landkreis is not None:
+            level = "Landkreis"
+            value = landkreis
+
+        df = self.filter(begin_date,end_date,'AnzahlGenesen',date_type,level,value)
         #Get difference to the days beforehand
-        print(df.index)
         df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
 
