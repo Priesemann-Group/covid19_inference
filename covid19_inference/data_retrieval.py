@@ -26,6 +26,10 @@ class JHU():
     auto_download : bool, optional
         whether or not to automatically download the data from jhu (default: false)
 
+    TODO
+    ----
+    Add fallback sources (local copies)
+
     """
     def __init__(self, auto_download = False):
         self.confirmed : pd.DataFrame
@@ -35,21 +39,21 @@ class JHU():
         if auto_download:
             self.download_all_available_data()
 
-    def download_all_available_data(self,
-        fp_confirmed:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv',
-        fp_deaths:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv',
-        fp_recovered:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv',
-        save_to_attributes:bool=True)-> (pd.DataFrame,pd.DataFrame,pd.DataFrame):
+    def download_all_available_data(self, fp_confirmed:str= None, fp_deaths:str=None, fp_recovered:str=None, save_to_attributes:bool=True) -> (pd.DataFrame,pd.DataFrame,pd.DataFrame):
         """
         Attempts to download the most current data for the confirmed cases, deaths and recovered cases from the online repository of the
         Coronavirus Visual Dashboard operated by the Johns Hopkins University
-        (and falls back to the backup provided with our repo if it fails TODO).
         Only works if the module is located in the repo directory.
 
         Parameters
         ----------
         fp_confirmed,fp_deaths,fp_recovered : str, optional
-            Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
+            |Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases 
+            |default: None
+                Automatically uses the default sources
+                |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.cs
+                |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv
+                |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
         save_to_attributes : bool, optional
             Should the returned dataframe tuple be saved as attributes (default:true)
 
@@ -58,13 +62,16 @@ class JHU():
         : pandas.DataFrame tuple
             tuple of table with confirmed, deaths and recovered cases
         """
-
+        #Check default for better visibility in the readthedocs page
+        if fp_confirmed is None:
+            fp_confirmed = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
+        if fp_deaths is None:
+            fp_deaths ='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
+        if fp_recovered is None:
+            fp_recovered = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
         return self.download_confirmed(fp_confirmed, save_to_attributes), self.download_deaths(fp_deaths, save_to_attributes), self.download_recovered(fp_recovered, save_to_attributes)
 
-    def download_confirmed(self,
-        fp_confirmed:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv',
-        save_to_attribues:bool=True
-        ):
+    def download_confirmed(self, fp_confirmed:str=None, save_to_attribues:bool=True) -> pd.DataFrame:
         """
         Attempts to download the most current data for the confirmed cases from the online repository of the
         Coronavirus Visual Dashboard operated by the Johns Hopkins University
@@ -76,22 +83,22 @@ class JHU():
         fp_confirmed : str, optional
             Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
         save_to_attributes : bool, optional
-            Should the returned dataframe tuple be saved as attributes (default:true)
+            Should the returned dataframe be saved as attributes (default:true)
 
         Returns
         -------
         : pandas.DataFrame
             Table with confirmed cases, indexed by date
         """
+        if fp_confirmed is None:
+            fp_confirmed = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
+
         confirmed = self.__to_iso(self.__download_from_source(fp_confirmed))
         if save_to_attribues:
             self.confirmed = confirmed
         return confirmed
 
-    def download_deaths(self,
-        fp_deaths:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv',
-        save_to_attribues:bool=True
-        ):
+    def download_deaths(self, fp_deaths:str=None, save_to_attribues:bool=True) -> pd.DataFrame:
         """
         Attempts to download the most current data for the deaths from the online repository of the
         Coronavirus Visual Dashboard operated by the Johns Hopkins University
@@ -103,22 +110,22 @@ class JHU():
         fp_deaths : str, optional
             filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
         save_to_attributes : bool, optional
-            Should the returned dataframe tuple be saved as attributes (default:true)
+            Should the returned dataframe be saved as attributes (default:true)
 
         Returns
         -------
         : pandas.DataFrame
             Table with deaths, indexed by date
         """
+        if fp_deaths is None:
+            fp_deaths ='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
+
         deaths = self.__to_iso(self.__download_from_source(fp_deaths))
         if save_to_attribues:
             self.deaths = deaths
         return deaths
 
-    def download_recovered(self,
-        fp_recovered:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv',
-        save_to_attribues:bool=True
-        ):
+    def download_recovered(self, fp_recovered:str=None, save_to_attribues:bool=True) -> pd.DataFrame:
         """
         Attempts to download the most current data for the recovered cases from the online repository of the
         Coronavirus Visual Dashboard operated by the Johns Hopkins University
@@ -130,19 +137,22 @@ class JHU():
         fp_recovered : str, optional
             Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
         save_to_attributes : bool, optional
-            Should the returned dataframe tuple be saved as attributes (default:true)
+            Should the returned dataframe be saved as attributes (default:true)
 
         Returns
         -------
         : pandas.DataFrame
             Table with recovered cases, indexed by date
         """
+        if fp_recovered is None:
+            fp_recovered = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
+
         recovered = self.__to_iso(self.__download_from_source(fp_recovered))
         if save_to_attribues:
             self.recovered = recovered
         return recovered
 
-    def __download_from_source(self, url, fallback = None)-> pd.DataFrame:
+    def __download_from_source(self, url, fallback = None) -> pd.DataFrame:
         """
         Private method
         Downloads one csv file from an url and converts it into a pandas dataframe. A fallback source can also be given.
