@@ -26,6 +26,10 @@ class JHU():
     auto_download : bool, optional
         whether or not to automatically download the data from jhu (default: false)
 
+    TODO
+    ----
+    Add fallback sources (local copies)
+
     """
     def __init__(self, auto_download = False):
         self.confirmed : pd.DataFrame
@@ -35,21 +39,21 @@ class JHU():
         if auto_download:
             self.download_all_available_data()
 
-    def download_all_available_data(self,
-        fp_confirmed:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv',
-        fp_deaths:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv',
-        fp_recovered:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv',
-        save_to_attributes:bool=True)-> (pd.DataFrame,pd.DataFrame,pd.DataFrame):
+    def download_all_available_data(self, fp_confirmed:str= None, fp_deaths:str=None, fp_recovered:str=None, save_to_attributes:bool=True) -> (pd.DataFrame,pd.DataFrame,pd.DataFrame):
         """
         Attempts to download the most current data for the confirmed cases, deaths and recovered cases from the online repository of the
         Coronavirus Visual Dashboard operated by the Johns Hopkins University
-        (and falls back to the backup provided with our repo if it fails TODO).
         Only works if the module is located in the repo directory.
 
         Parameters
         ----------
         fp_confirmed,fp_deaths,fp_recovered : str, optional
-            filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
+            |Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases 
+            |default: None
+                Automatically uses the default sources
+                |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.cs
+                |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv
+                |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
         save_to_attributes : bool, optional
             Should the returned dataframe tuple be saved as attributes (default:true)
 
@@ -58,13 +62,16 @@ class JHU():
         : pandas.DataFrame tuple
             tuple of table with confirmed, deaths and recovered cases
         """
-
+        #Check default for better visibility in the readthedocs page
+        if fp_confirmed is None:
+            fp_confirmed = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
+        if fp_deaths is None:
+            fp_deaths ='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
+        if fp_recovered is None:
+            fp_recovered = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
         return self.download_confirmed(fp_confirmed, save_to_attributes), self.download_deaths(fp_deaths, save_to_attributes), self.download_recovered(fp_recovered, save_to_attributes)
 
-    def download_confirmed(self,
-        fp_confirmed:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv',
-        save_to_attribues:bool=True
-        ):
+    def download_confirmed(self, fp_confirmed:str=None, save_to_attributes:bool=True) -> pd.DataFrame:
         """
         Attempts to download the most current data for the confirmed cases from the online repository of the
         Coronavirus Visual Dashboard operated by the Johns Hopkins University
@@ -74,24 +81,24 @@ class JHU():
         Parameters
         ----------
         fp_confirmed : str, optional
-            filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
+            Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
         save_to_attributes : bool, optional
-            Should the returned dataframe tuple be saved as attributes (default:true)
+            Should the returned dataframe be saved as attributes (default:true)
 
         Returns
         -------
-        : pandas.DataFrame tuple
-            tuple of table with confirmed, deaths and recovered cases
+        : pandas.DataFrame
+            Table with confirmed cases, indexed by date
         """
+        if fp_confirmed is None:
+            fp_confirmed = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
+
         confirmed = self.__to_iso(self.__download_from_source(fp_confirmed))
-        if save_to_attribues:
+        if save_to_attributes:
             self.confirmed = confirmed
         return confirmed
 
-    def download_deaths(self,
-        fp_deaths:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv',
-        save_to_attribues:bool=True
-        ):
+    def download_deaths(self, fp_deaths:str=None, save_to_attributes:bool=True) -> pd.DataFrame:
         """
         Attempts to download the most current data for the deaths from the online repository of the
         Coronavirus Visual Dashboard operated by the Johns Hopkins University
@@ -103,22 +110,22 @@ class JHU():
         fp_deaths : str, optional
             filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
         save_to_attributes : bool, optional
-            Should the returned dataframe tuple be saved as attributes (default:true)
+            Should the returned dataframe be saved as attributes (default:true)
 
         Returns
         -------
-        : pandas.DataFrame tuple
-            tuple of table with confirmed, deaths and recovered cases
+        : pandas.DataFrame
+            Table with deaths, indexed by date
         """
+        if fp_deaths is None:
+            fp_deaths ='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
+
         deaths = self.__to_iso(self.__download_from_source(fp_deaths))
-        if save_to_attribues:
+        if save_to_attributes:
             self.deaths = deaths
         return deaths
 
-    def download_recovered(self,
-        fp_recovered:str='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv',
-        save_to_attribues:bool=True
-        ):
+    def download_recovered(self, fp_recovered:str=None, save_to_attributes:bool=True) -> pd.DataFrame:
         """
         Attempts to download the most current data for the recovered cases from the online repository of the
         Coronavirus Visual Dashboard operated by the Johns Hopkins University
@@ -128,21 +135,24 @@ class JHU():
         Parameters
         ----------
         fp_recovered : str, optional
-            filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
+            Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
         save_to_attributes : bool, optional
-            Should the returned dataframe tuple be saved as attributes (default:true)
+            Should the returned dataframe be saved as attributes (default:true)
 
         Returns
         -------
-        : pandas.DataFrame tuple
-            tuple of table with confirmed, deaths and recovered cases
+        : pandas.DataFrame
+            Table with recovered cases, indexed by date
         """
+        if fp_recovered is None:
+            fp_recovered = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
+
         recovered = self.__to_iso(self.__download_from_source(fp_recovered))
-        if save_to_attribues:
+        if save_to_attributes:
             self.recovered = recovered
         return recovered
 
-    def __download_from_source(self, url, fallback = None)-> pd.DataFrame:
+    def __download_from_source(self, url, fallback = None) -> pd.DataFrame:
         """
         Private method
         Downloads one csv file from an url and converts it into a pandas dataframe. A fallback source can also be given.
@@ -192,11 +202,11 @@ class JHU():
         df = df.set_index(['country', 'state'])
         # datetime columns
         df.columns = [datetime.datetime.strptime(d, '%m/%d/%y') for d in df.columns]
-        return df
+        return df.T
 
-    def get_confirmed_deaths_recovered(self, country:str = None, state:str = None, begin_date:str = None, end_date:str = None) -> pd.DataFrame:
+    def get_confirmed_deaths_recovered(self, country:str = None, state:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None) -> pd.DataFrame:
         """
-        Retrieves all confirmed, deaths and recovered Johns Hopkins University dataset as a DataFrame with datetime index.
+        Retrieves all confirmed, deaths and recovered cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
         Can be filtered by country and state, if only a country is given all available states get summed up.
 
         Parameters
@@ -205,10 +215,10 @@ class JHU():
             name of the country (the "Country/Region" column), can be None if the whole summed up data is wanted (why would you do this?)
         state : str, optional
             name of the state (the "Province/State" column), can be None if country is set or the whole summed up data is wanted
-        begin_date : str, optional
-            First day that should be filtered, in format '%m/%d/%y' 
-        end_date : str, optional
-            Last day that should be filtered, in format '%m/%d/%y' 
+        begin_date : datetime.datetime, optional
+            intial date for the returned data, if no value is given the first date in the dataset is used
+        end_date : datetime.datetime, optional
+            last date for the returned data, if no value is given the most recent date in the dataset is used
 
         Returns
         -------
@@ -218,31 +228,27 @@ class JHU():
         # filter
         df = pd.DataFrame(columns=['date', 'confirmed', 'deaths', 'recovered']).set_index('date')
         if country is None:
-            df['confirmed'] = self.confirmed.sum()
-            df['deaths'] = self.deaths.sum()
-            df['recovered'] = self.recovered.sum()       
+            df['confirmed'] = self.confirmed.sum(axis = 1, skipna = True)
+            df['deaths'] = self.deaths.sum(axis = 1, skipna = True)
+            df['recovered'] = self.recovered.sum(axis = 1, skipna = True)       
         else:
             if state is None:
-                df['confirmed'] = self.confirmed.loc[country].sum()
-                df['deaths'] = self.deaths.loc[country].sum()
-                df['recovered'] = self.recovered.loc[country].sum()      
+                df['confirmed'] = self.confirmed[country].sum(axis = 1, skipna = True)
+                df['deaths'] = self.deaths[country].sum(axis = 1, skipna = True)
+                df['recovered'] = self.recovered[country].sum(axis = 1, skipna = True)      
             else:
-                df['confirmed'] = self.confirmed.loc[(country,state)]
-                df['deaths'] = self.deaths.loc[(country,state)]
-                df['recovered'] = self.recovered.loc[(country,state)]   
+                df['confirmed'] = self.confirmed[(country,state)]
+                df['deaths'] = self.deaths[(country,state)]
+                df['recovered'] = self.recovered[(country,state)]   
 
         df.index.name = 'date'
 
-        df = self.filter_date(df, begin_date, end_date)
+        return self.filter_date(df,begin_date,end_date)
 
-        return df
-
-    def get_confirmed(self, country:str = None, state:str = None, begin_date:str = None, end_date:str = None) -> pd.DataFrame:
+    def get_confirmed(self, country:str = None, state:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None) -> pd.DataFrame:
         """
-        Attempts to download the most current data for the confirmed cases from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University
-        and falls back to the backup provided with our repo if it fails.
-        Only works if the module is located in the repo directory.
+        Retrieves all confirmed cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
+        Can be filtered by country and state, if only a country is given all available states get summed up.
 
         Parameters
         ----------
@@ -250,10 +256,10 @@ class JHU():
             name of the country (the "Country/Region" column), can be None
         state : str, optional
             name of the state (the "Province/State" column), can be None
-        begin_date : str, optional
-            First day that should be filtered, in format '%m/%d/%y' 
-        end_date : str, optional
-            Last day that should be filtered, in format '%m/%d/%y' 
+        begin_date : datetime.datetime, optional
+            intial date for the returned data, if no value is given the first date in the dataset is used
+        end_date : datetime.datetime, optional
+            last date for the returned data, if no value is given the most recent date in the dataset is used
 
         Returns
         -------
@@ -265,25 +271,60 @@ class JHU():
             country = None
         if state == "None":
             state = None
-
         df = pd.DataFrame(columns=['date', 'confirmed']).set_index('date')
         if country is None:
-            df['confirmed'] = self.confirmed.sum()
+            df['confirmed'] = self.confirmed.sum(axis = 1, skipna = True)
         else:
             if state is None:
-                df['confirmed'] = self.confirmed.loc[country].sum()              
+                df['confirmed'] = self.confirmed[country].sum(axis = 1, skipna = True)         
             else:
-                df['confirmed'] = self.confirmed.loc[(country,state)]
+                df['confirmed'] = self.confirmed[(country,state)]
         df.index.name = 'date'
+        df = self.filter_date(df,begin_date,end_date)
+        return df.drop(df.index[0])
 
+    def get_new_confirmed(self, country:str = None, state:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None) -> pd.DataFrame:
+        """
+        Retrieves all daily confirmed cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
+        Can be filtered by country and state, if only a country is given all available states get summed up.
+
+        Parameters
+        ----------
+        country : str, optional
+            name of the country (the "Country/Region" column), can be None 
+        state : str, optional
+            name of the state (the "Province/State" column), can be None
+        begin_date : datetime.datetime, optional
+            intial date for the returned data, if no value is given the first date in the dataset is used
+        end_date : datetime.datetime, optional
+            last date for the returned data, if no value is given the most recent date in the dataset is used
+
+        Returns
+        -------
+        : pandas.DataFrame
+            table with daily new recovered cases and the date as index
+        """        
+        if country == "None":
+            country = None
+        if state == "None":
+            state = None
+        df = pd.DataFrame(columns=['date', 'confirmed']).set_index('date')
+        if country is None:
+            df['confirmed'] = self.confirmed.sum(axis = 1, skipna = True)
+        else:
+            if state is None:
+                df['confirmed'] = self.confirmed[country].sum(axis = 1, skipna = True)         
+            else:
+                df['confirmed'] = self.confirmed[(country,state)]
+        df.index.name = 'date'
+        df = self.filter_date(df,begin_date,end_date)
+        df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
 
-    def get_deaths(self, country:str = None, state:str = None, begin_date:str = None, end_date:str = None) -> pd.DataFrame:
+    def get_deaths(self, country:str = None, state:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None) -> pd.DataFrame:
         """
-        Attempts to download the most current data for the confirmed deaths from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University
-        and falls back to the backup provided with our repo if it fails.
-        Only works if the module is located in the repo directory.
+        Retrieves all deaths from the Johns Hopkins University dataset as a DataFrame with datetime index.
+        Can be filtered by country and state, if only a country is given all available states get summed up.
 
         Parameters
         ----------
@@ -291,10 +332,10 @@ class JHU():
             name of the country (the "Country/Region" column), can be None
         state : str, optional
             name of the state (the "Province/State" column), can be None
-        begin_date : str, optional
-            First day that should be filtered, in format '%m/%d/%y' 
-        end_date : str, optional
-            Last day that should be filtered, in format '%m/%d/%y' 
+        begin_date : datetime.datetime, optional
+            intial date for the returned data, if no value is given the first date in the dataset is used
+        end_date : datetime.datetime, optional
+            last date for the returned data, if no value is given the most recent date in the dataset is used
 
         Returns
         -------
@@ -308,23 +349,21 @@ class JHU():
 
         df = pd.DataFrame(columns=['date', 'deaths']).set_index('date')
         if country is None:
-            df['deaths'] = self.deaths.sum()
+            df['deaths'] = self.deaths.sum(axis = 1, skipna = True)
         else:
             if state is None:
-                df['deaths'] = self.deaths.loc[country].sum()              
+                df['deaths'] = self.deaths[country].sum(axis = 1, skipna = True)              
             else:
-                df['deaths'] = self.deaths.loc[(country,state)]
+                df['deaths'] = self.deaths[(country,state)]
         
         df.index.name = 'date'
+        df = self.filter_date(df,begin_date,end_date)
+        return df.drop(df.index[0])
 
-        return df
-
-    def get_recovered(self, country:str = None, state:str = None, begin_date:str = None, end_date:str = None) -> pd.DataFrame:
+    def get_new_deaths(self, country:str = None, state:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None) -> pd.DataFrame:
         """
-        Attempts to download the most current data for the confirmed recoveries from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University
-        and falls back to the backup provided with our repo if it fails.
-        Only works if the module is located in the repo directory.
+        Retrieves all daily deaths from the Johns Hopkins University dataset as a DataFrame with datetime index.
+        Can be filtered by country and state, if only a country is given all available states get summed up.
 
         Parameters
         ----------
@@ -332,10 +371,50 @@ class JHU():
             name of the country (the "Country/Region" column), can be None 
         state : str, optional
             name of the state (the "Province/State" column), can be None
-        begin_date : str, optional
-            First day that should be filtered, in format '%m/%d/%y' 
-        end_date : str, optional
-            Last day that should be filtered, in format '%m/%d/%y' 
+        begin_date : datetime.datetime, optional
+            intial date for the returned data, if no value is given the first date in the dataset is used
+        end_date : datetime.datetime, optional
+            last date for the returned data, if no value is given the most recent date in the dataset is used
+
+        Returns
+        -------
+        : pandas.DataFrame
+            table with daily new recovered cases and the date as index
+        """        
+        if country == "None":
+            country = None
+        if state == "None":
+            state = None
+
+        df = pd.DataFrame(columns=['date', 'deaths']).set_index('date')
+        if country is None:
+            df['deaths'] = self.deaths.sum(axis = 1, skipna = True)
+        else:
+            if state is None:
+                df['deaths'] = self.deaths[country].sum(axis = 1, skipna = True)              
+            else:
+                df['deaths'] = self.deaths[(country,state)]
+        
+        df.index.name = 'date'
+        df = self.filter_date(df,begin_date,end_date)
+        df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
+        return df
+
+    def get_recovered(self, country:str = None, state:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None) -> pd.DataFrame:
+        """
+        Retrieves all recovered cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
+        Can be filtered by country and state, if only a country is given all available states get summed up.
+
+        Parameters
+        ----------
+        country : str, optional
+            name of the country (the "Country/Region" column), can be None 
+        state : str, optional
+            name of the state (the "Province/State" column), can be None
+        begin_date : datetime.datetime, optional
+            intial date for the returned data, if no value is given the first date in the dataset is used
+        end_date : datetime.datetime, optional
+            last date for the returned data, if no value is given the most recent date in the dataset is used
 
         Returns
         -------
@@ -358,17 +437,60 @@ class JHU():
 
         df.index.name = 'date'
 
+        df = self.filter_date(df,begin_date,end_date)
+        return df.drop(df.index[0])
+
+    def get_new_recovered(self, country:str = None, state:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None) -> pd.DataFrame:
+        """
+        Retrieves all daily recovered cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
+        Can be filtered by country and state, if only a country is given all available states get summed up.
+
+        Parameters
+        ----------
+        country : str, optional
+            name of the country (the "Country/Region" column), can be None 
+        state : str, optional
+            name of the state (the "Province/State" column), can be None
+        begin_date : datetime.datetime, optional
+            intial date for the returned data, if no value is given the first date in the dataset is used
+        end_date : datetime.datetime, optional
+            last date for the returned data, if no value is given the most recent date in the dataset is used
+
+        Returns
+        -------
+        : pandas.DataFrame
+            table with daily new recovered cases and the date as index
+        """        
+        if country == "None":
+            country = None
+        if state == "None":
+            state = None
+
+        df = pd.DataFrame(columns=['date', 'recovered']).set_index('date')
+        if country is None:
+            df['recovered'] = self.recovered.sum()
+        else:
+            if state is None:
+                df['recovered'] = self.recovered.loc[country].sum()              
+            else:
+                df['recovered'] = self.recovered.loc[(country,state)]
+
+        df.index.name = 'date'
+
+        df = self.filter_date(df,begin_date,end_date)
+
+        df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
 
-    def filter_date(self, df,  begin_date:str = None, end_date:str=None) -> pd.DataFrame:
+    def filter_date(self, df, begin_date:datetime.datetime = None, end_date:datetime.datetime = None) -> pd.DataFrame:
         """
         Returns give dataframe between begin and end date. Dataframe has to have a datetime index.
 
         Parameters
         ----------
-        begin_date : str, optional
+        begin_date : datetime.datetime, optional
             First day that should be filtered, in format '%m/%d/%y' 
-        end_date : str, optional
+        end_date : datetime.datetime, optional
             Last day that should be filtered, in format '%m/%d/%y' 
 
         Returns
@@ -377,19 +499,31 @@ class JHU():
         """
         if begin_date is None:
             begin_date = self.__get_first_date(df)
-        else:
-            begin_date = datetime.datetime.strptime(begin_date, '%m/%d/%y')
         if end_date is None:
             end_date = self.__get_last_date(df)
-        else:
-            end_date = datetime.datetime.strptime(end_date, '%m/%d/%y')
-        print(begin_date)
-        print(df[begin_date:end_date])
+
+        if not isinstance(begin_date, datetime.datetime) and isinstance(end_date, datetime.datetime):
+            raise ValueError('Invalid begin_date, end_date: has to be datetime.datetime object')
+
+        return df[begin_date:end_date]
 
     def __get_first_date(self,df):
         return df.index[0]
     def __get_last_date(self,df):
         return df.index[-1]
+
+    def get_possible_countries_states(self):
+        """
+        Used to obtain all different possible countries with there corresponding possible states.
+
+        Returns
+        -------
+        : pandas.DataFrame in the format
+        """
+        all_entrys = list(self.confirmed.columns) + list(self.deaths.columns) + list(self.recovered.columns)
+        df = pd.DataFrame(all_entrys, columns = ['country', 'state']) 
+
+        return df
 
 class RKI():
     """
@@ -402,9 +536,6 @@ class RKI():
         - filter by date
         see the methods in this class for more infos on the features and how to use them
 
-    ToDo:
-        - fix return of filter(...) function to be a pd.DataFrame instead of an array --> convention
-        - maybe if possible rewrite to code to use the same syntax as the jhu class (get_confirmed, get_confirmed_deaths_recovered, etc.)
     """
     def __init__(self, auto_download = False):
         self.data: pd.DataFrame
@@ -425,8 +556,7 @@ class RKI():
         : pandas.DataFrame
             Containing all the RKI data from arcgis website.
             In the format:
-            [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, 
-            Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref]        
+                [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref]        
         '''
         landkreise_max=412#Strangely there are 412 regions defined by the Robert Koch Insitute in contrast to the offical 294 rural districts or the 401 administrative districts.
         url_id = 'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0/query?where=0%3D0&objectIds=&time=&resultType=none&outFields=idLandkreis&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=true&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token='
@@ -492,46 +622,209 @@ class RKI():
         self.data=df
         return df
 
-    def get_confirmed(self, bundesland:str = None, landkreis:str = None, begin_date:str = None, end_date:str = None, date_type:str='date')-> pd.DataFrame:
+    def get_confirmed(self, bundesland:str = None, landkreis:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None, date_type:str='date')-> pd.DataFrame:
+        """
+        Gets all total confirmed cases for a region as dataframe with date index. Can be filtered with multiple arguments.
+        
+        Parameters
+        ----------
+        bundesland : str, optional
+            if no value is provided it will use the full summed up dataset for Germany
+        landkreis : str, optional
+            if no value is provided it will use the full summed up dataset for the region (bundesland)
+        begin_date : datetime.datetime, optional
+            initial date, if no value is provided it will use the first possible date
+        end_date : datetime.datetime, optional  
+            last date, if no value is provided it will use the most recent possible date
+        date_type : str, optional
+            type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
 
-        # Set level for filter use bundesland if no landkreis is supplied else us landkreis
+        Returns
+        -------
+        :pd.DataFrame
+        """
+        # Set level for filter use bundesland if no landkreis is supplied else use landkreis
         level = None
         value = None
-        if bundesland is not None:
+        if bundesland is not None and landkreis is None:
             level = "Bundesland"
             value = bundesland
-        if landkreis is not None:
+        elif bundesland is None and landkreis is not None:
             level = "Landkreis"
             value = landkreis
-
-        if begin_date is None:
-            begin_date = self.data[date_type].iloc[0]
-        if end_date is None:
-            end_date = self.data[date_type].iloc[-1]
+        elif bundesland is not None and landkreis is not None:
+            raise ValueError('bundesland and landkreis cannot be simultaneously set.')
 
         df = self.filter(begin_date,end_date,'AnzahlFall',date_type,level,value)
-        return df
+        return df.drop(df.index[0])
 
-    def get_deaths(self, bundesland:str, landkreis:str, begin_date:str = None, end_date:str = None, date_type:str='date')-> pd.DataFrame:
-        # Set level for filter use bundesland if no landkreis is supplied else us landkreis
+    def get_new_confirmed(self, bundesland:str = None, landkreis:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None, date_type:str='date')-> pd.DataFrame:
+        """
+        Retrieves all new confirmed cases daily from the Johns Hopkins University dataset as a DataFrame with datetime index.
+        Can be filtered by country and state, if only a country is given all available states get summed up.
+
+        Parameters
+        ----------
+        country : str, optional
+            name of the country (the "Country/Region" column), can be None 
+        state : str, optional
+            name of the state (the "Province/State" column), can be None
+        begin_date : datetime.datetime, optional
+            intial date for the returned data, if no value is given the first date in the dataset is used
+        end_date : datetime.datetime, optional
+            last date for the returned data, if no value is given the most recent date in the dataset is used
+
+        Returns
+        -------
+        : pandas.DataFrame
+            table with daily new confirmed and the date as index
+        """        
         level = None
         value = None
-        if bundesland is not None:
+        if bundesland is not None and landkreis is None:
             level = "Bundesland"
             value = bundesland
-        if landkreis is not None:
+        elif bundesland is None and landkreis is not None:
             level = "Landkreis"
             value = landkreis
+        elif bundesland is not None and landkreis is not None:
+            raise ValueError('bundesland and landkreis cannot be simultaneously set.')
 
-        if begin_date is None:
-            begin_date = self.data[date_type].iloc[0]
-        if end_date is None:
-            end_date = self.data[date_type].iloc[-1]
+        df = self.filter(begin_date,end_date,'AnzahlFall',date_type,level,value)
+        #Get difference to the days beforehand
+        df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
+        return df
+
+    def get_deaths(self, bundesland:str = None, landkreis:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None, date_type:str='date')-> pd.DataFrame:
+        """
+        Gets all total deaths for a region as dataframe with date index. Can be filtered with multiple arguments.
+        
+        Parameters
+        ----------
+        bundesland : str, optional
+            if no value is provided it will use the full summed up dataset for Germany
+        landkreis : str, optional
+            if no value is provided it will use the full summed up dataset for the region (bundesland)
+        begin_date : datetime.datetime, optional
+            initial date, if no value is provided it will use the first possible date
+        end_date : datetime.datetime, optional  
+            last date, if no value is provided it will use the most recent possible date
+        date_type : str, optional
+            type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
+
+        Returns
+        -------
+        :pd.DataFrame
+        """
+        level = None
+        value = None
+        if bundesland is not None and landkreis is None:
+            level = "Bundesland"
+            value = bundesland
+        elif bundesland is None and landkreis is not None:
+            level = "Landkreis"
+            value = landkreis
+        elif bundesland is not None and landkreis is not None:
+            raise ValueError('bundesland and landkreis cannot be simultaneously set.')
 
         df = self.filter(begin_date,end_date,'AnzahlTodesfall',date_type,level,value)
+        return df.drop(df.index[0])
+
+    def get_new_deaths(self, bundesland:str = None, landkreis:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None, date_type:str='date')-> pd.DataFrame:
+        """
+        Retrieves all new deaths daily from the Johns Hopkins University dataset as a DataFrame with datetime index.
+        Can be filtered by country and state, if only a country is given all available states get summed up.
+
+        Parameters
+        ----------
+        country : str, optional
+            name of the country (the "Country/Region" column), can be None 
+        state : str, optional
+            name of the state (the "Province/State" column), can be None
+        begin_date : datetime.datetime, optional
+            intial date for the returned data, if no value is given the first date in the dataset is used
+        end_date : datetime.datetime, optional
+            last date for the returned data, if no value is given the most recent date in the dataset is used
+
+        Returns
+        -------
+        : pandas.DataFrame
+            table with daily new deaths and the date as index
+        """
+        
+        level = None
+        value = None
+        if bundesland is not None and landkreis is None:
+            level = "Bundesland"
+            value = bundesland
+        elif bundesland is None and landkreis is not None:
+            level = "Landkreis"
+            value = landkreis
+        elif bundesland is not None and landkreis is not None:
+            raise ValueError('bundesland and landkreis cannot be simultaneously set.')
+
+        df = self.filter(begin_date,end_date,'AnzahlTodesfall',date_type,level,value)
+        #Get difference to the days beforehand
+        df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
-    def get_recovered(self, bundesland:str, landkreis:str, begin_date:str = None, end_date:str = None, date_type:str='date')-> pd.DataFrame:
+
+    def get_recovered(self, bundesland:str = None, landkreis:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None, date_type:str='date')-> pd.DataFrame:
+        """
+        Gets all total recovered cases as dataframe with date index. Can be filtered with multiple arguments.
+        
+        Parameters
+        ----------
+        bundesland : str, optional
+            if no value is provided it will use the full summed up dataset for Germany
+        landkreis : str, optional
+            if no value is provided it will use the full summed up dataset for the region (bundesland)
+        begin_date : datetime.datetime, optional
+            initial date, if no value is provided it will use the first possible date
+        end_date : datetime.datetime, optional  
+            last date, if no value is provided it will use the most recent possible date
+        date_type : str, optional
+            type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
+
+        Returns
+        -------
+        :pd.DataFrame
+        """
         # Set level for filter use bundesland if no landkreis is supplied else us landkreis
+        level = None
+        value = None
+        if bundesland is not None and landkreis is None:
+            level = "Bundesland"
+            value = bundesland
+        elif bundesland is None and landkreis is not None:
+            level = "Landkreis"
+            value = landkreis
+        elif bundesland is not None and landkreis is not None:
+            raise ValueError('bundesland and landkreis cannot be simultaneously set.')
+
+        df = self.filter(begin_date,end_date,'AnzahlGenesen',date_type,level,value)
+        return df.drop(df.index[0])
+
+    def get_new_recovered(self, bundesland:str = None, landkreis:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None, date_type:str='date')-> pd.DataFrame:
+        """
+        Retrieves all new cases daily from the Johns Hopkins University dataset as a DataFrame with datetime index.
+        Can be filtered by country and state, if only a country is given all available states get summed up.
+
+        Parameters
+        ----------
+        country : str, optional
+            name of the country (the "Country/Region" column), can be None 
+        state : str, optional
+            name of the state (the "Province/State" column), can be None
+        begin_date : datetime.datetime, optional
+            intial date for the returned data, if no value is given the first date in the dataset is used
+        end_date : datetime.datetime, optional
+            last date for the returned data, if no value is given the most recent date in the dataset is used
+
+        Returns
+        -------
+        : pandas.DataFrame
+            table with daily new recovered cases and the date as index
+        """        
         level = None
         value = None
         if bundesland is not None:
@@ -541,39 +834,38 @@ class RKI():
             level = "Landkreis"
             value = landkreis
 
-        if begin_date is None:
-            begin_date = self.data[date_type].iloc[0]
-        if end_date is None:
-            end_date = self.data[date_type].iloc[-1]
-
         df = self.filter(begin_date,end_date,'AnzahlGenesen',date_type,level,value)
+        #Get difference to the days beforehand
+        df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
-    def filter(self, begin_date, end_date, variable = 'AnzahlFall', date_type='date', level = None, value = None) -> pd.DataFrame:
+
+    def filter(self, begin_date:datetime.datetime = None, end_date:datetime.datetime = None, variable = 'AnzahlFall', date_type='date', level = None, value = None) -> pd.DataFrame:
         """
         Filters the obtained dataset for a given time period and returns an array ONLY containing only the desired variable.
         
         Parameters
         ----------
-        begin_date : DateTime
-            initial date to return, in 'YYYY-MM-DD'
-        end_date : DateTime
-            last date to return, in 'YYYY-MM-DD'
+        begin_date : datetime.datetime, optional
+            initial date, if no value is provided it will use the first possible date
+        end_date : datetime.datetime, optional  
+            last date, if no value is provided it will use the most recent possible date
         variable : str, optional
-                type of variable to return, possible types are:
+            type of variable to return
+            possible types are:
                 "AnzahlFall"      : cases (default)
                 "AnzahlTodesfall" : deaths
                 "AnzahlGenesen"   : recovered
-        date : str, optional
+        date_type : str, optional
             type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
         level : str, optional
-            possible levels are:
+            possible strings are:
                 "None"       : return data from all Germany (default)
                 "Bundesland" : a state 
                 "Landkreis"  : a region
         value : None, optional
             string of the state/region
-        
             e.g. "Sachsen"
+
         Returns
         -------
         : pd.DataFrame
@@ -581,13 +873,22 @@ class RKI():
         """
         #Input parsing
         if variable not in ['AnzahlFall', 'AnzahlTodesfall', 'AnzahlGenesen']:
-            ValueError('Invalid variable. Valid options: "AnzahlFall", "AnzahlTodesfall", "AnzahlGenesen"')
+            raise ValueError('Invalid variable. Valid options: "AnzahlFall", "AnzahlTodesfall", "AnzahlGenesen"')
 
         if level not in ['Landkreis', 'Bundesland', None]:
-            ValueError('Invalid level. Valid options: "Landkreis", "Bundesland", None')
+            raise ValueError('Invalid level. Valid options: "Landkreis", "Bundesland", None')
 
         if date_type not in ['date', 'date_ref']:
-            ValueError('Invalid date_type. Valid options: "date", "date_ref"')
+            raise ValueError('Invalid date_type. Valid options: "date", "date_ref"')
+
+        df = self.data.sort_values(date_type)
+        if begin_date is None:
+            begin_date = df[date_type].iloc[0]
+        if end_date is None:
+            end_date = df[date_type].iloc[-1]
+
+        if not isinstance(begin_date, datetime.datetime) and isinstance(end_date, datetime.datetime):
+            raise ValueError('Invalid begin_date, end_date: has to be datetime.datetime object')
 
         #Keeps only the relevant data
         df = self.data
@@ -599,7 +900,7 @@ class RKI():
 
         return df_series[begin_date:end_date]
 
-    def filter_all_bundesland(self, begin_date, end_date, variable = 'AnzahlFall', date_type='date') -> pd.DataFrame:
+    def filter_all_bundesland(self, begin_date:datetime.datetime = None, end_date:datetime.datetime = None, variable = 'AnzahlFall', date_type='date') -> pd.DataFrame:
         """
         Filters the full RKI dataset     
 
@@ -607,10 +908,10 @@ class RKI():
         ----------
         df : DataFrame
             RKI dataframe, from get_rki()
-        begin_date : str
-            initial date to return, in 'YYYY-MM-DD'
-        end_date : str
-            last date to return, in 'YYYY-MM-DD'
+        begin_date : datetime.datetime
+            initial date to return
+        end_date : datetime.datetime
+            last date to return
         variable : str, optional
             type of variable to return: cases ("AnzahlFall"), deaths ("AnzahlTodesfall"), recovered ("AnzahlGenesen")
         date_type : str, optional
@@ -622,10 +923,18 @@ class RKI():
             DataFrame with datetime dates as index, and all German regions (bundesländer) as columns
         """
         if variable not in ['AnzahlFall', 'AnzahlTodesfall', 'AnzahlGenesen']:
-            ValueError('Invalid variable. Valid options: "AnzahlFall", "AnzahlTodesfall", "AnzahlGenesen"')
+            raise ValueError('Invalid variable. Valid options: "AnzahlFall", "AnzahlTodesfall", "AnzahlGenesen"')
 
         if date_type not in ['date', 'date_ref']:
-            ValueError('Invalid date_type. Valid options: "date", "date_ref"')
+            raise ValueError('Invalid date_type. Valid options: "date", "date_ref"')
+
+        if begin_date is None:
+            begin_date = self.data[date_type].iloc[0]
+        if end_date is None:
+            end_date = self.data[date_type].iloc[-1]
+
+        if not isinstance(begin_date, datetime.datetime) and isinstance(end_date, datetime.datetime):
+            raise ValueError('Invalid begin_date, end_date: has to be datetime.datetime object')
 
         #Nifty, if slightly unreadable one-liner
         df = self.data
@@ -633,3 +942,132 @@ class RKI():
 
         #Returns cumsum of variable
         return df2[begin_date:end_date].cumsum()
+
+class GOOGLE():
+    """
+    Google mobility data
+
+    https://www.google.com/covid19/mobility/
+
+    """
+    def __init__(self, auto_download = False):
+        self.data : pd.DataFrame
+        if auto_download:
+            self.download_all_available_data()
+
+    def download_all_available_data(self,url:str=None) -> pd.DataFrame:
+        '''
+        Attempts to download the most current data from the Google mobility report.
+        
+        Parameters
+        ----------
+        try_max : int, optional
+            Maximum number of tries for each query. (default:10)
+        Returns
+        -------
+        : pandas.DataFrame
+            Containing all the RKI data from arcgis website.
+            In the format:
+                [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref]        
+        '''
+        if url is None:
+            url = 'https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv'
+        self.data = self.__to_iso(self.__download_from_source(url))
+        return self.data
+
+    def __download_from_source(self, url, fallback=None) -> pd.DataFrame:
+        """
+        Private method
+        Downloads one csv file from an url and converts it into a pandas dataframe. A fallback source can also be given.
+
+        Parameters
+        ----------
+        url : str
+            Where to download the csv file from
+        fallback : str, optional
+            Fallback source for the csv file, filename of file that is located in /data/
+
+        Returns
+        -------
+        : pandas.DataFrame
+            Raw data from the source url as dataframe
+        """
+
+        try:
+            data = pd.read_csv(url, sep=",")
+        except Exception as e:
+            print("Failed to download current data 'confirmed cases', using local copy.")
+            this_dir = os.path.dirname(__file__)
+            data = pd.read_csv(
+                this_dir + "/../data/" + fallback, sep=","
+            )
+        return data
+
+    def __to_iso(self,df) -> pd.DataFrame:
+        # change columns & index
+        df = df.rename(columns={
+            'country_region': 'country',
+            'sub_region_1': 'state',
+            'sub_region_2': 'region'
+        })
+        df = df.set_index(["country","state","region"])
+        # datetime columns
+        df["date"] = [datetime.datetime.strptime(d, '%Y-%m-%d') for d in df["date"]]
+        return df
+
+    def get_changes(self, country:str, state:str = None, region:str = None, begin_date:datetime.datetime = None, end_date:datetime.datetime = None) -> pd.DataFrame:
+        """
+        Returns a dataframe with the relative changes in mobility to a baseline, provided by google.
+        They are separated into "retail and recreation", "grocery and pharmacy", "parks", "transit", "workplaces" and "residental". 
+        Filterable for country, state and region and date.
+        Parameters
+        ----------
+        country : str
+            Selected country for the mobility data.
+        state : str, optional
+            State for the selected data if no value is selected the whole country is chosen
+        region : str, optional
+            Region for the selected data if  no value is selected the whole region/country is chosen
+        begin_date, end_date : datetime.datetime, optional
+            Filter for the desired time period
+        Returns
+        -------
+        : pandas.DataFrame
+        """        
+        if country not in self.data.index:
+            raise ValueError("Invalid country!")
+        if state not in self.data.index and state is not None:
+            raise ValueError("Invalid state!")
+        if region not in self.data.index and region is not None:
+            raise ValueError("Invalid region!")
+        if begin_date is not None and isinstance(begin_date,datetime.datetime):
+            raise ValueError("Invalid begin_date!")
+        if end_date is not None and isinstance(end_date,datetime.datetime):
+            raise ValueError("Invalid end_date!")
+
+        #Select everything with that country
+        if state is None:
+            df = self.data.iloc[self.data.index.get_level_values("region").isnull()]
+        else:
+            df = self.data.iloc[self.data.index.get_level_values("region") == region]
+
+        if state is None:
+            df = df.iloc[df.index.get_level_values("state").isnull()]
+        else:
+            df = df.iloc[df.index.get_level_values("state") == state]
+
+        df = df.iloc[df.index.get_level_values("country")== country]
+
+        df = df.set_index("date")
+
+        return df.drop(columns=["country_region_code"])[begin_date:end_date]
+
+    def get_possible_counties_states_regions(self) -> pd.DataFrame:
+        """
+        Can be used to obtain all different possible countries with there corresponding possible states and regions.
+
+        Returns
+        -------
+        : pandas.DataFrame 
+        """ 
+        return self.data.index.unique()
