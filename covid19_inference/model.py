@@ -222,12 +222,12 @@ def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_s
                                                   pr_sigma_scale_delay,
                                                   len_delay,
                                                   w=0.9)
-        pm.Deterministic('scale_delay_L2', np.exp(scale_delay_L2_log))
-        pm.Deterministic('scale_delay_L1', np.exp(scale_delay_L1_log))
+        pm.Deterministic('scale_delay_L2', tt.exp(scale_delay_L2_log))
+        pm.Deterministic('scale_delay_L1', tt.exp(scale_delay_L1_log))
 
     else:
         scale_delay_L2_log=np.log(pr_median_scale_delay)
-        pm.Deterministic('scale_delay', np.exp(scale_delay_L2_log))
+        pm.Deterministic('scale_delay', tt.exp(scale_delay_L2_log))
 
     num_days_sim = model.shape_sim[0]
     diff_data_sim = model.diff_data_sim
@@ -340,10 +340,10 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
                                              len_L2, w=0.4,
                                                 error_cauchy=False)
     if lambda_0_L1_log is not None:
-        pm.Deterministic('lambda_0_L2', np.exp(lambda_0_L2_log))
-        pm.Deterministic('lambda_0_L1', np.exp(lambda_0_L1_log))
+        pm.Deterministic('lambda_0_L2', tt.exp(lambda_0_L2_log))
+        pm.Deterministic('lambda_0_L1', tt.exp(lambda_0_L1_log))
     else:
-        pm.Deterministic('lambda_0', np.exp(lambda_0_L2_log))
+        pm.Deterministic('lambda_0', tt.exp(lambda_0_L2_log))
 
     lambda_log_list.append(lambda_0_L2_log)
     for i, cp in enumerate(change_points_list):
@@ -353,12 +353,12 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
                                                cp["pr_sigma_lambda"],
                                                len_L2,
                                                w=0.7,
-                                                error_cauchy=False)
+                                               error_cauchy=False)
         if lambda_cp_L1_log is not None:
-            pm.Deterministic(f'lambda_{i + 1}_L2', np.exp(lambda_cp_L2_log))
-            pm.Deterministic(f'lambda_{i + 1}_L1', np.exp(lambda_cp_L1_log))
+            pm.Deterministic(f'lambda_{i + 1}_L2', tt.exp(lambda_cp_L2_log))
+            pm.Deterministic(f'lambda_{i + 1}_L1', tt.exp(lambda_cp_L1_log))
         else:
-            pm.Deterministic(f'lambda_{i + 1}', np.exp(lambda_cp_L2_log))
+            pm.Deterministic(f'lambda_{i + 1}', tt.exp(lambda_cp_L2_log))
 
         lambda_log_list.append(lambda_cp_L2_log)
 
@@ -391,10 +391,10 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
                                              len_L2,
                                              w=0.7)
         if tr_len_L1_log is not None:
-            pm.Deterministic(f'transient_len_{i + 1}_L2', np.exp(tr_len_L2_log))
-            pm.Deterministic(f'transient_len_{i + 1}_L1', np.exp(tr_len_L1_log))
+            pm.Deterministic(f'transient_len_{i + 1}_L2', tt.exp(tr_len_L2_log))
+            pm.Deterministic(f'transient_len_{i + 1}_L1', tt.exp(tr_len_L1_log))
         else:
-            pm.Deterministic(f'transient_len_{i + 1}', np.exp(tr_len_L2_log))
+            pm.Deterministic(f'transient_len_{i + 1}', tt.exp(tr_len_L2_log))
 
         tr_len_list.append(tt.exp(tr_len_L2_log))
     return lambda_log_list, tr_time_list, tr_len_list
