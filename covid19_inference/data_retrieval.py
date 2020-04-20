@@ -71,7 +71,7 @@ class JHU():
             fp_recovered = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
         return self.download_confirmed(fp_confirmed, save_to_attributes), self.download_deaths(fp_deaths, save_to_attributes), self.download_recovered(fp_recovered, save_to_attributes)
 
-    def download_confirmed(self, fp_confirmed:str=None, save_to_attribues:bool=True) -> pd.DataFrame:
+    def download_confirmed(self, fp_confirmed:str=None, save_to_attributes:bool=True) -> pd.DataFrame:
         """
         Attempts to download the most current data for the confirmed cases from the online repository of the
         Coronavirus Visual Dashboard operated by the Johns Hopkins University
@@ -94,11 +94,11 @@ class JHU():
             fp_confirmed = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
 
         confirmed = self.__to_iso(self.__download_from_source(fp_confirmed))
-        if save_to_attribues:
+        if save_to_attributes:
             self.confirmed = confirmed
         return confirmed
 
-    def download_deaths(self, fp_deaths:str=None, save_to_attribues:bool=True) -> pd.DataFrame:
+    def download_deaths(self, fp_deaths:str=None, save_to_attributes:bool=True) -> pd.DataFrame:
         """
         Attempts to download the most current data for the deaths from the online repository of the
         Coronavirus Visual Dashboard operated by the Johns Hopkins University
@@ -121,11 +121,11 @@ class JHU():
             fp_deaths ='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
 
         deaths = self.__to_iso(self.__download_from_source(fp_deaths))
-        if save_to_attribues:
+        if save_to_attributes:
             self.deaths = deaths
         return deaths
 
-    def download_recovered(self, fp_recovered:str=None, save_to_attribues:bool=True) -> pd.DataFrame:
+    def download_recovered(self, fp_recovered:str=None, save_to_attributes:bool=True) -> pd.DataFrame:
         """
         Attempts to download the most current data for the recovered cases from the online repository of the
         Coronavirus Visual Dashboard operated by the Johns Hopkins University
@@ -148,7 +148,7 @@ class JHU():
             fp_recovered = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
 
         recovered = self.__to_iso(self.__download_from_source(fp_recovered))
-        if save_to_attribues:
+        if save_to_attributes:
             self.recovered = recovered
         return recovered
 
@@ -522,7 +522,7 @@ class JHU():
         """
         all_entrys = list(self.confirmed.columns) + list(self.deaths.columns) + list(self.recovered.columns)
         df = pd.DataFrame(all_entrys, columns = ['country', 'state']) 
-        df = df.groupby('country').apply(lambda x: x['state'].unique())
+
         return df
 
 class RKI():
@@ -643,15 +643,17 @@ class RKI():
         -------
         :pd.DataFrame
         """
-        # Set level for filter use bundesland if no landkreis is supplied else us landkreis
+        # Set level for filter use bundesland if no landkreis is supplied else use landkreis
         level = None
         value = None
-        if bundesland is not None:
+        if bundesland is not None and landkreis is None:
             level = "Bundesland"
             value = bundesland
-        if landkreis is not None:
+        elif bundesland is None and landkreis is not None:
             level = "Landkreis"
             value = landkreis
+        elif bundesland is not None and landkreis is not None:
+            raise ValueError('bundesland and landkreis cannot be simultaneously set.')
 
         df = self.filter(begin_date,end_date,'AnzahlFall',date_type,level,value)
         return df.drop(df.index[0])
@@ -679,12 +681,14 @@ class RKI():
         """        
         level = None
         value = None
-        if bundesland is not None:
+        if bundesland is not None and landkreis is None:
             level = "Bundesland"
             value = bundesland
-        if landkreis is not None:
+        elif bundesland is None and landkreis is not None:
             level = "Landkreis"
             value = landkreis
+        elif bundesland is not None and landkreis is not None:
+            raise ValueError('bundesland and landkreis cannot be simultaneously set.')
 
         df = self.filter(begin_date,end_date,'AnzahlFall',date_type,level,value)
         #Get difference to the days beforehand
@@ -714,12 +718,14 @@ class RKI():
         """
         level = None
         value = None
-        if bundesland is not None:
+        if bundesland is not None and landkreis is None:
             level = "Bundesland"
             value = bundesland
-        if landkreis is not None:
+        elif bundesland is None and landkreis is not None:
             level = "Landkreis"
             value = landkreis
+        elif bundesland is not None and landkreis is not None:
+            raise ValueError('bundesland and landkreis cannot be simultaneously set.')
 
         df = self.filter(begin_date,end_date,'AnzahlTodesfall',date_type,level,value)
         return df.drop(df.index[0])
@@ -748,12 +754,14 @@ class RKI():
         
         level = None
         value = None
-        if bundesland is not None:
+        if bundesland is not None and landkreis is None:
             level = "Bundesland"
             value = bundesland
-        if landkreis is not None:
+        elif bundesland is None and landkreis is not None:
             level = "Landkreis"
             value = landkreis
+        elif bundesland is not None and landkreis is not None:
+            raise ValueError('bundesland and landkreis cannot be simultaneously set.')
 
         df = self.filter(begin_date,end_date,'AnzahlTodesfall',date_type,level,value)
         #Get difference to the days beforehand
@@ -784,12 +792,14 @@ class RKI():
         # Set level for filter use bundesland if no landkreis is supplied else us landkreis
         level = None
         value = None
-        if bundesland is not None:
+        if bundesland is not None and landkreis is None:
             level = "Bundesland"
             value = bundesland
-        if landkreis is not None:
+        elif bundesland is None and landkreis is not None:
             level = "Landkreis"
             value = landkreis
+        elif bundesland is not None and landkreis is not None:
+            raise ValueError('bundesland and landkreis cannot be simultaneously set.')
 
         df = self.filter(begin_date,end_date,'AnzahlGenesen',date_type,level,value)
         return df.drop(df.index[0])
