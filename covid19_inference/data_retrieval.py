@@ -423,6 +423,7 @@ class JHU():
             table with daily new recovered cases and the date as index
         """        
         df = self.get_recovered(country,state,begin_date,end_date)
+
         df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
 
@@ -742,6 +743,7 @@ class RKI():
         """        
         df = self.get_recovered(bundesland, landkreis, begin_date, end_date, date_type)
         #Get difference to the days beforehand
+        print(df.index)
         df = df.diff().drop(df.index[0]).astype(int) # Neat oneliner to also drop the first row and set the type back to int 
         return df
 
@@ -787,10 +789,11 @@ class RKI():
         if date_type not in ['date', 'date_ref']:
             raise ValueError('Invalid date_type. Valid options: "date", "date_ref"')
 
+        df = self.data.sort_values(date_type)
         if begin_date is None:
-            begin_date = self.data[date_type].iloc[0]
+            begin_date = df[date_type].iloc[0]
         if end_date is None:
-            end_date = self.data[date_type].iloc[-1]
+            end_date = df[date_type].iloc[-1]
 
         if not isinstance(begin_date, datetime.datetime) and isinstance(end_date, datetime.datetime):
             raise ValueError('Invalid begin_date, end_date: has to be datetime.datetime object')
