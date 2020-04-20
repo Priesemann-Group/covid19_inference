@@ -199,22 +199,36 @@ def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_s
     -------
 
     """
+
+
     model = modelcontext(model)
 
     len_delay = () if model.ndim_sim == 1 else model.shape_sim[1]
-    delay_L2_log, _ = hierarchical_normal('delay', 'sigma_delay',
+    delay_L2_log, delay_L1_log = hierarchical_normal('delay_log', 'sigma_delay',
                                           np.log(pr_median_delay),
                                           pr_sigma_delay,
                                           len_delay,
                                           w=0.9)
+    if delay_L1_log is not None:
+        pm.Deterministic('delay_L2', np.exp(delay_L2_log))
+        pm.Deterministic('delay_L1', np.exp(delay_L1_log))
+    else:
+        pm.Deterministic('delay', np.exp(delay_L2_log))
+
+
     if pr_sigma_scale_delay is not None:
-        scale_delay_L2_log, _ = hierarchical_normal('scale_delay', 'sigma_scale_delay',
+        scale_delay_L2_log, scale_delay_L1_log = hierarchical_normal('scale_delay', 'sigma_scale_delay',
                                                   np.log(pr_median_scale_delay),
                                                   pr_sigma_scale_delay,
                                                   len_delay,
                                                   w=0.9)
+        pm.Deterministic('scale_delay_L2', np.exp(scale_delay_L2_log))
+        pm.Deterministic('scale_delay_L1', np.exp(scale_delay_L1_log))
+
     else:
         scale_delay_L2_log=np.log(pr_median_scale_delay)
+        pm.Deterministic('scale_delay', np.exp(scale_delay_L2_log))
+
     num_days_sim = model.shape_sim[0]
     diff_data_sim = model.diff_data_sim
     new_cases_inferred = mh.delay_cases_lognormal(input_arr=new_I_t,
@@ -320,21 +334,33 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
     tr_len_list = []
 
     #
-    lambda_0_L2_log, _ = hierarchical_normal('lambda_0', 'sigma_lambda_0',
+    lambda_0_L2_log, lambda_0_L1_log = hierarchical_normal('lambda_0_log', 'sigma_lambda_0',
                                              np.log(pr_median_lambda_0),
                                              pr_sigma_lambda_0,
                                              len_L2, w=0.4,
                                                 error_cauchy=False)
+    if lambda_0_L1_log is not None:
+        pm.Deterministic('lambda_0_L2', np.exp(lambda_0_L2_log))
+        pm.Deterministic('lambda_0_L1', np.exp(lambda_0_L1_log))
+    else:
+        pm.Deterministic('lambda_0', np.exp(lambda_0_L2_log))
+
     lambda_log_list.append(lambda_0_L2_log)
     for i, cp in enumerate(change_points_list):
-        lambda_cp_L2, _ = hierarchical_normal(f'lambda_{i + 1}',
+        lambda_cp_L2_log, lambda_cp_L1_log = hierarchical_normal(f'lambda_{i + 1}_log',
                                                f'sigma_lambda_{i + 1}',
                                                np.log(cp["pr_median_lambda"]),
                                                cp["pr_sigma_lambda"],
                                                len_L2,
                                                w=0.7,
                                                 error_cauchy=False)
-        lambda_log_list.append(lambda_cp_L2)
+        if lambda_cp_L1_log is not None:
+            pm.Deterministic(f'lambda_{i + 1}_L2', np.exp(lambda_cp_L2_log))
+            pm.Deterministic(f'lambda_{i + 1}_L1', np.exp(lambda_cp_L1_log))
+        else:
+            pm.Deterministic(f'lambda_{i + 1}', np.exp(lambda_cp_L2_log))
+
+        lambda_log_list.append(lambda_cp_L2_log)
 
 
     dt_before = model.date_begin_sim
@@ -345,7 +371,7 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
         prior_mean = (
                 dt_begin_transient - model.date_begin_sim
         ).days
-        tr_time_L2, _= hierarchical_normal(f'transient_day_{i + 1}',
+        tr_time_L2, = hierarchical_normal(f'transient_day_{i + 1}',
                                                f'sigma_transient_day_{i + 1}',
                                                prior_mean,
                                                cp["pr_sigma_date_transient"],
@@ -358,15 +384,19 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
 
     for i, cp in enumerate(change_points_list):
         #if model.ndim_sim == 1:
-        tr_len_L2, _ = hierarchical_normal(f'transient_len_{i + 1}',
+        tr_len_L2_log, tr_len_L1_log = hierarchical_normal(f'transient_len_{i + 1}_log',
                                              f'sigma_transient_len_{i + 1}',
                                              np.log(cp["pr_median_transient_len"]),
                                              cp["pr_sigma_transient_len"],
                                              len_L2,
                                              w=0.7)
-        #else:
-        #    tr_len_L2 = np.log(cp["pr_median_transient_len"]) * tt.ones(model.shape_sim[1])
-        tr_len_list.append(tt.exp(tr_len_L2))
+        if tr_len_L1_log is not None:
+            pm.Deterministic(f'transient_len_{i + 1}_L2', np.exp(tr_len_L2_log))
+            pm.Deterministic(f'transient_len_{i + 1}_L1', np.exp(tr_len_L1_log))
+        else:
+            pm.Deterministic(f'transient_len_{i + 1}', np.exp(tr_len_L2_log))
+
+        tr_len_list.append(tt.exp(tr_len_L2_log))
     return lambda_log_list, tr_time_list, tr_len_list
 
 def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=1, model=None):
