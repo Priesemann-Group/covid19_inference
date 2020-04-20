@@ -99,7 +99,7 @@ def student_t_likelihood(new_cases_inferred, pr_beta_sigma_obs = 30, nu=4, offse
         name="_new_cases_studentT",
         nu=nu,
         mu=new_cases_inferred[:num_days_data],
-        sigma=tt.abs_(new_cases_inferred[:num_days_data] + offset_sigma) ** 0.5 * sigma_obs,  # offset and tt.abs to avoid nans
+        sigma=tt.abs_(new_cases_inferred[:num_days_data]+offset_sigma) ** 0.5 * sigma_obs,  # offset and tt.abs to avoid nans
         observed=model.new_cases_obs,
     )
 
@@ -255,7 +255,7 @@ def week_modulation(new_cases_inferred, week_modulation_type='abs_sine', pr_mean
     len_L2 = () if model.ndim_sim == 1 else model.shape_sim[1]
 
 
-    week_end_factor, _ = hierarchical_beta('weekend_factor', 'sigma_weekend_factor',
+    week_end_factor, _ = hierarchical_normal('weekend_factor', 'sigma_weekend_factor',
                                         pr_mean=pr_mean_weekend_factor,
                                         pr_sigma=pr_sigma_weekend_factor,
                                         len_L2=len_L2)
@@ -323,7 +323,8 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
     lambda_0_L2_log, _ = hierarchical_normal('lambda_0', 'sigma_lambda_0',
                                              np.log(pr_median_lambda_0),
                                              pr_sigma_lambda_0,
-                                             len_L2, w=0.4)
+                                             len_L2, w=0.4,
+                                                error_cauchy=False)
     lambda_log_list.append(lambda_0_L2_log)
     for i, cp in enumerate(change_points_list):
         lambda_cp_L2, _ = hierarchical_normal(f'lambda_{i + 1}',
@@ -331,7 +332,8 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
                                                np.log(cp["pr_median_lambda"]),
                                                cp["pr_sigma_lambda"],
                                                len_L2,
-                                               w=0.7)
+                                               w=0.7,
+                                                error_cauchy=False)
         lambda_log_list.append(lambda_cp_L2)
 
 
@@ -415,7 +417,8 @@ def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lamb
     return lambda_t_log
 
 
-def hierarchical_normal(name, name_sigma, pr_mean, pr_sigma, len_L2, w=1.0, beta_fact = 2.):
+def hierarchical_normal(name, name_sigma, pr_mean, pr_sigma, len_L2, w=1.0, error_fact = 2.,
+                        error_cauchy=True):
     """
     Takes ideas from https://arxiv.org/pdf/1312.0906.pdf (see also https://arxiv.org/pdf/0708.3797.pdf and
      https://pdfs.semanticscholar.org/7b85/fb48a077c679c325433fbe13b87560e12886.pdf)
@@ -440,7 +443,11 @@ def hierarchical_normal(name, name_sigma, pr_mean, pr_sigma, len_L2, w=1.0, beta
         return Y, None
     else:
         w=1.
-        sigma_Y = pm.HalfCauchy(name_sigma + '_L2', beta=beta_fact * pr_sigma)
+        if error_cauchy:
+            sigma_Y = pm.HalfCauchy(name_sigma + '_L2', beta=error_fact * pr_sigma)
+        else:
+            sigma_Y = pm.HalfNormal(name_sigma + '_L2', sigma=error_fact * pr_sigma)
+
 
         X = pm.Normal(name + '_L1' , mu=pr_mean, sigma=pr_sigma)
         phi = pm.Normal(name + '_L2_raw', mu=0, sigma=1, shape=len_L2)  # (1-w**2)*sigma_X+1*w**2, shape=len_Y)
@@ -455,7 +462,7 @@ def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2):
         Y = pm.Beta(name, alpha=pr_mean/pr_sigma, beta=1/pr_sigma*(1-pr_mean))
         return Y, None
     else:
-        sigma_Y = pm.HalfCauchy(name_sigma + '_L2', beta=pr_sigma, shape=1)
+        sigma_Y = pm.HalfCauchy(name_sigma + '_L2', beta=pr_sigma)
         X = pm.Beta(name + '_L1' , alpha=pr_mean/pr_sigma, beta=1/pr_sigma*(1-pr_mean))
         Y = pm.Beta(name + '_L2', alpha=X/sigma_Y, beta=1/sigma_Y*(1-X), shape=len_L2)
         return Y, X
