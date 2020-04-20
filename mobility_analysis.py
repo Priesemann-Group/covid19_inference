@@ -4,6 +4,10 @@ import datetime
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+
+import theano
+import theano.tensor as tt
 
 def plot_compact(model, trace, new_cases_obs, date_data_begin, diff_data_sim=16, start_date_plot=None, end_date_plot=None, week_interval=None, colors = ('tab:blue', 'tab:orange'), savefig=None):
 
@@ -133,8 +137,9 @@ def analyze_country(country, date_data_begin, date_data_end, N, mobility_type = 
 	date_data_end = datetime.datetime.fromisoformat(date_data_end)
 
 	#Gets data
-	df_cases = cov19.get_jhu_cdr(country, None)
-	new_cases = df_cases['confirmed'].diff()[date_data_begin:date_data_end].to_numpy()
+	data = cov19.data_retrieval.JHU()
+	data.download_confirmed()
+	new_cases = data.get_confirmed('Germany').diff()[date_data_begin:date_data_end].to_numpy()
 
 	country_report = parse_names(country, mobility_source)
 	if mobility_source == 'apple':
@@ -147,7 +152,9 @@ def analyze_country(country, date_data_begin, date_data_end, N, mobility_type = 
 	# if date_data_end > mobility.index.max():
 	# 	ValueError('date_data_end later than {}'.format(str(mobility.index.max())))
 
-	change_points = mobility_to_changepoints(mobility[date_data_begin:date_data_end], lambda_0 = lambda_0, lambda_min=lambda_min)
+	#change_points = mobility_to_changepoints(mobility[date_data_begin:date_data_end], lambda_0 = lambda_0, lambda_min=lambda_min)
+
+
 
 	params_model = dict(new_cases_obs = new_cases,
 					date_begin_data = date_data_begin,
@@ -156,8 +163,9 @@ def analyze_country(country, date_data_begin, date_data_end, N, mobility_type = 
 					N_population = N) 
 
 	with cov19.Cov19_Model(**params_model) as model:
-		lambda_t_log = cov19.lambda_t_with_sigmoids(pr_median_lambda_0 = lambda_0,
-													change_points_list = change_points)
+		#lambda_t_log = cov19.lambda_t_with_sigmoids(pr_median_lambda_0 = lambda_0,
+		#											change_points_list = change_points)
+		lambda_t_log = lambda_t_single(mobility[date_data_begin:date_data_end].to_numpy())
 		
 		new_I_t = cov19.SIR(lambda_t_log, pr_median_mu=1/8)
 		
@@ -170,8 +178,10 @@ def analyze_country(country, date_data_begin, date_data_end, N, mobility_type = 
 
 	trace = pm.sample(model=model, init='advi', tune=500, draws=500, cores=6)
 
+	return trace, model
+
 	str_save = '{}_{}_{}'.format(country, mobility_source, mobility_type)
-	plot_compact(model, trace, new_cases, date_data_begin, diff_data_sim, savefig=str_save)
+	#plot_compact(model, trace, new_cases, date_data_begin, diff_data_sim, savefig=str_save)
 	
 def mobility_to_changepoints(mobility, lambda_0, lambda_min):
 
@@ -273,3 +283,17 @@ def get_mobility_reports_google(region, field_list, subregion=False):
     series_df = series_df + 1
 
     return series_df
+
+
+def lambda_t_single(ts):
+
+	cov19.Cov19_Model.get_context()
+
+	a = pm.Uniform(name='a', lower=0, upper=1)
+	b = pm.Uniform(name='b', lower=-1, upper=1)
+
+	lambda_t_log = tt.log(a*tt.ones(len(ts))*ts + b)
+
+	pm.Deterministic('lambda_t', a*ts + b)
+
+	return lambda_t_log
