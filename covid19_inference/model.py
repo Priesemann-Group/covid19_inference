@@ -371,7 +371,7 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
         prior_mean = (
                 dt_begin_transient - model.date_begin_sim
         ).days
-        tr_time_L2, = hierarchical_normal(f'transient_day_{i + 1}',
+        tr_time_L2, _ = hierarchical_normal(f'transient_day_{i + 1}',
                                                f'sigma_transient_day_{i + 1}',
                                                prior_mean,
                                                cp["pr_sigma_date_transient"],
