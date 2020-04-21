@@ -84,3 +84,7 @@ target/
 
 # Mypy cache
 .mypy_cache/
+
+#floobits
+.floo
+.flooignore
