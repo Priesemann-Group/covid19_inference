@@ -13,7 +13,8 @@ The research article [is available on arXiv](https://arxiv.org/abs/2004.01105) (
 The code used to produce the figures is available in the other repository [here](https://github.com/Priesemann-Group/covid19_inference_forecast)
 
 
-**We are looking for support** to help us with analyzing other countries and to extend to an hierarchical regional model. We might get additional funding for that. If you missed our first meeting, you are welcome to join our information session on Zoom on Tuesday 21th at 13:00. We will publish the Zoom address here on Tuesday at 12:00.
+**We are looking for support** to help us with analyzing other countries and to extend to an hierarchical regional model. We might get additional funding for that. If you missed our first meeting, you are welcome to join our information session on Zoom on Tuesday 21th at 13:00. We will publish the Zoom address here on Tuesday at 12:00:
+
 
 ### Please take notice of our [disclaimer](DISCLAIMER.md).
 
