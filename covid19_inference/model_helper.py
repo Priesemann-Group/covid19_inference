@@ -4,7 +4,7 @@ import numpy as np
 
 
 def tt_lognormal(x, mu, sigma):
-    distr = 1/x * tt.exp(-((tt.log(x) - mu) ** 2) / (2 * sigma ** 2))
+    distr = tt.exp(-((tt.log(x) - mu) ** 2) / (2 * sigma ** 2)) / x
     return distr / (tt.sum(distr, axis=0) + 1e-5)
 
 
