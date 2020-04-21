@@ -1,5 +1,6 @@
 import datetime
 import platform
+import logging
 
 import theano
 import theano.tensor as tt
@@ -8,6 +9,8 @@ import pymc3 as pm
 from pymc3 import Model
 
 from . import model_helper as mh
+
+log = logging.getLogger(__name__)
 
 
 class Cov19_Model(Model):
@@ -443,7 +446,7 @@ def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lamb
     lambda_t_log = sum(lambda_t_list)
 
     pm.Deterministic('lambda_t', tt.exp(lambda_t_log))
-    
+
     return lambda_t_log
 
 
