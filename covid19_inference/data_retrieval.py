@@ -4,7 +4,7 @@ import logging
 
 import numpy as np
 import pandas as pd
-import git
+
 import urllib, json
 
 log = logging.getLogger(__name__)
