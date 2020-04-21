@@ -165,7 +165,11 @@ def analyze_country(country, date_data_begin, date_data_end, N, mobility_type = 
 	with cov19.Cov19_Model(**params_model) as model:
 		#lambda_t_log = cov19.lambda_t_with_sigmoids(pr_median_lambda_0 = lambda_0,
 		#											change_points_list = change_points)
-		lambda_t_log = lambda_t_single(mobility[date_data_begin:date_data_end].to_numpy())
+
+		ts = mobility[date_data_begin:date_data_end].to_numpy().flatten()
+		ts = np.concatenate((ts,ts[-1]*np.ones(num_days_forecast+1)))
+
+		lambda_t_log = lambda_t_single(ts)
 		
 		new_I_t = cov19.SIR(lambda_t_log, pr_median_mu=1/8)
 		
@@ -292,7 +296,9 @@ def lambda_t_single(ts):
 	a = pm.Uniform(name='a', lower=0, upper=1)
 	b = pm.Uniform(name='b', lower=-1, upper=1)
 
-	lambda_t_log = tt.log(a*tt.ones(len(ts))*ts + b)
+	ts = tt._shared(ts.astype("float64"))
+
+	lambda_t_log = tt.log(a*ts + b)
 
 	pm.Deterministic('lambda_t', a*ts + b)
 
