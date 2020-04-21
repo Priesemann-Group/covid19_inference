@@ -76,7 +76,7 @@ def apply_delay(array, delay, sigma_delay, delay_mat):
         delayed_arr = tt.batched_dot(array_shuf, mat_shuf)
         delayed_arr = delayed_arr.dimshuffle((1,0))
     elif array.ndim == 1 and mat.ndim == 2:
-        delayed_arr = tt.dot(array, mat)
+        delayed_arr = tt.dot(mat, array)
     else:
         raise RuntimeError("For some reason, wrong number of dimensions, shouldn't happen")
     return delayed_arr
