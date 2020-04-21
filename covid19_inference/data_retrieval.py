@@ -1215,7 +1215,7 @@ class GOOGLE:
             df = pd.read_csv(url_local, sep=",", compression="gzip")
 
         self.data = df
-        
+
         return self.data
 
     def __download_from_source(self, url, fallback=None) -> pd.DataFrame:
@@ -1243,7 +1243,7 @@ class GOOGLE:
                 "Failed to download current data 'confirmed cases', using local copy."
             )
             this_dir = os.path.dirname(__file__)
-            data = pd.read_csv(this_dir + "/../data/" + fallback, sep=",")
+            data = pd.read_csv(this_dir + "/../data/" + fallback, sep=",", low_memory=False)
         return data
 
     def __to_iso(self, df) -> pd.DataFrame:
