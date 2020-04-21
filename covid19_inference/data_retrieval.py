@@ -81,6 +81,8 @@ class JHU:
         if fp_recovered is None:
             fp_recovered = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
 
+
+
         return (
             self.download_confirmed(fp_confirmed, save_to_attributes),
             self.download_deaths(fp_deaths, save_to_attributes),
@@ -1188,7 +1190,32 @@ class GOOGLE:
         """
         if url is None:
             url = "https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv"
-        self.data = self.__to_iso(self.__download_from_source(url))
+
+
+        this_dir = os.path.dirname(__file__)
+
+        #Path to the local fallback file
+        url_local    = this_dir + "/../data/google_fallback_gzip.dat"
+
+        #Get last modified dates for the files
+        conn = urllib.request.urlopen(url, timeout=30)
+        online_file_date = datetime.datetime.strptime(conn.headers["last-modified"],"%a, %d %b %Y %H:%M:%S GMT")
+        try:
+            current_file_date = datetime.datetime.fromtimestamp(os.path.getmtime(url_local))
+        except:
+            current_file_date = datetime.datetime.fromtimestamp(2)
+
+        #Download file and overwrite old one if it is older
+        if online_file_date > current_file_date:
+            log.info("Downloading new dataset from repository since it is newer.")
+            df = self.__download_from_source(url)
+            df.to_csv(url_local, compression="gzip")
+        else:
+            log.info("Using local file since no new data is available online.")
+            df = pd.read_csv(url_local, sep=",", compression="gzip")
+
+        self.data = df
+        
         return self.data
 
     def __download_from_source(self, url, fallback=None) -> pd.DataFrame:
