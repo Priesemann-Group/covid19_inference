@@ -1,7 +1,6 @@
 import datetime
 import os
 import logging
-import subprocess
 
 import numpy as np
 import pandas as pd
