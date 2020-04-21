@@ -4,7 +4,7 @@ import logging
 
 import numpy as np
 import pandas as pd
-
+import git
 import urllib, json
 
 log = logging.getLogger(__name__)
@@ -44,6 +44,7 @@ class JHU:
         if auto_download:
             self.download_all_available_data()
 
+
     def download_all_available_data(
         self,
         fp_confirmed: str = None,
@@ -82,7 +83,13 @@ class JHU:
             fp_recovered = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
 
 
-
+        #Get last modified date for the repository files
+        try:
+            url = urllib.request.urlopen(url_check_update, timeout=30)
+            online_file_date = datetime.datetime.strptime(url.headers["last-modified"],"%a, %d %b %Y %H:%M:%S GMT")
+        except Exception as e:
+            log.warning("Could not fetch data from online repository of the RKI using local data!")
+            online_file_date = datetime.datetime.fromtimestamp(1)
         return (
             self.download_confirmed(fp_confirmed, save_to_attributes),
             self.download_deaths(fp_deaths, save_to_attributes),
@@ -622,10 +629,9 @@ class RKI:
     Features:
         - download the full dataset
         - filter by date
-        see the methods in this class for more infos on the features and how to use them
+        - filter by recovered, deaths and confirmed cases
 
     """
-
     def __init__(self, auto_download=False):
         self.data: pd.DataFrame
 
@@ -650,7 +656,6 @@ class RKI:
         '''
 
         this_dir = os.path.dirname(__file__)
-
         #We need an extra url since for some reason the normal dataset website has no headers :/ --> But they get updated from the same source so that should work
         url_fulldata = "https://www.arcgis.com/sharing/rest/content/items/f10774f1c63e40168479a1feb6c7ca74/data"
         url_check_update = "https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19/FeatureServer/0/query?where=1%3D1&outFields=*&outSR=4326&f=json"
@@ -658,13 +663,22 @@ class RKI:
         #Path to the local fallback file
         url_local    = this_dir + "/../data/rki_fallback_gzip.dat"
 
-        #Get last modified dates for the files
-        url = urllib.request.urlopen(url_check_update, timeout=30)
-        online_file_date = datetime.datetime.strptime(url.headers["last-modified"],"%a, %d %b %Y %H:%M:%S GMT")
+
+        #Get last modified date for the repository files
         try:
+            url = urllib.request.urlopen(url_check_update, timeout=30)
+            online_file_date = datetime.datetime.strptime(url.headers["last-modified"],"%a, %d %b %Y %H:%M:%S GMT")
+        except Exception as e:
+            log.warning("Could not fetch data from online repository of the RKI using local data!")
+            online_file_date = datetime.datetime.fromtimestamp(1)
+
+        #Get last modified date for the repository files
+        if path.exists(url_local):
             current_file_date = datetime.datetime.fromtimestamp(os.path.getmtime(url_local))
-        except:
-            current_file_date = datetime.datetime.fromtimestamp(2)
+        else:
+            current_file_date = datetime.datetime.fromtimestamp(2) #the two is important
+
+
         #Download file and overwrite old one if it is older
         if online_file_date > current_file_date:
             log.info("Downloading new dataset from repository since it is newer.")
@@ -793,7 +807,7 @@ class RKI:
             raise ValueError("bundesland and landkreis cannot be simultaneously set.")
 
         df = self.filter(begin_date, end_date, "AnzahlFall", date_type, level, value)
-        return df.drop(df.index[0])
+        return df
 
     def get_new_confirmed(
         self,
@@ -883,7 +897,7 @@ class RKI:
         df = self.filter(
             begin_date, end_date, "AnzahlTodesfall", date_type, level, value
         )
-        return df.drop(df.index[0])
+        return df
 
     def get_new_deaths(
         self,
@@ -975,7 +989,7 @@ class RKI:
             raise ValueError("bundesland and landkreis cannot be simultaneously set.")
 
         df = self.filter(begin_date, end_date, "AnzahlGenesen", date_type, level, value)
-        return df.drop(df.index[0])
+        return df
 
     def get_new_recovered(
         self,
