@@ -1,5 +1,6 @@
 import datetime
 import platform
+import logging
 
 import theano
 import theano.tensor as tt
@@ -8,6 +9,8 @@ import pymc3 as pm
 from pymc3 import Model
 
 from . import model_helper as mh
+
+log = logging.getLogger(__name__)
 
 
 class Cov19_Model(Model):
@@ -34,7 +37,7 @@ class Cov19_Model(Model):
             Number of days the simulation starts earlier than the data. Should be significantly longer than the delay
             between infection and report of cases.
         N_population : number or 1d array
-            Number of inhabitance, needed for the S(E)IR model. Is idealy 1 dimensional if new_cases_obs is 2 dimensional
+            Number of inhabitance in region, needed for the S(E)IR model. Is ideally 1 dimensional if new_cases_obs is 2 dimensional
         name : string
             suffix appended to the name of random variables saved in the trace
         model :
@@ -81,9 +84,9 @@ def student_t_likelihood(new_cases_inferred, pr_beta_sigma_obs = 30, nu=4, offse
         If 2 dimensional, the first dimension is time and the second are the regions/countries
     pr_beta_sigma_obs : number
 
-    nu
-    offset_sigma
-    model
+    nu : ?
+    offset_sigma : ?
+    model : ?
 
     Returns
     -------
@@ -99,14 +102,14 @@ def student_t_likelihood(new_cases_inferred, pr_beta_sigma_obs = 30, nu=4, offse
         name="_new_cases_studentT",
         nu=nu,
         mu=new_cases_inferred[:num_days_data],
-        sigma=tt.abs_(new_cases_inferred[:num_days_data]+offset_sigma) ** 0.5 * sigma_obs,  # offset and tt.abs to avoid nans
+        sigma=tt.abs_(new_cases_inferred[:num_days_data] + offset_sigma) ** 0.5 * sigma_obs,  # offset and tt.abs to avoid nans
         observed=model.new_cases_obs,
     )
 
 
 def SIR(lambda_t_log, pr_beta_I_begin=100, pr_median_mu=1 / 8,
         pr_sigma_mu=0.2, model=None, return_all=False,
-        save_all = False):
+        save_all=False):
     """
         Implements the susceptible-infected-recovered model
 
@@ -115,9 +118,14 @@ def SIR(lambda_t_log, pr_beta_I_begin=100, pr_median_mu=1 / 8,
         lambda_t_log : 1 or 2d theano tensor
             time series of the logarithm of the spreading rate
 
-        priors_dict : dict
+        pr_beta_I_begin : int
+            parameter value for prior distribution of starting number of infectious population
+        pr_median_mu : float
+            median recovery rate; parameter value for prior distribution of recovery rate
+        pr_sigma_mu : float
+            scale parameter value for prior distribution of recovery rate
 
-        model : Cov19_Model:
+        model : Cov19_Model
             if none, retrievs from context
 
         return_all : Bool
@@ -138,16 +146,24 @@ def SIR(lambda_t_log, pr_beta_I_begin=100, pr_median_mu=1 / 8,
     """
     model = modelcontext(model)
 
+
     # Build prior distrubutions:
+    #--------------------------
+
+    # Prior distribution of recovery rate mu
     mu = pm.Lognormal(
         name="mu",
         mu=np.log(pr_median_mu),
         sigma=pr_sigma_mu,
     )
+
+    # Total number of people in population
     N = model.N_population
 
+    # Number of regions as tuple of int
     num_regions = () if model.ndim_sim == 1 else model.shape_sim[1]
 
+    # Prior distributions of starting populations (infectious, susceptibles)
     I_begin = pm.HalfCauchy(name="I_begin", beta=pr_beta_I_begin, shape=num_regions)
     S_begin = N - I_begin
 
@@ -166,7 +182,7 @@ def SIR(lambda_t_log, pr_beta_I_begin=100, pr_median_mu=1 / 8,
     # theano scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, I, new_I
     outputs, _ = theano.scan(
-        fn  =next_day,
+        fn=next_day,
         sequences=[lambda_t],
         outputs_info=[S_begin, I_begin, new_I_0],
         non_sequences=[mu, N],
@@ -182,6 +198,138 @@ def SIR(lambda_t_log, pr_beta_I_begin=100, pr_median_mu=1 / 8,
     else:
         return new_I_t
 
+def SEIR(
+    lambda_t_log,
+    pr_beta_I_begin=100,
+    pr_beta_new_E_begin=50,
+    pr_median_mu=1 / 8,
+    median_incubation=5,
+    sigma_incubation=0.418,
+    pr_sigma_mu=0.2,
+    model=None,
+    return_all=False,
+    save_all=False
+    ):
+    """
+        Implements the susceptible-exposed-infected-recovered model
+
+        Parameters
+        ----------
+        lambda_t_log : 1 or 2d theano tensor
+            time series of the logarithm of the spreading rate
+
+        pr_beta_I_begin : int
+            scale parameter value for prior distribution of starting number of infectious population
+        pr_beta_new_E_begin : int
+            scale parameter value for prior distribution of starting number of newly exposed population
+            assumed smaller than total infectious population
+        pr_median_mu : float
+            median recovery rate; parameter value for prior distribution of recovery rate
+        pr_sigma_mu : float
+            scale parameter value for prior distribution of recovery rate
+
+        model : Cov19_Model
+            if none, retrievs from context
+
+        return_all : Bool
+            if True, returns new_I_t, I_t, S_t otherwise returns only new_I_t
+        save_all : Bool
+            if True, saves new_I_t, I_t, S_t in the trace, otherwise it saves only new_I_t
+
+        Returns
+        -------
+
+        new_I_t : array
+            time series of the new infected
+        I_t : array
+            time series of the infected (if return_all set to True)
+        S_t : array
+            time series of the susceptible (if return_all set to True)
+
+    """
+    model = modelcontext(model)
+
+
+    # Build prior distrubutions:
+    #--------------------------
+
+    # Prior distribution of recovery rate mu
+    mu = pm.Lognormal(
+        name="mu",
+        mu=np.log(pr_median_mu),
+        sigma=pr_sigma_mu,
+    )
+
+    # Total number of people in population
+    N = model.N_population
+
+    # Number of regions as tuple of int
+    num_regions = () if model.ndim_sim == 1 else model.shape_sim[1]
+
+    # Prior distributions of starting populations (exposed, infectious, susceptibles)
+    # We choose to consider the transitions of newly exposed people of the last 8 days.
+    if num_regions == ():
+        new_E_begin = pm.HalfCauchy(name="E_begin", beta=pr_beta_new_E_begin, shape=9)
+    else:
+        new_E_begin = pm.HalfCauchy(name="E_begin", beta=pr_beta_new_E_begin, shape=(9, num_regions))
+    I_begin = pm.HalfCauchy(name="I_begin", beta=pr_beta_I_begin, shape=num_regions)
+    S_begin = N - I_begin - pm.math.sum(new_E_begin, axis=0)
+
+    lambda_t = tt.exp(lambda_t_log)
+    new_I_0 = tt.zeros_like(I_begin)
+
+    # Choose transition rates (E to I) according to incubation period distribution
+    if num_regions == ():
+        x = np.arange(1, 9)
+    else:
+        x = np.arange(1, 9)
+        x = np.tile(x, (2, 1))
+    beta = mh.tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
+
+    # Runs SEIR model:
+    def next_day(
+        lambda_t, S_t, nE1, nE2, nE3, nE4, nE5, nE6, nE7, nE8, I_t, _, mu, beta, N
+    ):
+        new_E_t = lambda_t / N * I_t * S_t
+        S_t = S_t - new_E_t
+        new_I_t = (
+            beta[0] * nE1
+            + beta[1] * nE2
+            + beta[2] * nE3
+            + beta[3] * nE4
+            + beta[4] * nE5
+            + beta[5] * nE6
+            + beta[6] * nE7
+            + beta[7] * nE8
+        )
+        I_t = I_t + new_I_t - mu * I_t
+        I_t = tt.clip(I_t, 0, N)  # for stability
+        S_t = tt.clip(S_t, 0, N)
+        return S_t, new_E_t, I_t, new_I_t
+
+    # theano scan returns two tuples, first one containing a time series of
+    # what we give in outputs_info : S, E's, I, new_I
+    outputs, _ = theano.scan(
+        fn=next_day,
+        sequences=[lambda_t],
+        outputs_info=[
+            S_begin,
+            dict(initial=new_E_begin, taps=[-1, -2, -3, -4, -5, -6, -7, -8]),
+            I_begin,
+            new_I_0,
+        ],
+        non_sequences=[mu, beta, N],
+    )
+    S_t, nE, I_t, new_I_t = outputs
+    pm.Deterministic('new_I_t', new_I_t)
+    if save_all:
+        pm.Deterministic('S_t', S_t)
+        pm.Deterministic('I_t', I_t)
+
+    if return_all:
+        return new_I_t, I_t, S_t
+    else:
+        return new_I_t
 
 def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_scale_delay = 0.3,
                 pr_sigma_scale_delay = None, model=None, save_in_trace=True):
@@ -199,7 +347,7 @@ def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_s
     -------
 
     """
-
+    
 
     model = modelcontext(model)
 
@@ -208,7 +356,7 @@ def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_s
                                           np.log(pr_median_delay),
                                           pr_sigma_delay,
                                           len_delay,
-                                          w=0.9)
+                                          w=0.9, error_cauchy=False)
     if delay_L1_log is not None:
         pm.Deterministic('delay_L2', np.exp(delay_L2_log))
         pm.Deterministic('delay_L1', np.exp(delay_L1_log))
@@ -221,13 +369,15 @@ def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_s
                                                   np.log(pr_median_scale_delay),
                                                   pr_sigma_scale_delay,
                                                   len_delay,
-                                                  w=0.9)
-        pm.Deterministic('scale_delay_L2', tt.exp(scale_delay_L2_log))
-        pm.Deterministic('scale_delay_L1', tt.exp(scale_delay_L1_log))
+                                                  w=0.9, error_cauchy=False)
+        if scale_delay_L1_log is not None:
+            pm.Deterministic('scale_delay_L2', tt.exp(scale_delay_L2_log))
+            pm.Deterministic('scale_delay_L1', tt.exp(scale_delay_L1_log))
 
+        else:
+            pm.Deterministic('scale_delay', tt.exp(scale_delay_L2_log))
     else:
-        scale_delay_L2_log=np.log(pr_median_scale_delay)
-        pm.Deterministic('scale_delay', tt.exp(scale_delay_L2_log))
+        scale_delay_L2_log = np.log(pr_median_scale_delay)
 
     num_days_sim = model.shape_sim[0]
     diff_data_sim = model.diff_data_sim
@@ -246,7 +396,6 @@ def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_s
 def week_modulation(new_cases_inferred, week_modulation_type='abs_sine', pr_mean_weekend_factor=0.7,
                     pr_sigma_weekend_factor=0.2, week_end_days = (6,7), model=None, save_in_trace=True):
     """
-
     Parameters
     ----------
     new_cases_inferred
@@ -255,10 +404,8 @@ def week_modulation(new_cases_inferred, week_modulation_type='abs_sine', pr_mean
     pr_sigma_weekend_factor
     week_end_days
     model
-
     Returns
     -------
-
     """
     model = modelcontext(model)
     shape_modulation = list(model.shape_sim)
@@ -297,27 +444,23 @@ def week_modulation(new_cases_inferred, week_modulation_type='abs_sine', pr_mean
         pm.Deterministic('new_cases', new_cases_inferred_eff)
     return new_cases_inferred_eff
 
-
 def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=1, model=None):
     """
-
     Parameters
     ----------
     priors_dict
     change_points_list
     model
-
     Returns
     -------
-
     """
 
     default_priors_change_points = dict(
         pr_median_lambda=pr_median_lambda_0,
         pr_sigma_lambda=pr_sigma_lambda_0,
-        pr_sigma_date_transient=3,
+        pr_sigma_date_transient=2,
         pr_median_transient_len=4,
-        pr_sigma_transient_len=1,
+        pr_sigma_transient_len=0.5,
         pr_mean_date_transient=None,
     )
 
@@ -376,7 +519,7 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
                                                prior_mean,
                                                cp["pr_sigma_date_transient"],
                                                len_L2,
-                                               w=0.5)
+                                               w=0.5,error_cauchy=False, error_fact=1.)
 
 
         tr_time_list.append(tr_time_L2)
@@ -389,7 +532,7 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
                                              np.log(cp["pr_median_transient_len"]),
                                              cp["pr_sigma_transient_len"],
                                              len_L2,
-                                             w=0.7)
+                                             w=0.7,error_cauchy=False)
         if tr_len_L1_log is not None:
             pm.Deterministic(f'transient_len_{i + 1}_L2', tt.exp(tr_len_L2_log))
             pm.Deterministic(f'transient_len_{i + 1}_L1', tt.exp(tr_len_L1_log))
@@ -399,19 +542,17 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
         tr_len_list.append(tt.exp(tr_len_L2_log))
     return lambda_log_list, tr_time_list, tr_len_list
 
-def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=1, model=None):
-    """
 
+def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=0.5, model=None):
+    """
     Parameters
     ----------
     change_points_list
     pr_median_lambda_0
     pr_sigma_lambda_0
     model
-
     Returns
     -------
-
     """
 
 
@@ -443,7 +584,7 @@ def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lamb
     lambda_t_log = sum(lambda_t_list)
 
     pm.Deterministic('lambda_t', tt.exp(lambda_t_log))
-    
+
     return lambda_t_log
 
 
@@ -463,10 +604,8 @@ def hierarchical_normal(name, name_sigma, pr_mean, pr_sigma, len_L2, w=1.0, erro
     pr_beta
     len_Y
     w
-
     Returns
     -------
-
     """
     if not len_L2: # not hierarchical
         Y = pm.Normal(name, mu=pr_mean, sigma=pr_sigma)

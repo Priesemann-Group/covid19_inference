@@ -1,7 +1,10 @@
+import logging
+
 import theano
 import theano.tensor as tt
 import numpy as np
 
+log = logging.getLogger(__name__)
 
 def tt_lognormal(x, mu, sigma):
     distr = 1/x * tt.exp(-((tt.log(x) - mu) ** 2) / (2 * sigma ** 2))
