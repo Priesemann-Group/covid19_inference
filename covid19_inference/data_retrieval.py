@@ -20,15 +20,17 @@ class JHU:
     https://coronavirus.jhu.edu/
 
     Features:
-        - download all files from the online repository of the coronavirus visual dashboard operated by the Johns Hopkins University.
-        - filter by deaths, confirmed cases and recovered cases
-        - filter by country and state
-        - filter by date
+
+    - download all files from the online repository of the coronavirus visual dashboard operated by the Johns Hopkins University.
+    - filter by deaths, confirmed cases and recovered cases
+    - filter by country and state
+    - filter by date
 
     Parameters
     ----------
+
     auto_download : bool, optional
-        whether or not to automatically download the data from jhu (default: false)
+    whether or not to automatically download the data from jhu (default: false)
 
     TODO
     ----
@@ -60,12 +62,12 @@ class JHU:
         Parameters
         ----------
         fp_confirmed,fp_deaths,fp_recovered : str, optional
-            |Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
-            |default: None
-                Automatically uses the default sources
-                |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.cs
-                |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv
-                |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
+            Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
+            default: None
+            Automatically uses the default sources
+            https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.cs
+            https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv
+            https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
         save_to_attributes : bool, optional
             Should the returned dataframe tuple be saved as attributes (default:true)
 
@@ -624,6 +626,7 @@ class RKI:
         - filter by date
         - filter by recovered, deaths and confirmed cases
 
+
     """
     def __init__(self, auto_download=False):
         self.data: pd.DataFrame
@@ -639,6 +642,7 @@ class RKI:
         ----------
         try_max : int, optional
             Maximum number of tries for each query. (default:10)
+
         Returns
         -------
         : pandas.DataFrame
@@ -699,6 +703,7 @@ class RKI:
     def __download_via_old_api(self, try_max=10):
         landkreise_max=412#Strangely there are 412 regions defined by the Robert Koch Insitute in contrast to the offical 294 rural districts or the 401 administrative districts.
         url_id = 'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0/query?where=0%3D0&objectIds=&time=&resultType=none&outFields=idLandkreis&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=true&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token='
+
         url = urllib.request.urlopen(url_id)
         json_data = json.loads(url.read().decode())
         n_data = len(json_data['features'])
@@ -1049,9 +1054,9 @@ class RKI:
         variable : str, optional
             type of variable to return
             possible types are:
-                "AnzahlFall"      : cases (default)
-                "AnzahlTodesfall" : deaths
-                "AnzahlGenesen"   : recovered
+            "AnzahlFall"      : cases (default)
+            "AnzahlTodesfall" : deaths
+            "AnzahlGenesen"   : recovered
         date_type : str, optional
             type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
         level : str, optional
@@ -1193,7 +1198,7 @@ class GOOGLE:
         : pandas.DataFrame
             Containing all the RKI data from arcgis website.
             In the format:
-                [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref]
+            [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref]
         """
         if url is None:
             url = "https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv"

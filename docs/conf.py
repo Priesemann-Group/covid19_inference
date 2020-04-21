@@ -57,13 +57,14 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.todo',
     'sphinx.ext.coverage',
-    'sphinx.ext.mathjax',
+    #'sphinx.ext.mathjax',
     'sphinx.ext.napoleon',
     # 'numpydoc',
     'sphinx.ext.intersphinx',
     'sphinx.ext.viewcode',
     'm2r',
     'sphinx.ext.autosectionlabel',
+    'sphinx.ext.imgmath'
     # 'sphinx_autorun'
 ]
 
@@ -198,6 +199,9 @@ intersphinx_mapping = {'python': ('http://docs.python.org/3', None),
                        'theano': ('http://deeplearning.net/software/theano/', None),
                        'pandas': ('https://pandas.pydata.org/', None),
                        }
+
+imgmath_image_format = 'svg'
+
 
 # -- Options for todo extension ----------------------------------------------
 

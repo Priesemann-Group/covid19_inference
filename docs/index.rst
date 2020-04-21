@@ -42,5 +42,4 @@ Indices and tables
 
 
 
-.. include:: doc/gettingstarted.rst
 
