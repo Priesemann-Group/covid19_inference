@@ -666,7 +666,7 @@ class RKI:
             online_file_date = datetime.datetime.fromtimestamp(1)
 
         #Get last modified date for the repository files
-        if path.exists(url_local):
+        if os.path.exists(url_local):
             current_file_date = datetime.datetime.fromtimestamp(os.path.getmtime(url_local))
         else:
             current_file_date = datetime.datetime.fromtimestamp(2) #the two is important
