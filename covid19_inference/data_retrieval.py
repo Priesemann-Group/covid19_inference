@@ -83,13 +83,6 @@ class JHU:
             fp_recovered = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
 
 
-        #Get last modified date for the repository files
-        try:
-            url = urllib.request.urlopen(url_check_update, timeout=30)
-            online_file_date = datetime.datetime.strptime(url.headers["last-modified"],"%a, %d %b %Y %H:%M:%S GMT")
-        except Exception as e:
-            log.warning("Could not fetch data from online repository of the RKI using local data!")
-            online_file_date = datetime.datetime.fromtimestamp(1)
         return (
             self.download_confirmed(fp_confirmed, save_to_attributes),
             self.download_deaths(fp_deaths, save_to_attributes),
