@@ -208,7 +208,7 @@ def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_s
                                           np.log(pr_median_delay),
                                           pr_sigma_delay,
                                           len_delay,
-                                          w=0.9)
+                                          w=0.9, error_cauchy=False)
     if delay_L1_log is not None:
         pm.Deterministic('delay_L2', np.exp(delay_L2_log))
         pm.Deterministic('delay_L1', np.exp(delay_L1_log))
@@ -221,13 +221,15 @@ def delay_cases(new_I_t, pr_median_delay = 10, pr_sigma_delay = 0.2, pr_median_s
                                                   np.log(pr_median_scale_delay),
                                                   pr_sigma_scale_delay,
                                                   len_delay,
-                                                  w=0.9)
-        pm.Deterministic('scale_delay_L2', tt.exp(scale_delay_L2_log))
-        pm.Deterministic('scale_delay_L1', tt.exp(scale_delay_L1_log))
+                                                  w=0.9, error_cauchy=False)
+        if scale_delay_L1_log is not None:
+            pm.Deterministic('scale_delay_L2', tt.exp(scale_delay_L2_log))
+            pm.Deterministic('scale_delay_L1', tt.exp(scale_delay_L1_log))
 
+        else:
+            pm.Deterministic('scale_delay', tt.exp(scale_delay_L2_log))
     else:
-        scale_delay_L2_log=np.log(pr_median_scale_delay)
-        pm.Deterministic('scale_delay', tt.exp(scale_delay_L2_log))
+        scale_delay_L2_log = np.log(pr_median_scale_delay)
 
     num_days_sim = model.shape_sim[0]
     diff_data_sim = model.diff_data_sim
@@ -315,9 +317,9 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
     default_priors_change_points = dict(
         pr_median_lambda=pr_median_lambda_0,
         pr_sigma_lambda=pr_sigma_lambda_0,
-        pr_sigma_date_transient=3,
+        pr_sigma_date_transient=2,
         pr_median_transient_len=4,
-        pr_sigma_transient_len=1,
+        pr_sigma_transient_len=0.5,
         pr_mean_date_transient=None,
     )
 
@@ -376,7 +378,7 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
                                                prior_mean,
                                                cp["pr_sigma_date_transient"],
                                                len_L2,
-                                               w=0.5)
+                                               w=0.5,error_cauchy=False, error_fact=1.)
 
 
         tr_time_list.append(tr_time_L2)
@@ -389,7 +391,7 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
                                              np.log(cp["pr_median_transient_len"]),
                                              cp["pr_sigma_transient_len"],
                                              len_L2,
-                                             w=0.7)
+                                             w=0.7,error_cauchy=False)
         if tr_len_L1_log is not None:
             pm.Deterministic(f'transient_len_{i + 1}_L2', tt.exp(tr_len_L2_log))
             pm.Deterministic(f'transient_len_{i + 1}_L1', tt.exp(tr_len_L1_log))
@@ -399,7 +401,7 @@ def make_change_point_RVs(change_points_list, pr_median_lambda_0, pr_sigma_lambd
         tr_len_list.append(tt.exp(tr_len_L2_log))
     return lambda_log_list, tr_time_list, tr_len_list
 
-def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=1, model=None):
+def lambda_t_with_sigmoids(change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=0.5, model=None):
     """
 
     Parameters
