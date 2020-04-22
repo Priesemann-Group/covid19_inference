@@ -26,6 +26,7 @@ class JHU:
     - filter by country and state
     - filter by date
 
+
     Parameters
     ----------
 
@@ -320,7 +321,7 @@ class JHU:
                 df["confirmed"] = self.confirmed[(country, state)]
         df.index.name = "date"
         df = self.filter_date(df, begin_date, end_date)
-        return df.drop(df.index[0])
+        return df
 
     def get_new_confirmed(
         self,
@@ -411,7 +412,7 @@ class JHU:
 
         df.index.name = "date"
         df = self.filter_date(df, begin_date, end_date)
-        return df.drop(df.index[0])
+        return df
 
     def get_new_deaths(
         self,
@@ -505,7 +506,7 @@ class JHU:
         df.index.name = "date"
 
         df = self.filter_date(df, begin_date, end_date)
-        return df.drop(df.index[0])
+        return df
 
     def get_new_recovered(
         self,
