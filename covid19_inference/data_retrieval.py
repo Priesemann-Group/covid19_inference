@@ -14,6 +14,37 @@ _format_date = lambda date_py: "{}/{}/{}".format(
 )
 
 
+def iso_3166_add_alternative_name_to_iso_list(country_in_iso_3166:str, alternative_name:str):
+    this_dir = os.path.dirname(__file__)
+    data = json.load(open(this_dir+"/../data/iso_countires.json", 'r'))
+    try:
+        data[country_in_iso_3166].append(alternative_name)
+        log.info("Added alternative '"+alternative_name+"' to "+country_in_iso_3166+".")
+    except Exception as e:
+        raise e
+    json.dump(data, open(this_dir+"/../data/iso_countires.json", 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+
+def iso_3166_convert_to_iso(country_column_df):
+    country_column_df = country_column_df.apply(lambda x: x if iso_3166_country_in_iso_format(x) else iso_3166_get_country_name_from_alternative(x))
+    return country_column_df
+
+def iso_3166_get_country_name_from_alternative(alternative_name:str) -> str:
+    this_dir = os.path.dirname(__file__)
+    data = json.load(open(this_dir+"/../data/iso_countires.json", 'r'))
+    for country, alternatives in data.items():
+        for alt in alternatives:
+            if alt == alternative_name:
+                return country
+    log.info("alternative_name '"+str(alternative_name)+"' is not found in iso convertion list!")
+    return alternative_name
+
+def iso_3166_country_in_iso_format(country:str) -> bool:
+    this_dir = os.path.dirname(__file__)
+    data = json.load(open(this_dir+"/../data/iso_countires.json", 'r'))
+    if country in data:
+        return True
+    return False
+
 class JHU:
     """
     Contains all functions for downloading, filtering and manipulating data from the Johns Hopkins University.
@@ -38,6 +69,10 @@ class JHU:
     Add fallback sources (local copies)
 
     """
+    @property
+    def data(self):
+        return (self.confirmed, self.deaths, self.recovered)
+
 
     def __init__(self, auto_download=False):
         self.confirmed: pd.DataFrame
@@ -84,7 +119,6 @@ class JHU:
             fp_deaths = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
         if fp_recovered is None:
             fp_recovered = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
-
 
         return (
             self.download_confirmed(fp_confirmed, save_to_attributes),
@@ -198,9 +232,10 @@ class JHU:
         """
         try:
             data = pd.read_csv(url, sep=",")
+            data["Country/Region"] = iso_3166_convert_to_iso(data["Country/Region"]) #Do that right after downloading for performance reasons
         except Exception as e:
             print(
-                "Failed to download current data 'confirmed cases', using local copy."
+                "Failed to download from'"+url+"', using local copy."
             )
             this_dir = os.path.dirname(__file__)
             data = pd.read_csv(this_dir + "/../data/" + fallback, sep=",")
@@ -221,13 +256,16 @@ class JHU:
         : pandas.DataFrame
         """
 
+
         # change columns & index
+
         df = df.drop(columns=["Lat", "Long"]).rename(
             columns={"Province/State": "state", "Country/Region": "country"}
         )
-        df = df.set_index(["country", "state"])
+        df = df.set_index(["country", "state"]) 
+        df.columns = pd.to_datetime(df.columns)
+
         # datetime columns
-        df.columns = [datetime.datetime.strptime(d, "%m/%d/%y") for d in df.columns]
         return df.T
 
     def get_confirmed_deaths_recovered(
@@ -690,6 +728,8 @@ class RKI:
         else:
             log.info("Using local file since no new data is available online.")
             df = self.__to_iso(pd.read_csv(url_local, sep=",", compression="gzip"))
+
+
         self.data = df
 
         return df
@@ -1226,11 +1266,11 @@ class GOOGLE:
         #Download file and overwrite old one if it is older
         if online_file_date > current_file_date:
             log.info("Downloading new dataset from repository since it is newer.")
-            df = self.__download_from_source(url)
+            df = self.__to_iso(self.__download_from_source(url))
             df.to_csv(url_local, compression="gzip")
         else:
             log.info("Using local file since no new data is available online.")
-            df = pd.read_csv(url_local, sep=",", compression="gzip")
+            df = self.__to_iso(pd.read_csv(url_local, sep=",", compression="gzip"))
 
         self.data = df
 
@@ -1256,6 +1296,8 @@ class GOOGLE:
 
         try:
             data = pd.read_csv(url, sep=",")
+            log.info("Convert file to iso format, could take some time it is a huge dataset.")
+            data["country_region"] = iso_3166_convert_to_iso(data["country_region"]) # here instead of in iso because of performance reasons
         except Exception as e:
             print(
                 "Failed to download current data 'confirmed cases', using local copy."
@@ -1266,16 +1308,17 @@ class GOOGLE:
 
     def __to_iso(self, df) -> pd.DataFrame:
         # change columns & index
-        df = df.rename(
-            columns={
-                "country_region": "country",
-                "sub_region_1": "state",
-                "sub_region_2": "region",
-            }
-        )
+        if "country_region" in df.columns and "sub_region_1" in df.columns and "sub_region_2" in df.columns:
+            df = df.rename(
+                columns={
+                    "country_region": "country",
+                    "sub_region_1": "state",
+                    "sub_region_2": "region",
+                }
+            )
         df = df.set_index(["country", "state", "region"])
         # datetime columns
-        df["date"] = [datetime.datetime.strptime(d, "%Y-%m-%d") for d in df["date"]]
+        df["date"] = pd.to_datetime(df["date"])
         return df
 
     def get_changes(
