@@ -247,7 +247,7 @@ def SIR(
     N = model.N_population
 
     # Number of regions as tuple of int
-    num_regions = () if model.ndim_sim == 1 else model.shape_sim[1]
+    num_regions = () if model.sim_ndim == 1 else model.sim_shape[1]
 
     # Prior distributions of starting populations (infectious, susceptibles)
     I_begin = pm.HalfCauchy(name="I_begin", beta=pr_beta_I_begin, shape=num_regions)
@@ -344,7 +344,8 @@ def SEIR(
     N = model.N_population
 
     # Number of regions as tuple of int
-    num_regions = () if model.ndim_sim == 1 else model.shape_sim[1]
+    num_regions =  () if model.sim_ndim == 1 else model.sim_shape[1]
+
 
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
     # We choose to consider the transitions of newly exposed people of the last 8 days.
