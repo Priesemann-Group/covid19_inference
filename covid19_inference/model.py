@@ -13,11 +13,37 @@ from . import model_helper as mh
 log = logging.getLogger(__name__)
 
 
-class Cov19_model(Model):
+class Cov19Model(Model):
     """
     Model class used to create a covid-19 propagation dynamics model
-    Usage:
-    with Cov19_model(params)
+
+    Parameters
+    ----------
+    new_cases_obs : 1 or 2d array
+        If the array is two-dimensional, an hierarchical model will be constructed. First dimension is then time,
+        the second the region/country.
+    date_begin_data : datatime.datetime
+        Date of the first data point
+    num_days_forecast : int
+        Number of days the simulations runs longer than the data
+    diff_data_sim : int
+        Number of days the simulation starts earlier than the data. Should be significantly longer than the delay
+        between infection and report of cases.
+    N_population : number or 1d array
+        Number of inhabitance in region, needed for the S(E)IR model. Is ideally 1 dimensional if new_cases_obs is 2 dimensional
+    name : string
+        suffix appended to the name of random variables saved in the trace
+    model :
+        specify a model, if this one should expand another
+
+    Example
+    -------
+    .. code-block::
+
+        with Cov19Model(**params) as model:
+            # Define model here
+
+
     """
 
     def __init__(
@@ -30,27 +56,7 @@ class Cov19_model(Model):
         name="",
         model=None,
     ):
-        """
 
-        Parameters
-        ----------
-        new_cases_obs : 1 or 2d array
-            If the array is two-dimensional, an hierarchical model will be constructed. First dimension is then time,
-            the second the region/country.
-        date_begin_data : datatime.datetime
-            Date of the first data point
-        num_days_forecast : int
-            Number of days the simulations runs longer than the data
-        diff_data_sim : int
-            Number of days the simulation starts earlier than the data. Should be significantly longer than the delay
-            between infection and report of cases.
-        N_population : number or 1d array
-            Number of inhabitance in region, needed for the S(E)IR model. Is ideally 1 dimensional if new_cases_obs is 2 dimensional
-        name : string
-            suffix appended to the name of random variables saved in the trace
-        model :
-            specify a model, if this one should expand another
-        """
         super().__init__(name=name, model=model)
 
         self.new_cases_obs = np.array(new_cases_obs)
@@ -79,7 +85,7 @@ def modelcontext(model):
     none supplied.
     """
     if model is None:
-        return Cov19_model.get_context()
+        return Cov19Model.get_context()
     return model
 
 
@@ -133,7 +139,7 @@ def SIR(
         .. math::
 
             I_{new}(t) &= \lambda_t I(t-1)  \frac{S(t-1)}{N}   \\
-            S(t) &= S(t-1) - I_{new}(t) \\
+            S(t) &= S(t-1) - I_{new}(t)  \\
             I(t) &= I(t-1) + I_{new}(t) - \mu  I(t)
 
         The prior distribution of the recovery rate :math:`\mu` is set to
@@ -155,8 +161,8 @@ def SIR(
         pr_sigma_mu : float or array_like
             Prior for the sigma of the lognormal distribution of recovery rate :math:`\mu`.
 
-        model : :class:`Cov19_model`
-            if none, retrieves from context
+        model : :class:`Cov19Model`
+            if none, it is retrieved from the context
 
         return_all : bool
             if True, returns ``new_I_t``, ``I_t``, ``S_t`` otherwise returns only ``new_I_t``
@@ -239,7 +245,6 @@ def SEIR(
         ----------
         lambda_t_log : 1 or 2d theano tensor
             time series of the logarithm of the spreading rate
-
         pr_beta_I_begin : int
             scale parameter value for prior distribution of starting number of infectious population
         pr_beta_new_E_begin : int
@@ -250,8 +255,8 @@ def SEIR(
         pr_sigma_mu : float
             scale parameter value for prior distribution of recovery rate
 
-        model : Cov19_Model
-            if none, retrievs from context
+        model : :class:`Cov19Model`
+            if none, it is retrieved from the context
 
         return_all : Bool
             if True, returns new_I_t, I_t, S_t otherwise returns only new_I_t
@@ -361,19 +366,50 @@ def delay_cases(
     pr_sigma_scale_delay=None,
     model=None,
     save_in_trace=True,
+    name_delay = "delay",
+    name_delayed_cases = "new_cases_raw"
 ):
-    """
+    r"""
+        Convolves the input by a lognormal distribution, in order to model a delay:
 
-    Parameters
-    ----------
-    new_I_t
-    pr_median_delay
-    scale_delay
-    pr_sigma_delay
-    model
+        .. math::
 
-    Returns
-    -------
+            y_\text{delayed}(t) &= \sum_{\tau=0}^T y_\text{input}(\tau) LogNormal[log(\text{delay}), \text{pr\_median\_scale\_delay}](t - \tau)\\
+            log(\text{delay}) &= Normal(log(\text{pr\_sigma\_delay}), \text{pr\_sigma\_delay})
+
+        For clarification: the :math:`LogNormal` distribution is a function evaluated at :math:`t - \tau`.
+
+        If the model is 2-dimensional, the :math:`log(\text{delay})` is hierarchically modelled with the
+        :func:`hierarchical_normal` function using the default parameters except that the
+        prior :math:`\sigma` of :math:`\text{delay}_\text{L2}` is HalfNormal distributed (``error_cauchy=False``).
+
+
+        Parameters
+        ----------
+        new_I_t : :class:`~theano.tensor.TensorVariable`
+            The input, typically the number newly infected cases :math:`I_{new}(t)` of from the output of
+            :func:`SIR` or :func:`SEIR`.
+        pr_median_delay : float
+            The prior of the median delay
+        scale_delay : float
+            The scale of the delay, that is how wide the distribution is.
+        pr_sigma_delay : float
+            The prior for the sigma of the median delay distribution.
+        model : :class:`Cov19Model`
+            if none, it is retrieved from the context
+        save_in_trace : bool
+            whether to save :math:`y_\text{delayed}` in the trace
+        name_delay : str
+            The name under which the delay is saved in the trace, suffixes and prefixes are added depending on which
+            variable is saved.
+        name_delayed_cases : str
+            The name under which the delay is saved in the trace, suffixes and prefixes are added depending on which
+            variable is saved.
+
+        Returns
+        -------
+        new_cases_inferred : :class:`~theano.tensor.TensorVariable`
+            The delayed input :math:`y_\text{delayed}(t)`, typically the daily number new cases that one expects to measure.
 
     """
 
@@ -382,8 +418,8 @@ def delay_cases(
 
     len_delay = () if model.ndim_sim == 1 else model.shape_sim[1]
     delay_L2_log, delay_L1_log = hierarchical_normal(
-        "delay_log",
-        "sigma_delay",
+        name_delay+"_log",
+        "sigma_" + name_delay,
         np.log(pr_median_delay),
         pr_sigma_delay,
         len_delay,
@@ -391,15 +427,15 @@ def delay_cases(
         error_cauchy=False,
     )
     if delay_L1_log is not None:
-        pm.Deterministic("delay_L2", np.exp(delay_L2_log))
-        pm.Deterministic("delay_L1", np.exp(delay_L1_log))
+        pm.Deterministic(f"{name_delay}_L2", np.exp(delay_L2_log))
+        pm.Deterministic(f"{name_delay}_L1", np.exp(delay_L1_log))
     else:
-        pm.Deterministic("delay", np.exp(delay_L2_log))
+        pm.Deterministic(f"{name_delay}", np.exp(delay_L2_log))
 
     if pr_sigma_scale_delay is not None:
         scale_delay_L2_log, scale_delay_L1_log = hierarchical_normal(
-            "scale_delay",
-            "sigma_scale_delay",
+            "scale_" + name_delay,
+            "sigma_scale_" + name_delay,
             np.log(pr_median_scale_delay),
             pr_sigma_scale_delay,
             len_delay,
@@ -407,11 +443,11 @@ def delay_cases(
             error_cauchy=False,
         )
         if scale_delay_L1_log is not None:
-            pm.Deterministic("scale_delay_L2", tt.exp(scale_delay_L2_log))
-            pm.Deterministic("scale_delay_L1", tt.exp(scale_delay_L1_log))
+            pm.Deterministic(f"scale_{name_delay}_L2", tt.exp(scale_delay_L2_log))
+            pm.Deterministic(f"scale_{name_delay}_L1", tt.exp(scale_delay_L1_log))
 
         else:
-            pm.Deterministic('scale_delay', tt.exp(scale_delay_L2_log))
+            pm.Deterministic(f'scale_{name_delay}', tt.exp(scale_delay_L2_log))
     else:
         scale_delay_L2_log = np.log(pr_median_scale_delay)
 
@@ -426,7 +462,7 @@ def delay_cases(
         delay_betw_input_output=diff_data_sim,
     )
     if save_in_trace:
-        pm.Deterministic("new_cases_raw", new_cases_inferred)
+        pm.Deterministic(name_delayed_cases, new_cases_inferred)
 
     return new_cases_inferred
 
@@ -669,31 +705,61 @@ def hierarchical_normal(
     len_L2,
     w=1.0,
     error_fact=2.0,
-    error_cauchy=True,
+    error_cauchy=True
 ):
-    """
-    Takes ideas from https://arxiv.org/pdf/1312.0906.pdf (see also https://arxiv.org/pdf/0708.3797.pdf and
-     https://pdfs.semanticscholar.org/7b85/fb48a077c679c325433fbe13b87560e12886.pdf)
-    and https://projecteuclid.org/euclid.ba/1340371048 chapter 6
+    r"""
+    Implements an hierarchical normal model:
+
+    .. math::
+
+        x_\text{L1} &= Normal(\text{pr\_mean}, \text{pr\_sigma})\\
+        y_{i, \text{L2}} &= Normal(x_\text{L1}, \sigma_\text{L2})\\
+        \sigma_\text{L2} &= HalfCauchy(\text{error\_fact} \cdot \text{pr\_sigma})
+
+    It is however implemented in a non-central way, that the second line is changed to:
+
+     .. math::
+
+        y_{i, \text{L2}} &= x_\text{L1} +  Normal(0,1) \cdot \sigma_\text{L2}
+
+    See for example https://arxiv.org/pdf/1312.0906.pdf
+
 
     Parameters
     ----------
-    name_Y
-    name_X
-    name_sigma_Y
-    pr_mean
-    pr_sigma
-    pr_beta
-    len_Y
-    w
+    name : basestring
+        Name under which :math:`x_\text{L1}` and :math:`y_\text{L2}` saved in the trace. ``'_L1'`` and ``'_L2'``
+        is appended
+    name_sigma : basestring
+        Name under which :math:`\sigma_\text{L2}` saved in the trace. ``'_L2'`` is appended.
+    pr_mean : float
+        Prior mean of :math:`x_\text{L1}`
+    pr_sigma : float
+        Prior sigma for :math:`x_\text{L1}` and (muliplied by ``error_fact``) for :math:`\sigma_\text{L2}`
+    len_L2 : int
+        length of :math:`y_\text{L2}`
+    error_fact : float
+        Factor by which ``pr_sigma`` is multiplied as prior for `\sigma_\text{L2}`
+    error_cauchy : bool
+        if False, a :math:`HalfNormal` distribution is used for :math:`\sigma_\text{L2}` instead of :math:`HalfCauchy`
 
     Returns
     -------
+    y : :class:`~theano.tensor.TensorVariable`
+        the random variable :math:`y_\text{L2}`
+    x : :class:`~theano.tensor.TensorVariable`
+        the random variable :math:`x_\text{L1}`
+
+    Todo
+    ----
+    Think about the sigma prior, whether one should model it hierarchically:
+    https://projecteuclid.org/download/pdf_1/euclid.ba/1340371048 section 6
 
     """
     if not len_L2:  # not hierarchical
         Y = pm.Normal(name, mu=pr_mean, sigma=pr_sigma)
-        return Y, None
+        X = None
+
     else:
         w = 1.0
         if error_cauchy:
@@ -707,14 +773,15 @@ def hierarchical_normal(
         )  # (1-w**2)*sigma_X+1*w**2, shape=len_Y)
         Y = w * X + phi * sigma_Y
         pm.Deterministic(name + "_L2", Y)
-        return Y, X
+
+    return Y, X
 
 
 def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2):
 
     if not len_L2:  # not hierarchical
         Y = pm.Beta(name, alpha=pr_mean / pr_sigma, beta=1 / pr_sigma * (1 - pr_mean))
-        return Y, None
+        X = None
     else:
         sigma_Y = pm.HalfCauchy(name_sigma + "_L2", beta=pr_sigma)
         X = pm.Beta(
@@ -723,4 +790,5 @@ def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2):
         Y = pm.Beta(
             name + "_L2", alpha=X / sigma_Y, beta=1 / sigma_Y * (1 - X), shape=len_L2
         )
-        return Y, X
+
+    return Y, X

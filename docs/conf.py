@@ -140,7 +140,6 @@ html_theme_options = {
     'navigation_depth': 4,
     'sticky_navigation': True,
 }
-
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
@@ -201,6 +200,8 @@ intersphinx_mapping = {'python': ('http://docs.python.org/3', None),
                        }
 
 imgmath_image_format = 'svg'
+imgmath_font_size = 14
+
 
 
 # -- Options for todo extension ----------------------------------------------
