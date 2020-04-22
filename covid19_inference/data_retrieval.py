@@ -14,36 +14,53 @@ _format_date = lambda date_py: "{}/{}/{}".format(
 )
 
 
-def iso_3166_add_alternative_name_to_iso_list(country_in_iso_3166:str, alternative_name:str):
+def iso_3166_add_alternative_name_to_iso_list(
+    country_in_iso_3166: str, alternative_name: str
+):
     this_dir = os.path.dirname(__file__)
-    data = json.load(open(this_dir+"/../data/iso_countires.json", 'r'))
+    data = json.load(open(this_dir + "/../data/iso_countires.json", "r"))
     try:
         data[country_in_iso_3166].append(alternative_name)
-        log.info("Added alternative '"+alternative_name+"' to "+country_in_iso_3166+".")
+        log.info("Added alternative '{alternative_name}' to {country_in_iso_3166}.")
     except Exception as e:
         raise e
-    json.dump(data, open(this_dir+"/../data/iso_countires.json", 'w', encoding='utf-8'), ensure_ascii=False, indent=4)
+    json.dump(
+        data,
+        open(this_dir + "/../data/iso_countires.json", "w", encoding="utf-8"),
+        ensure_ascii=False,
+        indent=4,
+    )
+
 
 def iso_3166_convert_to_iso(country_column_df):
-    country_column_df = country_column_df.apply(lambda x: x if iso_3166_country_in_iso_format(x) else iso_3166_get_country_name_from_alternative(x))
+    country_column_df = country_column_df.apply(
+        lambda x: x
+        if iso_3166_country_in_iso_format(x)
+        else iso_3166_get_country_name_from_alternative(x)
+    )
     return country_column_df
 
-def iso_3166_get_country_name_from_alternative(alternative_name:str) -> str:
+
+def iso_3166_get_country_name_from_alternative(alternative_name: str) -> str:
     this_dir = os.path.dirname(__file__)
-    data = json.load(open(this_dir+"/../data/iso_countires.json", 'r'))
+    data = json.load(open(this_dir + "/../data/iso_countires.json", "r"))
     for country, alternatives in data.items():
         for alt in alternatives:
             if alt == alternative_name:
                 return country
-    log.info("alternative_name '"+str(alternative_name)+"' is not found in iso convertion list!")
+    log.info(
+        f"alternative_name '{str(alternative_name)}' is not found in iso convertion list!"
+    )
     return alternative_name
 
-def iso_3166_country_in_iso_format(country:str) -> bool:
+
+def iso_3166_country_in_iso_format(country: str) -> bool:
     this_dir = os.path.dirname(__file__)
-    data = json.load(open(this_dir+"/../data/iso_countires.json", 'r'))
+    data = json.load(open(this_dir + "/../data/iso_countires.json", "r"))
     if country in data:
         return True
     return False
+
 
 class JHU:
     """
@@ -69,10 +86,10 @@ class JHU:
     Add fallback sources (local copies)
 
     """
+
     @property
     def data(self):
         return (self.confirmed, self.deaths, self.recovered)
-
 
     def __init__(self, auto_download=False):
         self.confirmed: pd.DataFrame
@@ -81,7 +98,6 @@ class JHU:
 
         if auto_download:
             self.download_all_available_data()
-
 
     def download_all_available_data(
         self,
@@ -232,11 +248,11 @@ class JHU:
         """
         try:
             data = pd.read_csv(url, sep=",")
-            data["Country/Region"] = iso_3166_convert_to_iso(data["Country/Region"]) #Do that right after downloading for performance reasons
+            data["Country/Region"] = iso_3166_convert_to_iso(
+                data["Country/Region"]
+            )  # Do that right after downloading for performance reasons
         except Exception as e:
-            print(
-                "Failed to download from'"+url+"', using local copy."
-            )
+            print("Failed to download from'" + url + "', using local copy.")
             this_dir = os.path.dirname(__file__)
             data = pd.read_csv(this_dir + "/../data/" + fallback, sep=",")
         return data
@@ -256,13 +272,12 @@ class JHU:
         : pandas.DataFrame
         """
 
-
         # change columns & index
 
         df = df.drop(columns=["Lat", "Long"]).rename(
             columns={"Province/State": "state", "Country/Region": "country"}
         )
-        df = df.set_index(["country", "state"]) 
+        df = df.set_index(["country", "state"])
         df.columns = pd.to_datetime(df.columns)
 
         # datetime columns
@@ -667,16 +682,17 @@ class RKI:
 
 
     """
+
     def __init__(self, auto_download=False):
         self.data: pd.DataFrame
 
         if auto_download:
             self.download_all_available_data()
 
-    def download_all_available_data(self)-> pd.DataFrame:
-        '''
+    def download_all_available_data(self) -> pd.DataFrame:
+        """
         Attempts to download the most current data from the Robert Koch Institute. Separated into the different regions (landkreise).
-        
+
         Parameters
         ----------
         try_max : int, optional
@@ -687,112 +703,151 @@ class RKI:
         : pandas.DataFrame
             Containing all the RKI data from arcgis website.
             In the format:
-                [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref, Datenstand, ]  
+                [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref, Datenstand, ]
 
-        '''
+        """
 
         this_dir = os.path.dirname(__file__)
-        #We need an extra url since for some reason the normal dataset website has no headers :/ --> But they get updated from the same source so that should work
+        # We need an extra url since for some reason the normal dataset website has no headers :/ --> But they get updated from the same source so that should work
         url_fulldata = "https://www.arcgis.com/sharing/rest/content/items/f10774f1c63e40168479a1feb6c7ca74/data"
 
-        url_check_update ="https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0/query?where=0%3D0&objectIds=&time=&resultType=none&outFields=Datenstand&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=true&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token="
-        
-        #Path to the local fallback file
+        url_check_update = "https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0/query?where=0%3D0&objectIds=&time=&resultType=none&outFields=Datenstand&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=true&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token="
+
+        # Path to the local fallback file
         url_local = this_dir + "/../data/rki_fallback_gzip.dat"
 
-        #Loads local copy and gets latest data date
+        # Loads local copy and gets latest data date
         df = None
 
         try:
             log.info("Loading local file.")
 
-            #Local copy should be properly formated, so no __to_iso() used
+            # Local copy should be properly formated, so no __to_iso() used
             df = pd.read_csv(url_local, sep=",", compression="gzip")
 
-            current_file_date = datetime.datetime.strptime(df.Datenstand.unique()[0],"%d.%m.%Y, %H:%M Uhr")
+            current_file_date = datetime.datetime.strptime(
+                df.Datenstand.unique()[0], "%d.%m.%Y, %H:%M Uhr"
+            )
 
         except Exception as e:
             log.warning("Local file not available!")
             current_file_date = datetime.datetime.fromtimestamp(0)
 
-        #Get last modified date for the repository files
+        # Get last modified date for the repository files
         try:
             with urllib.request.urlopen(url_check_update) as url:
                 json_data = json.loads(url.read().decode())
 
-            if len(json_data['features']) > 1:
-                raise RuntimeError("Date checking file has more than one Datenstand. This should not happen.")
+            if len(json_data["features"]) > 1:
+                raise RuntimeError(
+                    "Date checking file has more than one Datenstand. This should not happen."
+                )
 
-            online_file_date = datetime.datetime.strptime(json_data['features'][0]['attributes']['Datenstand'],"%d.%m.%Y, %H:%M Uhr")
+            online_file_date = datetime.datetime.strptime(
+                json_data["features"][0]["attributes"]["Datenstand"],
+                "%d.%m.%Y, %H:%M Uhr",
+            )
 
         except Exception as e:
             log.warning("Could not fetch data date from online repository of the RKI")
             online_file_date = datetime.datetime.fromtimestamp(1)
 
-        #Download file and overwrite old one if it is older
+        # Download file and overwrite old one if it is older
         if online_file_date > current_file_date:
             log.info("Downloading new dataset from repository since it is newer.")
             try:
                 df = self.__to_iso(pd.read_csv(url_fulldata, sep=","))
 
             except Exception as e:
-                log.warning("Download Failed! Trying downloading via rest api. May take longer!")
+                log.warning(
+                    "Download Failed! Trying downloading via rest api. May take longer!"
+                )
 
                 try:
-                    #Dates already are datetime, so no __to_iso used
+                    # Dates already are datetime, so no __to_iso used
                     df = self.__download_via_rest_api(try_max=10)
 
                 except Exception as e:
                     log.warning("Downloading from the rest api also failed!")
 
                     if df is None:
-                        raise RuntimeError('No source to obtain RKI data from.')
+                        raise RuntimeError("No source to obtain RKI data from.")
 
-            log.info("Overwriting /data/rki_fallback_gzip.dat fallback with newest downloaded ones")
+            log.info(
+                "Overwriting /data/rki_fallback_gzip.dat fallback with newest downloaded ones"
+            )
             df.to_csv(url_local, compression="gzip", index=False)
         else:
             log.info("Using local file since no new data is available online.")
             df = self.__to_iso(pd.read_csv(url_local, sep=",", compression="gzip"))
-
 
         self.data = df
 
         return df
 
     def __to_iso(self, df) -> pd.DataFrame:
-        if 'Meldedatum' in df.columns:
-            df['date'] = df['Meldedatum'].apply(lambda x: datetime.datetime.strptime(x,"%Y-%m-%dT%H:%M:%S.000Z"))
-            df = df.drop(columns='Meldedatum')
-        if 'Refdatum' in df.columns:
-            df['date_ref'] = df['Refdatum'].apply(lambda x: datetime.datetime.strptime(x,"%Y-%m-%dT%H:%M:%S.000Z"))
-            df = df.drop(columns='Refdatum')
+        if "Meldedatum" in df.columns:
+            df["date"] = df["Meldedatum"].apply(
+                lambda x: datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S.000Z")
+            )
+            df = df.drop(columns="Meldedatum")
+        if "Refdatum" in df.columns:
+            df["date_ref"] = df["Refdatum"].apply(
+                lambda x: datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S.000Z")
+            )
+            df = df.drop(columns="Refdatum")
 
-        df['date'] = pd.to_datetime(df['date'])
-        df['date_ref'] = pd.to_datetime(df['date_ref'])
+        df["date"] = pd.to_datetime(df["date"])
+        df["date_ref"] = pd.to_datetime(df["date_ref"])
         return df
 
     def __download_via_rest_api(self, try_max=10):
-        landkreise_max=412#Strangely there are 412 regions defined by the Robert Koch Insitute in contrast to the offical 294 rural districts or the 401 administrative districts.
-        url_id = 'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0/query?where=0%3D0&objectIds=&time=&resultType=none&outFields=idLandkreis&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=true&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token='
+        landkreise_max = 412  # Strangely there are 412 regions defined by the Robert Koch Insitute in contrast to the offical 294 rural districts or the 401 administrative districts.
+        url_id = "https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0/query?where=0%3D0&objectIds=&time=&resultType=none&outFields=idLandkreis&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=true&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token="
 
         url = urllib.request.urlopen(url_id)
         json_data = json.loads(url.read().decode())
-        n_data = len(json_data['features'])
-        unique_ids = [json_data['features'][i]['attributes']['IdLandkreis'] for i in range(n_data)]
+        n_data = len(json_data["features"])
+        unique_ids = [
+            json_data["features"][i]["attributes"]["IdLandkreis"] for i in range(n_data)
+        ]
 
-        #If the number of landkreise is smaller than landkreise_max, uses local copy (query system can behave weirdly during updates)
+        # If the number of landkreise is smaller than landkreise_max, uses local copy (query system can behave weirdly during updates)
         if n_data >= landkreise_max:
 
-            print('Downloading {:d} unique Landkreise. May take a while.\n'.format(n_data))
+            print(
+                "Downloading {:d} unique Landkreise. May take a while.\n".format(n_data)
+            )
 
-            df_keys = ['IdBundesland', 'Bundesland', 'Landkreis', 'Altersgruppe', 'Geschlecht','AnzahlFall', 'AnzahlTodesfall', 'ObjectId', 'IdLandkreis','Datenstand', 'NeuerFall', 'NeuerTodesfall', 'NeuGenesen','AnzahlGenesen', 'date', 'date_ref']
+            df_keys = [
+                "IdBundesland",
+                "Bundesland",
+                "Landkreis",
+                "Altersgruppe",
+                "Geschlecht",
+                "AnzahlFall",
+                "AnzahlTodesfall",
+                "ObjectId",
+                "IdLandkreis",
+                "Datenstand",
+                "NeuerFall",
+                "NeuerTodesfall",
+                "NeuGenesen",
+                "AnzahlGenesen",
+                "date",
+                "date_ref",
+            ]
 
             df = pd.DataFrame(columns=df_keys)
 
-            #Fills DF with data from all landkreise
+            # Fills DF with data from all landkreise
             for idlandkreis in unique_ids:
-                
-                url_str = 'https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0//query?where=IdLandkreis%3D'+ idlandkreis + '&objectIds=&time=&resultType=none&outFields=Bundesland%2C+Landkreis%2C+IdBundesland%2C+ObjectId%2C+IdLandkreis%2C+Altersgruppe%2C+Geschlecht%2C+AnzahlFall%2C+AnzahlTodesfall%2C+Meldedatum%2C+NeuerFall%2C+Refdatum%2C+Datenstand%2C+NeuGenesen%2C+AnzahlGenesen&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=false&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token='
+
+                url_str = (
+                    "https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0//query?where=IdLandkreis%3D"
+                    + idlandkreis
+                    + "&objectIds=&time=&resultType=none&outFields=Bundesland%2C+Landkreis%2C+IdBundesland%2C+ObjectId%2C+IdLandkreis%2C+Altersgruppe%2C+Geschlecht%2C+AnzahlFall%2C+AnzahlTodesfall%2C+Meldedatum%2C+NeuerFall%2C+Refdatum%2C+Datenstand%2C+NeuGenesen%2C+AnzahlGenesen&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=false&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token="
+                )
 
                 count_try = 0
 
@@ -801,33 +856,40 @@ class RKI:
                         with urllib.request.urlopen(url_str) as url:
                             json_data = json.loads(url.read().decode())
 
-                        n_data = len(json_data['features'])
+                        n_data = len(json_data["features"])
 
                         if n_data > 5000:
-                            raise ValueError('Query limit exceeded')
+                            raise ValueError("Query limit exceeded")
 
-                        data_flat = [json_data['features'][i]['attributes'] for i in range(n_data)]
+                        data_flat = [
+                            json_data["features"][i]["attributes"]
+                            for i in range(n_data)
+                        ]
 
                         break
 
                     except:
-                        count_try += 1           
+                        count_try += 1
 
                 if count_try == try_max:
-                    raise ValueError('Maximum limit of tries exceeded.')
+                    raise ValueError("Maximum limit of tries exceeded.")
 
                 df_temp = pd.DataFrame(data_flat)
-            
-                #Very inneficient, but it will do
+
+                # Very inneficient, but it will do
                 df = pd.concat([df, df_temp], ignore_index=True)
 
-            df['date'] = df['Meldedatum'].apply(lambda x: datetime.datetime.fromtimestamp(x/1e3))   
-            df['date_ref'] = df['Refdatum'].apply(lambda x: datetime.datetime.fromtimestamp(x/1e3))   
-            df = df.drop(columns='Meldedatum')
-            df = df.drop(columns='Refdatum')
+            df["date"] = df["Meldedatum"].apply(
+                lambda x: datetime.datetime.fromtimestamp(x / 1e3)
+            )
+            df["date_ref"] = df["Refdatum"].apply(
+                lambda x: datetime.datetime.fromtimestamp(x / 1e3)
+            )
+            df = df.drop(columns="Meldedatum")
+            df = df.drop(columns="Refdatum")
 
         else:
-            raise RuntimeError('Invalid response from REST api')
+            raise RuntimeError("Invalid response from REST api")
 
         return df
 
@@ -1270,21 +1332,24 @@ class GOOGLE:
         if url is None:
             url = "https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv"
 
-
         this_dir = os.path.dirname(__file__)
 
-        #Path to the local fallback file
-        url_local    = this_dir + "/../data/google_fallback_gzip.dat"
+        # Path to the local fallback file
+        url_local = this_dir + "/../data/google_fallback_gzip.dat"
 
-        #Get last modified dates for the files
+        # Get last modified dates for the files
         conn = urllib.request.urlopen(url, timeout=30)
-        online_file_date = datetime.datetime.strptime(conn.headers["last-modified"],"%a, %d %b %Y %H:%M:%S GMT")
+        online_file_date = datetime.datetime.strptime(
+            conn.headers["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"
+        )
         try:
-            current_file_date = datetime.datetime.fromtimestamp(os.path.getmtime(url_local))
+            current_file_date = datetime.datetime.fromtimestamp(
+                os.path.getmtime(url_local)
+            )
         except:
             current_file_date = datetime.datetime.fromtimestamp(2)
 
-        #Download file and overwrite old one if it is older
+        # Download file and overwrite old one if it is older
         if online_file_date > current_file_date:
             log.info("Downloading new dataset from repository since it is newer.")
             df = self.__to_iso(self.__download_from_source(url))
@@ -1317,19 +1382,29 @@ class GOOGLE:
 
         try:
             data = pd.read_csv(url, sep=",")
-            log.info("Convert file to iso format, could take some time it is a huge dataset.")
-            data["country_region"] = iso_3166_convert_to_iso(data["country_region"]) # here instead of in iso because of performance reasons
+            log.info(
+                "Convert file to iso format, could take some time it is a huge dataset."
+            )
+            data["country_region"] = iso_3166_convert_to_iso(
+                data["country_region"]
+            )  # here instead of in iso because of performance reasons
         except Exception as e:
             print(
                 "Failed to download current data 'confirmed cases', using local copy."
             )
             this_dir = os.path.dirname(__file__)
-            data = pd.read_csv(this_dir + "/../data/" + fallback, sep=",", low_memory=False)
+            data = pd.read_csv(
+                this_dir + "/../data/" + fallback, sep=",", low_memory=False
+            )
         return data
 
     def __to_iso(self, df) -> pd.DataFrame:
         # change columns & index
-        if "country_region" in df.columns and "sub_region_1" in df.columns and "sub_region_2" in df.columns:
+        if (
+            "country_region" in df.columns
+            and "sub_region_1" in df.columns
+            and "sub_region_2" in df.columns
+        ):
             df = df.rename(
                 columns={
                     "country_region": "country",
