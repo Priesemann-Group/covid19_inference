@@ -252,7 +252,7 @@ class JHU:
                 data["Country/Region"]
             )  # Do that right after downloading for performance reasons
         except Exception as e:
-            print("Failed to download from'" + url + "', using local copy.")
+            log.info(f"Failed to download from {url}, using local copy.")
             this_dir = os.path.dirname(__file__)
             data = pd.read_csv(this_dir + "/../data/" + fallback, sep=",")
         return data
@@ -814,11 +814,7 @@ class RKI:
 
         # If the number of landkreise is smaller than landkreise_max, uses local copy (query system can behave weirdly during updates)
         if n_data >= landkreise_max:
-
-            print(
-                "Downloading {:d} unique Landkreise. May take a while.\n".format(n_data)
-            )
-
+            log.info(f"Downloading {n_data} unique Landkreise. May take a while.\n")
             df_keys = [
                 "IdBundesland",
                 "Bundesland",
@@ -1389,7 +1385,7 @@ class GOOGLE:
                 data["country_region"]
             )  # here instead of in iso because of performance reasons
         except Exception as e:
-            print(
+            log.info(
                 "Failed to download current data 'confirmed cases', using local copy."
             )
             this_dir = os.path.dirname(__file__)

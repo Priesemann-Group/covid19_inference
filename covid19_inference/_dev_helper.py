@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-21 08:57:53
-# @Last Modified: 2020-04-21 19:14:53
+# @Last Modified: 2020-04-22 21:56:29
 # ------------------------------------------------------------------------------ #
 # Let's have a dummy instance of model and trace so we can play around with the
 # interface and plotting.
@@ -79,7 +79,7 @@ def create_example_instance(num_change_points=3):
         N_population=83e6,
     )
 
-    with Cov19_model(**params_model) as model:
+    with Cov19Model(**params_model) as model:
         lambda_t_log = lambda_t_with_sigmoids(
             pr_median_lambda_0=0.4, change_points_list=change_points
         )
