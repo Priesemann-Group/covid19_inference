@@ -30,6 +30,7 @@
     :maxdepth: 2
     :caption: For developpers
 
+    doc/contributing
     doc/debugging
 
 
