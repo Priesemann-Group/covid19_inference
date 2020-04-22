@@ -689,16 +689,21 @@ class RKI:
             df.to_csv(url_local, compression="gzip")
         else:
             log.info("Using local file since no new data is available online.")
-            df = pd.read_csv(url_local, sep=",", compression="gzip")
+            df = self.__to_iso(pd.read_csv(url_local, sep=",", compression="gzip"))
         self.data = df
 
         return df
 
     def __to_iso(self, df) -> pd.DataFrame:
-
-        df['date'] = df['Meldedatum'].apply(lambda x: datetime.datetime.strptime(x,"%Y-%m-%dT%H:%M:%S.000Z"))   
-        df['date_ref'] = df['Refdatum'].apply(lambda x: datetime.datetime.strptime(x,"%Y-%m-%dT%H:%M:%S.000Z"))
-        df = df.drop(columns=['Meldedatum','Refdatum'])
+        if 'Meldedatum' in df.columns:
+            df['date'] = df['Meldedatum'].apply(lambda x: datetime.datetime.strptime(x,"%Y-%m-%dT%H:%M:%S.000Z"))
+            df = df.drop(columns='Meldedatum')
+        if 'Refdatum' in df.columns:
+            df['date_ref'] = df['Refdatum'].apply(lambda x: datetime.datetime.strptime(x,"%Y-%m-%dT%H:%M:%S.000Z"))
+            df = df.drop(columns='Refdatum')
+        
+        df['date'] = pd.to_datetime(df['date'])
+        df['date_ref'] = pd.to_datetime(df['date_ref'])
         return df
 
     def __download_via_old_api(self, try_max=10):
