@@ -284,137 +284,6 @@ def SIR(
     else:
         return new_I_t
 
-def SEIR(
-    lambda_t_log,
-    pr_beta_I_begin=100,
-    pr_beta_new_E_begin=50,
-    pr_median_mu=1 / 8,
-    median_incubation=5,
-    sigma_incubation=0.418,
-    pr_sigma_mu=0.2,
-    model=None,
-    return_all=False,
-    save_all=False
-    ):
-    """
-        Implements the susceptible-exposed-infected-recovered model
-
-        Parameters
-        ----------
-        lambda_t_log : 1 or 2d theano tensor
-            time series of the logarithm of the spreading rate
-        pr_beta_I_begin : int
-            scale parameter value for prior distribution of starting number of infectious population
-        pr_beta_new_E_begin : int
-            scale parameter value for prior distribution of starting number of newly exposed population
-            assumed smaller than total infectious population
-        pr_median_mu : float
-            median recovery rate; parameter value for prior distribution of recovery rate
-        pr_sigma_mu : float
-            scale parameter value for prior distribution of recovery rate
-
-        model : :class:`Cov19Model`
-            if none, it is retrieved from the context
-
-        return_all : Bool
-            if True, returns new_I_t, I_t, S_t otherwise returns only new_I_t
-        save_all : Bool
-            if True, saves new_I_t, I_t, S_t in the trace, otherwise it saves only new_I_t
-
-        Returns
-        -------
-
-        new_I_t : array
-            time series of the new infected
-        I_t : array
-            time series of the infected (if return_all set to True)
-        S_t : array
-            time series of the susceptible (if return_all set to True)
-
-    """
-    model = modelcontext(model)
-
-
-    # Build prior distrubutions:
-    #--------------------------
-
-    # Prior distribution of recovery rate mu
-    mu = pm.Lognormal(
-        name="mu",
-        mu=np.log(pr_median_mu),
-        sigma=pr_sigma_mu,
-    )
-
-    # Total number of people in population
-    N = model.N_population
-
-    # Number of regions as tuple of int
-    num_regions = () if model.ndim_sim == 1 else model.shape_sim[1]
-
-    # Prior distributions of starting populations (exposed, infectious, susceptibles)
-    # We choose to consider the transitions of newly exposed people of the last 8 days.
-    if num_regions == ():
-        new_E_begin = pm.HalfCauchy(name="E_begin", beta=pr_beta_new_E_begin, shape=9)
-    else:
-        new_E_begin = pm.HalfCauchy(name="E_begin", beta=pr_beta_new_E_begin, shape=(9, num_regions))
-    I_begin = pm.HalfCauchy(name="I_begin", beta=pr_beta_I_begin, shape=num_regions)
-    S_begin = N - I_begin - pm.math.sum(new_E_begin, axis=0)
-
-    lambda_t = tt.exp(lambda_t_log)
-    new_I_0 = tt.zeros_like(I_begin)
-
-    # Choose transition rates (E to I) according to incubation period distribution
-    if num_regions == ():
-        x = np.arange(1, 9)
-    else:
-        x = np.arange(1, 9)
-        x = np.tile(x, (2, 1))
-    beta = mh.tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
-
-    # Runs SEIR model:
-    def next_day(
-        lambda_t, S_t, nE1, nE2, nE3, nE4, nE5, nE6, nE7, nE8, I_t, _, mu, beta, N
-    ):
-        new_E_t = lambda_t / N * I_t * S_t
-        S_t = S_t - new_E_t
-        new_I_t = (
-            beta[0] * nE1
-            + beta[1] * nE2
-            + beta[2] * nE3
-            + beta[3] * nE4
-            + beta[4] * nE5
-            + beta[5] * nE6
-            + beta[6] * nE7
-            + beta[7] * nE8
-        )
-        I_t = I_t + new_I_t - mu * I_t
-        I_t = tt.clip(I_t, 0, N)  # for stability
-        S_t = tt.clip(S_t, 0, N)
-        return S_t, new_E_t, I_t, new_I_t
-
-    # theano scan returns two tuples, first one containing a time series of
-    # what we give in outputs_info : S, E's, I, new_I
-    outputs, _ = theano.scan(
-        fn=next_day,
-        sequences=[lambda_t],
-        outputs_info=[
-            S_begin,
-            dict(initial=new_E_begin, taps=[-1, -2, -3, -4, -5, -6, -7, -8]),
-            I_begin,
-            new_I_0,
-        ],
-        non_sequences=[mu, beta, N],
-    )
-    S_t, nE, I_t, new_I_t = outputs
-    pm.Deterministic('new_I_t', new_I_t)
-    if save_all:
-        pm.Deterministic('S_t', S_t)
-        pm.Deterministic('I_t', I_t)
-
-    if return_all:
-        return new_I_t, I_t, S_t
-    else:
-        return new_I_t
 
 def SEIR(
     lambda_t_log,
@@ -462,7 +331,6 @@ def SEIR(
             time series of the infected (if return_all set to True)
         S_t : array
             time series of the susceptible (if return_all set to True)
-
     """
     model = modelcontext(model)
 
@@ -554,8 +422,8 @@ def delay_cases(
     pr_sigma_scale_delay=None,
     model=None,
     save_in_trace=True,
-    name_delay = "delay",
-    name_delayed_cases = "new_cases_raw"
+    name_delay="delay",
+    name_delayed_cases="new_cases_raw",
 ):
     r"""
         Convolves the input by a lognormal distribution, in order to model a delay:
@@ -598,14 +466,13 @@ def delay_cases(
         -------
         new_cases_inferred : :class:`~theano.tensor.TensorVariable`
             The delayed input :math:`y_\text{delayed}(t)`, typically the daily number new cases that one expects to measure.
-
     """
 
     model = modelcontext(model)
 
     len_delay = () if model.sim_ndim == 1 else model.sim_shape[1]
     delay_L2_log, delay_L1_log = hierarchical_normal(
-        name_delay+"_log",
+        name_delay + "_log",
         "sigma_" + name_delay,
         np.log(pr_median_delay),
         pr_sigma_delay,
@@ -634,7 +501,7 @@ def delay_cases(
             pm.Deterministic(f"scale_{name_delay}_L1", tt.exp(scale_delay_L1_log))
 
         else:
-            pm.Deterministic(f'scale_{name_delay}', tt.exp(scale_delay_L2_log))
+            pm.Deterministic(f"scale_{name_delay}", tt.exp(scale_delay_L2_log))
     else:
         scale_delay_L2_log = np.log(pr_median_scale_delay)
 
@@ -735,7 +602,6 @@ def make_change_point_RVs(
         pr_sigma_transient_len=0.5,
         pr_mean_date_transient=None,
     )
-
 
     for cp_priors in change_points_list:
         mh.set_missing_with_default(cp_priors, default_priors_change_points)
@@ -840,7 +706,6 @@ def lambda_t_with_sigmoids(
 
     """
 
-
     model = modelcontext(model)
     model.sim_shape = model.sim_shape
 
@@ -884,7 +749,7 @@ def hierarchical_normal(
     len_L2,
     w=1.0,
     error_fact=2.0,
-    error_cauchy=True
+    error_cauchy=True,
 ):
     r"""
     Implements an hierarchical normal model:
