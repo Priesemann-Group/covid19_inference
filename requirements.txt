@@ -3,3 +3,4 @@ matplotlib
 pymc3
 theano
 pandas
+pytest
