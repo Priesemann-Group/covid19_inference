@@ -6,11 +6,14 @@ import theano
 import theano.tensor as tt
 import numpy as np
 import pymc3 as pm
-from pymc3 import Model
+from pymc3 import Model  # this import is needed to get pymc3-style "with ... as model:"
 
 from . import model_helper as mh
 
 log = logging.getLogger(__name__)
+
+if platform.system() == 'Darwin':
+    theano.config.gcc.cxxflags = "-Wno-c++11-narrowing" # workaround for macos
 
 
 class Cov19Model(Model):
@@ -344,8 +347,7 @@ def SEIR(
     N = model.N_population
 
     # Number of regions as tuple of int
-    num_regions =  () if model.sim_ndim == 1 else model.sim_shape[1]
-
+    num_regions = () if model.sim_ndim == 1 else model.sim_shape[1]
 
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
     # We choose to consider the transitions of newly exposed people of the last 8 days.
