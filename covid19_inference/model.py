@@ -461,6 +461,7 @@ def delay_cases(
     save_in_trace=True,
     name_delay="delay",
     name_delayed_cases="new_cases_raw",
+    len_input_arr=None,
     len_output_arr=None,
     diff_input_output=None,
 ):
@@ -500,6 +501,9 @@ def delay_cases(
         name_delayed_cases : str
             The name under which the delay is saved in the trace, suffixes and prefixes are added depending on which
             variable is saved.
+        len_input_arr :
+            Length of ``new_I_t``. By default equal to ``model.sim_len``. Necessary because the shape of theano
+            tensors are not defined at when the graph is built.
         len_output_arr : int
             Length of the array returned. By default it set to the length of the cases_obs saved in the model plus
             the number of days of the forecast.
@@ -519,6 +523,8 @@ def delay_cases(
         len_output_arr = model.data_len + model.fcast_len
     if diff_input_output is None:
         diff_input_output = model.sim_diff_data
+    if len_input_arr is None:
+        len_input_arr = model.sim_len
 
     len_delay = () if model.sim_ndim == 1 else model.sim_shape[1]
     delay_L2_log, delay_L1_log = hierarchical_normal(
@@ -557,7 +563,7 @@ def delay_cases(
 
     new_cases_inferred = mh.delay_cases_lognormal(
         input_arr=new_I_t,
-        len_input_arr=model.sim_len,
+        len_input_arr=len_input_arr,
         len_output_arr=len_output_arr,
         median_delay=tt.exp(delay_L2_log),
         scale_delay=tt.exp(scale_delay_L2_log),
