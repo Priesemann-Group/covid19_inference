@@ -67,8 +67,8 @@ class JHU:
     Contains all functions for downloading, filtering and manipulating data from the Johns Hopkins University.
     https://coronavirus.jhu.edu/
 
-    Features:
-
+    Features
+    ---------
     - download all files from the online repository of the coronavirus visual dashboard operated by the Johns Hopkins University.
     - filter by deaths, confirmed cases and recovered cases
     - filter by country and state
@@ -77,9 +77,8 @@ class JHU:
 
     Parameters
     ----------
-
     auto_download : bool, optional
-    whether or not to automatically download the data from jhu (default: false)
+        whether or not to automatically download the data from jhu (default: false)
     """
 
     @property
@@ -112,9 +111,9 @@ class JHU:
             Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
             default: None
             Automatically uses the default sources
-            https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.cs
-            https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv
-            https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
+            |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.cs
+            |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv
+            |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
         save_to_attributes : bool, optional
             Should the returned dataframe tuple be saved as attributes (default:true)
 
@@ -158,7 +157,7 @@ class JHU:
         save_to_attributes : bool, optional
             Should the returned dataframe be saved as attributes (default:true)
         fallback: str, optional
-            Filepath to the a fallback source, should be set right by default
+            Filepath to a fallback source, should be set automatically by default
 
         Returns
         -------
@@ -195,7 +194,7 @@ class JHU:
         save_to_attributes : bool, optional
             Should the returned dataframe be saved as attributes (default:true)
         fallback: str, optional
-            Filepath to the a fallback source, should be set right by default
+            Filepath to a fallback source, should be set automatically by default
 
         Returns
         -------
@@ -232,7 +231,7 @@ class JHU:
         save_to_attributes : bool, optional
             Should the returned dataframe be saved as attributes (default:true)
         fallback: str, optional
-            Filepath to the a fallback source, should be set right by default
+            Filepath to a fallback source, should be set automatically by default
 
         Returns
         -------
@@ -1450,6 +1449,7 @@ class GOOGLE:
         Returns a dataframe with the relative changes in mobility to a baseline, provided by google.
         They are separated into "retail and recreation", "grocery and pharmacy", "parks", "transit", "workplaces" and "residental".
         Filterable for country, state and region and date.
+
         Parameters
         ----------
         country : str
@@ -1460,6 +1460,7 @@ class GOOGLE:
             Region for the selected data if  no value is selected the whole region/country is chosen
         begin_date, end_date : datetime.datetime, optional
             Filter for the desired time period
+
         Returns
         -------
         : pandas.DataFrame
