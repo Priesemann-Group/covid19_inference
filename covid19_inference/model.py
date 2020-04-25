@@ -140,7 +140,7 @@ def student_t_likelihood(
     model=None,
     data_obs=None,
     name_student_t="_new_cases_studentT",
-    name_sigma_obs="sigma_obs"
+    name_sigma_obs="sigma_obs",
 ):
     """
         Set the likelihood to apply to the model observations (`model.new_cases_obs`)
@@ -188,7 +188,9 @@ def student_t_likelihood(
     model = modelcontext(model)
 
     len_sigma_obs = () if model.sim_ndim == 1 else model.sim_shape[1]
-    sigma_obs = pm.HalfCauchy(name_sigma_obs, beta=pr_beta_sigma_obs, shape=len_sigma_obs)
+    sigma_obs = pm.HalfCauchy(
+        name_sigma_obs, beta=pr_beta_sigma_obs, shape=len_sigma_obs
+    )
 
     if data_obs is None:
         data_obs = model.new_cases_obs
@@ -318,30 +320,49 @@ def SEIR(
     return_all=False,
     save_all=False,
 ):
-    """
+    r"""
         Implements the susceptible-exposed-infected-recovered model
+
+         .. math::
+
+            E_{new}(t) &= \lambda_t I(t-1) \frac{S(t)}{N}   \\
+            S(t) &= S(t-1) - E_{new}(t)  \\
+            I_{new}(t) &= \sum_{i=1}^{10} \beta_i E_{new}(t-i)   \\
+            I(t) &= I(t-1) + I_{new}(t) - \mu  I(t)
+
+        The prior distribution of the recovery rate :math:`\mu` is set to
+        :math:`LogNormal(\text{log(pr\_median\_mu)), pr\_sigma\_mu})`.
+        The prior distribution of :math:`E(0)` to :math:`HalfCauchy(\text{pr\_beta\_E\_begin})`.
+        The prior distribution of :math:`I(0)` to :math:`HalfCauchy(\text{pr\_beta\_I\_begin})`.
+        The prior distribution of the transition rates :math:`\beta_i` is set to
+        :math:`LogNormal(\text{log(median\_incubation)), sigma\_incubation})`.
 
         Parameters
         ----------
-        lambda_t_log : 1 or 2d theano tensor
-            time series of the logarithm of the spreading rate
-        pr_beta_I_begin : int
-            scale parameter value for prior distribution of starting number of infectious population
-        pr_beta_new_E_begin : int
-            scale parameter value for prior distribution of starting number of newly exposed population
-            assumed smaller than total infectious population
-        pr_median_mu : float
-            median recovery rate; parameter value for prior distribution of recovery rate
-        pr_sigma_mu : float
-            scale parameter value for prior distribution of recovery rate
+        lambda_t_log : :class:`~theano.tensor.TensorVariable`
+            time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional, the first
+            dimension is time.
+
+        pr_beta_I_begin : float or array_like
+            Prior beta of the Half-Cauchy distribution of :math:`I(0)`.
+
+        pr_beta_E_begin : float or array_like
+            Prior beta of the Half-Cauchy distribution of :math:`E(0)`.
+
+        pr_median_mu : float or array_like
+            Prior for the median of the lognormal distrubution of the recovery rate :math:`\mu`.
+
+        pr_sigma_mu : float or array_like
+            Prior for the sigma of the lognormal distribution of recovery rate :math:`\mu`.
+
 
         model : :class:`Cov19Model`
             if none, it is retrieved from the context
 
-        return_all : Bool
-            if True, returns new_I_t, I_t, S_t otherwise returns only new_I_t
-        save_all : Bool
-            if True, saves new_I_t, I_t, S_t in the trace, otherwise it saves only new_I_t
+        return_all : bool
+            if True, returns ``new_I_t``, ``I_t``, ``S_t`` otherwise returns only ``new_I_t``
+        save_all : bool
+            if True, saves ``new_I_t``, ``I_t``, ``S_t`` in the trace, otherwise it saves only ``new_I_t``
 
         Returns
         -------
@@ -368,7 +389,7 @@ def SEIR(
     num_regions = () if model.sim_ndim == 1 else model.sim_shape[1]
 
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
-    # We choose to consider the transitions of newly exposed people of the last 8 days.
+    # We choose to consider the transitions of newly exposed people of the last 10 days.
     if num_regions == ():
         new_E_begin = pm.HalfCauchy(name="E_begin", beta=pr_beta_new_E_begin, shape=11)
     else:
@@ -896,3 +917,46 @@ def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2):
         )
 
     return Y, X
+
+
+def get_step_for_trace(
+    trace=None, model=None, regular_window=5, regular_variance=1e-3, **kwargs
+):
+    """
+    Function used for dense mass matrix sampling.
+    Copied from https://dfm.io/posts/pymc3-mass-matrix/
+    """
+    model = pm.modelcontext(model)
+
+    # If not given, use the trivial metric
+    if trace is None:
+        potential = QuadPotentialFull(np.eye(model.ndim))
+        return pm.NUTS(potential=potential, **kwargs)
+
+    # Loop over samples and convert to the relevant parameter space;
+    # I'm sure that there's an easier way to do this, but I don't know
+    # how to make something work in general...
+    samples = np.empty((len(trace) * trace.nchains, model.ndim))
+    i = 0
+    for chain in trace._straces.values():
+        for p in chain:
+            samples[i] = model.bijection.map(p)
+            i += 1
+
+    # Compute the sample covariance
+    cov = np.cov(samples, rowvar=0)
+
+    # Stan uses a regularized estimator for the covariance matrix to
+    # be less sensitive to numerical issues for large parameter spaces.
+    # In the test case for this blog post, this isn't necessary and it
+    # actually makes the performance worse so I'll disable it, but I
+    # wanted to include the implementation here for completeness
+    N = len(samples)
+    cov = cov * N / (N + regular_window)
+    cov[np.diag_indices_from(cov)] += (
+        regular_variance * regular_window / (N + regular_window)
+    )
+
+    # Use the sample covariance as the inverse metric
+    potential = QuadPotentialFull(cov)
+    return pm.NUTS(potential=potential, **kwargs)
