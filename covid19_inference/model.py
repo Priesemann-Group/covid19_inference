@@ -313,7 +313,8 @@ def SEIR(
     pr_beta_I_begin=100,
     pr_beta_new_E_begin=50,
     pr_median_mu=1 / 8,
-    median_incubation=5,
+    pr_mean_median_incubation=5,
+    pr_sigma_median_incubation=1,
     sigma_incubation=0.418,
     pr_sigma_mu=0.2,
     model=None,
@@ -401,6 +402,14 @@ def SEIR(
 
     lambda_t = tt.exp(lambda_t_log)
     new_I_0 = tt.zeros_like(I_begin)
+
+    median_incubation,  = hierarchical_normal("median_incubation",
+                                            "sigma_median_incubation",
+                                            pr_mean = pr_mean_median_incubation,
+                                            pr_sigma = pr_sigma_median_incubation,
+                                            len_L2 = num_regions,
+                                            error_fact = 1.0,
+                                            error_cauchy = True)
 
     # Choose transition rates (E to I) according to incubation period distribution
     if num_regions == ():
