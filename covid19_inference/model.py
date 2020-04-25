@@ -321,27 +321,42 @@ def SEIR(
     """
         Implements the susceptible-exposed-infected-recovered model
 
+         .. math::
+            E_{new}(t) &= \lambda_t I(t-1) \frac{S(t)}{N}   \\
+            S(t) &= S(t-1) - E_{new}(t)  \\
+            I_{new}(t) = \sum_{i=1}^{10} \beta_i E_{new}(t-i)   \\
+            I(t) &= I(t-1) + I_{new}(t) - \mu  I(t)
+        The prior distribution of the recovery rate :math:`\mu` is set to
+        :math:`LogNormal(\text{log(pr\_median\_mu)), pr\_sigma\_mu})`.
+        The prior distribution of :math:`E(0)` to :math:`HalfCauchy(\text{pr\_beta\_E\_begin})`
+        The prior distribution of :math:`I(0)` to :math:`HalfCauchy(\text{pr\_beta\_I\_begin})`
+
         Parameters
         ----------
-        lambda_t_log : 1 or 2d theano tensor
-            time series of the logarithm of the spreading rate
-        pr_beta_I_begin : int
-            scale parameter value for prior distribution of starting number of infectious population
-        pr_beta_new_E_begin : int
-            scale parameter value for prior distribution of starting number of newly exposed population
-            assumed smaller than total infectious population
-        pr_median_mu : float
-            median recovery rate; parameter value for prior distribution of recovery rate
-        pr_sigma_mu : float
-            scale parameter value for prior distribution of recovery rate
+        lambda_t_log : :class:`~theano.tensor.TensorVariable`
+            time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional, the first
+            dimension is time.
+
+        pr_beta_I_begin : float or array_like
+            Prior beta of the Half-Cauchy distribution of :math:`I(0)`.
+
+        pr_beta_E_begin : float or array_like
+            Prior beta of the Half-Cauchy distribution of :math:`E(0)`.
+
+        pr_median_mu : float or array_like
+            Prior for the median of the lognormal distrubution of the recovery rate :math:`\mu`.
+
+        pr_sigma_mu : float or array_like
+            Prior for the sigma of the lognormal distribution of recovery rate :math:`\mu`.
+
 
         model : :class:`Cov19Model`
             if none, it is retrieved from the context
-
-        return_all : Bool
-            if True, returns new_I_t, I_t, S_t otherwise returns only new_I_t
-        save_all : Bool
-            if True, saves new_I_t, I_t, S_t in the trace, otherwise it saves only new_I_t
+            
+        return_all : bool
+            if True, returns ``new_I_t``, ``I_t``, ``S_t`` otherwise returns only ``new_I_t``
+        save_all : bool
+            if True, saves ``new_I_t``, ``I_t``, ``S_t`` in the trace, otherwise it saves only ``new_I_t``
 
         Returns
         -------
@@ -368,7 +383,7 @@ def SEIR(
     num_regions = () if model.sim_ndim == 1 else model.sim_shape[1]
 
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
-    # We choose to consider the transitions of newly exposed people of the last 8 days.
+    # We choose to consider the transitions of newly exposed people of the last 10 days.
     if num_regions == ():
         new_E_begin = pm.HalfCauchy(name="E_begin", beta=pr_beta_new_E_begin, shape=11)
     else:
