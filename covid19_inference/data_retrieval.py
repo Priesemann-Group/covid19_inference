@@ -1336,8 +1336,9 @@ class GOOGLE:
         # Get last modified dates for the files
         conn = urllib.request.urlopen(url, timeout=30)
         online_file_date = datetime.datetime.strptime(
-            conn.headers["last-modified"], "%a, %d %b %Y %H:%M:%S GMT"
+            conn.headers["last-modified"].split(",")[-1], " %d %b %Y %H:%M:%S GMT"
         )
+
         try:
             current_file_date = datetime.datetime.fromtimestamp(
                 os.path.getmtime(url_local)
