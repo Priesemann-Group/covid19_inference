@@ -6,11 +6,14 @@ import theano
 import theano.tensor as tt
 import numpy as np
 import pymc3 as pm
-from pymc3 import Model
+from pymc3 import Model  # this import is needed to get pymc3-style "with ... as model:"
 
 from . import model_helper as mh
 
 log = logging.getLogger(__name__)
+
+if platform.system() == "Darwin":
+    theano.config.gcc.cxxflags = "-Wno-c++11-narrowing"  # workaround for macos
 
 
 class Cov19Model(Model):
@@ -130,7 +133,14 @@ def modelcontext(model):
 
 
 def student_t_likelihood(
-    new_cases_inferred, pr_beta_sigma_obs=30, nu=4, offset_sigma=1, model=None
+    new_cases_inferred,
+    pr_beta_sigma_obs=30,
+    nu=4,
+    offset_sigma=1,
+    model=None,
+    data_obs=None,
+    name_student_t="_new_cases_studentT",
+    name_sigma_obs="sigma_obs"
 ):
     """
         Set the likelihood to apply to the model observations (`model.new_cases_obs`)
@@ -138,7 +148,7 @@ def student_t_likelihood(
 
         Parameters
         ----------
-        new_cases_inferred : np.array
+        new_cases_inferred : array
             One or two dimensonal array.
             If 2 dimensional, the first dimension is time and the second are the
             regions/countries
@@ -154,6 +164,14 @@ def student_t_likelihood(
         model:
             The model on which we want to add the distribution
 
+        data_obs : array
+            The data that is observed. By default it is ``model.new_cases_ob``
+
+        name_student_t :
+            The name under which the studentT distribution is saved in the trace.
+
+        name_sigma_obs :
+            The name under which the distribution of the observable error is saved in the trace
 
         Returns
         -------
@@ -170,15 +188,18 @@ def student_t_likelihood(
     model = modelcontext(model)
 
     len_sigma_obs = () if model.sim_ndim == 1 else model.sim_shape[1]
-    sigma_obs = pm.HalfCauchy("sigma_obs", beta=pr_beta_sigma_obs, shape=len_sigma_obs)
+    sigma_obs = pm.HalfCauchy(name_sigma_obs, beta=pr_beta_sigma_obs, shape=len_sigma_obs)
+
+    if data_obs is None:
+        data_obs = model.new_cases_obs
 
     pm.StudentT(
-        name="_new_cases_studentT",
+        name=name_student_t,
         nu=nu,
-        mu=new_cases_inferred[: model.data_len],
-        sigma=tt.abs_(new_cases_inferred[: model.data_len] + offset_sigma) ** 0.5
+        mu=new_cases_inferred[: len(data_obs)],
+        sigma=tt.abs_(new_cases_inferred[: len(data_obs)] + offset_sigma) ** 0.5
         * sigma_obs,  # offset and tt.abs to avoid nans
-        observed=model.new_cases_obs,
+        observed=data_obs,
     )
 
 
@@ -344,16 +365,15 @@ def SEIR(
     N = model.N_population
 
     # Number of regions as tuple of int
-    num_regions =  () if model.sim_ndim == 1 else model.sim_shape[1]
-
+    num_regions = () if model.sim_ndim == 1 else model.sim_shape[1]
 
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
     # We choose to consider the transitions of newly exposed people of the last 8 days.
     if num_regions == ():
-        new_E_begin = pm.HalfCauchy(name="E_begin", beta=pr_beta_new_E_begin, shape=9)
+        new_E_begin = pm.HalfCauchy(name="E_begin", beta=pr_beta_new_E_begin, shape=11)
     else:
         new_E_begin = pm.HalfCauchy(
-            name="E_begin", beta=pr_beta_new_E_begin, shape=(9, num_regions)
+            name="E_begin", beta=pr_beta_new_E_begin, shape=(11, num_regions)
         )
     I_begin = pm.HalfCauchy(name="I_begin", beta=pr_beta_I_begin, shape=num_regions)
     S_begin = N - I_begin - pm.math.sum(new_E_begin, axis=0)
@@ -363,15 +383,33 @@ def SEIR(
 
     # Choose transition rates (E to I) according to incubation period distribution
     if num_regions == ():
-        x = np.arange(1, 9)
+        x = np.arange(1, 11)
     else:
-        x = np.arange(1, 9)
-        x = np.tile(x, (2, 1))
+        x = np.arange(1, 11)[:, None]
+        median_incubation = median_incubation * tt.ones(num_regions)
+        sigma_incubation = sigma_incubation * tt.ones(sigma_incubation)
+
     beta = mh.tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
 
     # Runs SEIR model:
     def next_day(
-        lambda_t, S_t, nE1, nE2, nE3, nE4, nE5, nE6, nE7, nE8, I_t, _, mu, beta, N
+        lambda_t,
+        S_t,
+        nE1,
+        nE2,
+        nE3,
+        nE4,
+        nE5,
+        nE6,
+        nE7,
+        nE8,
+        nE9,
+        nE10,
+        I_t,
+        _,
+        mu,
+        beta,
+        N,
     ):
         new_E_t = lambda_t / N * I_t * S_t
         S_t = S_t - new_E_t
@@ -384,6 +422,8 @@ def SEIR(
             + beta[5] * nE6
             + beta[6] * nE7
             + beta[7] * nE8
+            + beta[8] * nE9
+            + beta[9] * nE10
         )
         I_t = I_t + new_I_t - mu * I_t
         I_t = tt.clip(I_t, 0, N)  # for stability
@@ -397,7 +437,7 @@ def SEIR(
         sequences=[lambda_t],
         outputs_info=[
             S_begin,
-            dict(initial=new_E_begin, taps=[-1, -2, -3, -4, -5, -6, -7, -8]),
+            dict(initial=new_E_begin, taps=[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10]),
             I_begin,
             new_I_0,
         ],
@@ -418,13 +458,16 @@ def SEIR(
 def delay_cases(
     new_I_t,
     pr_median_delay=10,
-    pr_sigma_delay=0.2,
+    pr_sigma_median_delay=0.2,
     pr_median_scale_delay=0.3,
     pr_sigma_scale_delay=None,
     model=None,
     save_in_trace=True,
     name_delay="delay",
     name_delayed_cases="new_cases_raw",
+    len_input_arr=None,
+    len_output_arr=None,
+    diff_input_output=None,
 ):
     r"""
         Convolves the input by a lognormal distribution, in order to model a delay:
@@ -450,7 +493,7 @@ def delay_cases(
             The prior of the median delay
         scale_delay : float
             The scale of the delay, that is how wide the distribution is.
-        pr_sigma_delay : float
+        pr_sigma_median_delay : float
             The prior for the sigma of the median delay distribution.
         model : :class:`Cov19Model`
             if none, it is retrieved from the context
@@ -462,6 +505,15 @@ def delay_cases(
         name_delayed_cases : str
             The name under which the delay is saved in the trace, suffixes and prefixes are added depending on which
             variable is saved.
+        len_input_arr :
+            Length of ``new_I_t``. By default equal to ``model.sim_len``. Necessary because the shape of theano
+            tensors are not defined at when the graph is built.
+        len_output_arr : int
+            Length of the array returned. By default it set to the length of the cases_obs saved in the model plus
+            the number of days of the forecast.
+        diff_input_output : int
+            Number of days the returned array begins later then the input. Should be significantly larger than
+            the median delay. By default it is set to the ``model.sim_diff_data``.
 
         Returns
         -------
@@ -471,12 +523,19 @@ def delay_cases(
 
     model = modelcontext(model)
 
+    if len_output_arr is None:
+        len_output_arr = model.data_len + model.fcast_len
+    if diff_input_output is None:
+        diff_input_output = model.sim_diff_data
+    if len_input_arr is None:
+        len_input_arr = model.sim_len
+
     len_delay = () if model.sim_ndim == 1 else model.sim_shape[1]
     delay_L2_log, delay_L1_log = hierarchical_normal(
         name_delay + "_log",
         "sigma_" + name_delay,
         np.log(pr_median_delay),
-        pr_sigma_delay,
+        pr_sigma_median_delay,
         len_delay,
         w=0.9,
         error_cauchy=False,
@@ -508,11 +567,11 @@ def delay_cases(
 
     new_cases_inferred = mh.delay_cases_lognormal(
         input_arr=new_I_t,
-        len_input_arr=model.sim_len,
-        len_output_arr=model.data_len + model.fcast_len,
+        len_input_arr=len_input_arr,
+        len_output_arr=len_output_arr,
         median_delay=tt.exp(delay_L2_log),
         scale_delay=tt.exp(scale_delay_L2_log),
-        delay_betw_input_output=model.sim_diff_data,
+        delay_betw_input_output=diff_input_output,
     )
     if save_in_trace:
         pm.Deterministic(name_delayed_cases, new_cases_inferred)
