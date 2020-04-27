@@ -64,8 +64,7 @@ def iso_3166_country_in_iso_format(country: str) -> bool:
 
 class JHU:
     """
-    Contains all functions for downloading, filtering and manipulating data from the Johns Hopkins University.
-    https://coronavirus.jhu.edu/
+    Retrieving and filtering data from the online repository of the coronavirus visual dashboard operated by the `Johns Hopkins University <https://coronavirus.jhu.edu/>`_.
 
     Features
     ---------
@@ -73,7 +72,6 @@ class JHU:
     - filter by deaths, confirmed cases and recovered cases
     - filter by country and state
     - filter by date
-
 
     Parameters
     ----------
@@ -102,13 +100,16 @@ class JHU:
     ):
         """
         Attempts to download the most current data for the confirmed cases, deaths and recovered cases from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University
+        Coronavirus Visual Dashboard operated by the Johns Hopkins University. If the repo is not available it should fallback to the local files located in /data/.
         Only works if the module is located in the repo directory.
 
         Parameters
         ----------
         fp_confirmed,fp_deaths,fp_recovered : str, optional
-            Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases. Should automatically uses the default sources. (default: None)
+            Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases. Default download sources are
+        `Confirmed <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv>`_,
+        `Deaths <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv>`_ and
+        `Recovered <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv>`_. (default: None)
         save_to_attributes : bool, optional
             Should the returned dataframe tuple be saved as attributes (default:true)
 
@@ -116,8 +117,9 @@ class JHU:
         -------
         : pandas.DataFrame tuple
             tuple of table with confirmed, deaths and recovered cases
+
+
         """
-        # Check default for better visibility in the readthedocs page
         if fp_confirmed is None:
             fp_confirmed = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"
         if fp_deaths is None:
@@ -141,8 +143,7 @@ class JHU:
     ):
         """
         Attempts to download the most current data for the confirmed cases from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University
-        (and falls back to the backup provided with our repo if it fails TODO).
+        Coronavirus Visual Dashboard operated by the Johns Hopkins University. If the repo is not available it falls back to 
         Only works if the module is located in the repo directory.
 
         Parameters
@@ -178,8 +179,7 @@ class JHU:
     ):
         """
         Attempts to download the most current data for the deaths from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University
-        (and falls back to the backup provided with our repo if it fails TODO).
+        Coronavirus Visual Dashboard operated by the Johns Hopkins University.
         Only works if the module is located in the repo directory.
 
         Parameters
@@ -215,8 +215,7 @@ class JHU:
     ):
         """
         Attempts to download the most current data for the recovered cases from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University
-        (and falls back to the backup provided with our repo if it fails TODO).
+        Coronavirus Visual Dashboard operated by the Johns Hopkins University.
         Only works if the module is located in the repo directory.
 
         Parameters
@@ -689,11 +688,12 @@ class JHU:
 
 class RKI:
     """
-    Data retrieval for the Robert Koch Institute
-    https://www.rki.de/.
+    Data retrieval for the Robert Koch Institute `Robert Koch Institute <https://www.rki.de/>`_.
 
-    The data gets retrieved from the arcgis dashboard.
-    Features:
+    The data gets retrieved from the `arcgis <https://www.arcgis.com/sharing/rest/content/items/f10774f1c63e40168479a1feb6c7ca74/data>`_  dashboard.
+
+    Features
+    ---------
         - download the full dataset
         - filter by date
         - filter by recovered, deaths and confirmed cases
@@ -1317,9 +1317,9 @@ class RKI:
 
 class GOOGLE:
     """
-    Google mobility data
+    `Google mobility data <https://www.google.com/covid19/mobility/>`_ 
 
-    https://www.google.com/covid19/mobility/
+    
 
     """
 
@@ -1340,9 +1340,7 @@ class GOOGLE:
         Returns
         -------
         : pandas.DataFrame
-            Containing all the RKI data from arcgis website.
-            In the format:
-            [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref]
+
         """
         if url is None:
             url = "https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv"
