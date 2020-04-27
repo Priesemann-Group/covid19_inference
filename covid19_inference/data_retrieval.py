@@ -108,12 +108,7 @@ class JHU:
         Parameters
         ----------
         fp_confirmed,fp_deaths,fp_recovered : str, optional
-            Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
-            default: None
-            Automatically uses the default sources
-            |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.cs
-            |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv
-            |https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
+            Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases. Should automatically uses the default sources. (default: None)
         save_to_attributes : bool, optional
             Should the returned dataframe tuple be saved as attributes (default:true)
 
