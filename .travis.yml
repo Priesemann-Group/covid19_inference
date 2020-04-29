@@ -1,11 +1,31 @@
+cache:
+  directories:
+    - $HOME/.cache/pip
+    - $HOME/.theano
+    - $HOME/download # Sufficient to add miniconda.sh to TRAVIS cache.
+    - $HOME/miniconda3 # Add the installation to TRAVIS cache.
+
 language: python
+
+
+before_install: 
+  - ./.travis/install_miniconda.sh
+  - export PATH=/home/travis/miniconda3/bin:$PATH
+  - conda create -q -n test-env python=$CONDA
+  - conda config --set always_yes yes --set changeps1 no
+  - conda config --add channels conda-forge
+  - conda update -q conda
+  - conda install -q conda-build
+  - source activate test-env
+
 python:
   - "3.6"
   - "3.7"
   - "3.8"
-cache: pip
+
 install:
-  - pip install -r requirements.txt
+  - pyton -m pip install -r requirements.txt
+
 script:
   - pip list
   - python -m pytest
