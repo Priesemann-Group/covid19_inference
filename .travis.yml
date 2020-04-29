@@ -11,9 +11,9 @@ language: python
 before_install: 
   - ./.travis/install_miniconda.sh
   - export PATH=/home/travis/miniconda3/bin:$PATH
-  - conda create -q -n test-env python=$CONDA
   - conda config --set always_yes yes --set changeps1 no
   - conda config --add channels conda-forge
+  - conda create -q -n test-env python=$CONDA
   - conda update -q conda
   - conda install -q conda-build
   - source activate test-env
