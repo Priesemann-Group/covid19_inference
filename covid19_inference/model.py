@@ -18,26 +18,76 @@ if platform.system() == "Darwin":
 
 class Cov19Model(Model):
     """
-        Model class used to create a covid-19 propagation dynamics model
+        Model class used to create a covid-19 propagation dynamics model.
+        Parameters below are passed to the constructor.
+        Attributes (Variables) are available after creation and can be accessed from
+        every instance. Some background:
+
+            * The simulation starts `diff_data_sim` days before the data.
+            * The data has a certain length, on which the inference is based. This
+              length is given by `new_cases_obs`.
+            * After the inference, a forecast takes of length `fcast_len` takes
+              place, starting on the day after the last data point in `new_cases_obs`.
+            * In total, traces produced by a model run have the length
+              `sim_len = diff_data_sim + data_len + fcast_len`
+            * Date ranges include both boundaries. For example, if `data_begin` is March
+              1 and `data_end` is March 3 then `data_len` will be 3.
 
         Parameters
         ----------
         new_cases_obs : 1 or 2d array
-            If the array is two-dimensional, an hierarchical model will be constructed. First dimension is then time,
-            the second the region/country.
-        date_begin_data : datatime.datetime
+            If the array is two-dimensional, an hierarchical model will be constructed.
+            First dimension is then time, the second the region/country.
+        data_begin : datatime.datetime
             Date of the first data point
-        num_days_forecast : int
+        fcast_len : int
             Number of days the simulations runs longer than the data
         diff_data_sim : int
-            Number of days the simulation starts earlier than the data. Should be significantly longer than the delay
-            between infection and report of cases.
+            Number of days the simulation starts earlier than the data. Should be
+            significantly longer than the delay between infection and report of cases.
         N_population : number or 1d array
-            Number of inhabitance in region, needed for the S(E)IR model. Is ideally 1 dimensional if new_cases_obs is 2 dimensional
+            Number of inhabitance in region, needed for the S(E)IR model. Is ideally 1
+            dimensional if new_cases_obs is 2 dimensional
         name : string
             suffix appended to the name of random variables saved in the trace
         model :
             specify a model, if this one should expand another
+
+        Attributes
+        ----------
+        new_cases_obs : 1 or 2d array
+            as passed during construction
+
+        data_begin : datatime.datetime
+            date of the first data point in the data
+
+        data_end : datatime.datetime
+            date of the last data point in the data
+
+        sim_begin : datatime.datetime
+            date at which the simulation begins
+
+        sim_end : datatime.datetime
+            date at which the simulation ends (should match fcast_end)
+
+        fcast_begin : datatime.datetime
+            date at which the forecast starts (should be one day after data_end)
+
+        fcast_end : datatime.datetime
+            data at which the forecast ends
+
+        data_len : int
+            total number of days in the data
+
+        sim_len : int
+            total number of days in the simulation
+
+        fcast_len : int
+            total number of days in the forecast
+
+        diff_data_sim : int
+            difference in days between the simulation begin and the data begin.
+            The simulation starting time is usually earlier than the data begin.
 
         Example
         -------
@@ -52,8 +102,8 @@ class Cov19Model(Model):
     def __init__(
         self,
         new_cases_obs,
-        date_begin_data,
-        num_days_forecast,
+        data_begin,
+        fcast_len,
         diff_data_sim,
         N_population,
         name="",
@@ -76,15 +126,15 @@ class Cov19Model(Model):
         # [data_begin, data_end]
         # (data_end - data_begin).days = 2
 
-        self.data_begin = date_begin_data
+        self.data_begin = data_begin
         self.sim_begin = self.data_begin - datetime.timedelta(days=diff_data_sim)
         self.data_end = self.data_begin + datetime.timedelta(
             days=len(new_cases_obs) - 1
         )
-        self.sim_end = self.data_end + datetime.timedelta(days=num_days_forecast)
+        self.sim_end = self.data_end + datetime.timedelta(days=fcast_len)
 
         # totel length of simulation, get later via the shape
-        sim_len = len(new_cases_obs) + diff_data_sim + num_days_forecast
+        sim_len = len(new_cases_obs) + diff_data_sim + fcast_len
         if sim_len < len(new_cases_obs) + diff_data_sim:
             raise RuntimeError(
                 "Simulation ends before the end of the data. Increase num_days_sim."
@@ -98,7 +148,7 @@ class Cov19Model(Model):
 
     # helper properties
     @property
-    def sim_diff_data(self):
+    def diff_data_sim(self):
         return (self.data_begin - self.sim_begin).days
 
     @property
@@ -555,7 +605,7 @@ def delay_cases(
             the number of days of the forecast.
         diff_input_output : int
             Number of days the returned array begins later then the input. Should be significantly larger than
-            the median delay. By default it is set to the ``model.sim_diff_data``.
+            the median delay. By default it is set to the ``model.diff_data_sim``.
 
         Returns
         -------
@@ -568,7 +618,7 @@ def delay_cases(
     if len_output_arr is None:
         len_output_arr = model.data_len + model.fcast_len
     if diff_input_output is None:
-        diff_input_output = model.sim_diff_data
+        diff_input_output = model.diff_data_sim
     if len_input_arr is None:
         len_input_arr = model.sim_len
 
@@ -647,7 +697,7 @@ def week_modulation(
     """
     model = modelcontext(model)
     shape_modulation = list(model.sim_shape)
-    shape_modulation[0] -= model.sim_diff_data
+    shape_modulation[0] -= model.diff_data_sim
 
     len_L2 = () if model.sim_ndim == 1 else model.sim_shape[1]
 
