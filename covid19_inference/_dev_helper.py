@@ -95,6 +95,6 @@ def create_example_instance(num_change_points=3):
         student_t_likelihood(new_cases_inferred)
 
     # make it fast
-    trace = pm.sample(model=model, tune=50, draws=50)
+    trace = pm.sample(model=model, tune=1, draws=1)
 
     return model, trace
