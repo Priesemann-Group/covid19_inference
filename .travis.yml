@@ -29,4 +29,4 @@ install:
 
 script:
   - conda list
-  - python -m pytest
+  - python -m pytest --log-level=INFO --log-cli-level=INFO 
