@@ -24,7 +24,11 @@ python:
   - "3.8"
 
 install:
-  - pyton -m pip install -r requirements.txt
+  - pip install --upgrade pip
+  - pip install -r requirements.txt
+  - conda install --yes mkl-service
+  - conda install --yes -c conda-forge python-graphviz
+  - graphviz 
 
 script:
   - pip list
