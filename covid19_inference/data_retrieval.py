@@ -780,7 +780,7 @@ class RKI:
                 log.warning(
                     "Download Failed! Trying downloading via rest api. May take longer!"
                 )
-
+                log.warning(e)
                 try:
                     # Dates already are datetime, so no __to_iso used
                     df = self.__download_via_rest_api(try_max=10)
@@ -806,18 +806,19 @@ class RKI:
     def __to_iso(self, df) -> pd.DataFrame:
         if "Meldedatum" in df.columns:
             df["date"] = df["Meldedatum"].apply(
-                lambda x: datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S.000Z")
+                lambda x: datetime.datetime.strptime(x, "%Y-%m-%d %H:%M:%S")
             )
             df = df.drop(columns="Meldedatum")
         if "Refdatum" in df.columns:
             df["date_ref"] = df["Refdatum"].apply(
-                lambda x: datetime.datetime.strptime(x, "%Y-%m-%dT%H:%M:%S.000Z")
+                lambda x: datetime.datetime.strptime(x, "%Y-%m-%d %H:%M:%S")
             )
             df = df.drop(columns="Refdatum")
 
         df["date"] = pd.to_datetime(df["date"])
         df["date_ref"] = pd.to_datetime(df["date_ref"])
         return df
+
 
     def __download_via_rest_api(self, try_max=10):
         landkreise_max = 412  # Strangely there are 412 regions defined by the Robert Koch Insitute in contrast to the offical 294 rural districts or the 401 administrative districts.
