@@ -9,7 +9,7 @@ language: python
 
 
 before_install: 
-  - ./.travis/install_miniconda.sh
+  - . ./.travis/install_miniconda.sh
   - export PATH=/home/travis/miniconda3/bin:$PATH
   - conda config --set always_yes yes --set changeps1 no
   - conda config --add channels conda-forge
