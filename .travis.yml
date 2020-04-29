@@ -27,9 +27,8 @@ install:
   - pip install --upgrade pip
   - pip install -r requirements.txt
   - conda install --yes mkl-service
-  - conda install --yes -c conda-forge python-graphviz
-  - graphviz 
+  - conda install --yes -c conda-forge python-graphviz 
 
 script:
-  - pip list
+  - conda list
   - python -m pytest
