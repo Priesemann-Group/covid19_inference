@@ -48,8 +48,8 @@ def iso_3166_get_country_name_from_alternative(alternative_name: str) -> str:
         for alt in alternatives:
             if alt == alternative_name:
                 return country
-    log.info(
-        f"alternative_name '{str(alternative_name)}' is not found in iso convertion list!"
+    log.warning(
+        f"Alternative_name '{str(alternative_name)}' not found in iso convertion list!"
     )
     return alternative_name
 
@@ -64,34 +64,26 @@ def iso_3166_country_in_iso_format(country: str) -> bool:
 
 class JHU:
     """
-    Contains all functions for downloading, filtering and manipulating data from the Johns Hopkins University.
-    https://coronavirus.jhu.edu/
+    Retrieving and filtering data from the online repository of the coronavirus visual dashboard operated by the `Johns Hopkins University <https://coronavirus.jhu.edu/>`_.
 
-    Features:
-
+    Features
+    ---------
     - download all files from the online repository of the coronavirus visual dashboard operated by the Johns Hopkins University.
     - filter by deaths, confirmed cases and recovered cases
     - filter by country and state
     - filter by date
 
-
     Parameters
     ----------
-
     auto_download : bool, optional
-    whether or not to automatically download the data from jhu (default: false)
-
-    TODO
-    ----
-    Add fallback sources (local copies)
-
+        whether or not to automatically download the data from jhu (default: false)
     """
 
     @property
     def data(self):
         return (self.confirmed, self.deaths, self.recovered)
 
-    def __init__(self, auto_download=False):
+    def __init__(self, auto_download=True):
         self.confirmed: pd.DataFrame
         self.deaths: pd.DataFrame
         self.recovered: pd.DataFrame
@@ -105,21 +97,19 @@ class JHU:
         fp_deaths: str = None,
         fp_recovered: str = None,
         save_to_attributes: bool = True,
-    ) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+    ):
         """
         Attempts to download the most current data for the confirmed cases, deaths and recovered cases from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University
+        Coronavirus Visual Dashboard operated by the Johns Hopkins University. If the repo is not available it should fallback to the local files located in /data/.
         Only works if the module is located in the repo directory.
 
         Parameters
         ----------
         fp_confirmed,fp_deaths,fp_recovered : str, optional
-            Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
-            default: None
-            Automatically uses the default sources
-            https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.cs
-            https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv
-            https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv'
+            Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases. Default download sources are
+        `Confirmed <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv>`_,
+        `Deaths <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv>`_ and
+        `Recovered <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv>`_. (default: None)
         save_to_attributes : bool, optional
             Should the returned dataframe tuple be saved as attributes (default:true)
 
@@ -127,14 +117,17 @@ class JHU:
         -------
         : pandas.DataFrame tuple
             tuple of table with confirmed, deaths and recovered cases
+
+
         """
-        # Check default for better visibility in the readthedocs page
         if fp_confirmed is None:
             fp_confirmed = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"
         if fp_deaths is None:
             fp_deaths = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
         if fp_recovered is None:
             fp_recovered = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
+
+        # Fallbacks should be set automatically in the download_* functions
 
         return (
             self.download_confirmed(fp_confirmed, save_to_attributes),
@@ -143,12 +136,14 @@ class JHU:
         )
 
     def download_confirmed(
-        self, fp_confirmed: str = None, save_to_attributes: bool = True
-    ) -> pd.DataFrame:
+        self,
+        fp_confirmed: str = None,
+        save_to_attributes: bool = True,
+        fallback: bool = None,
+    ):
         """
         Attempts to download the most current data for the confirmed cases from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University
-        (and falls back to the backup provided with our repo if it fails TODO).
+        Coronavirus Visual Dashboard operated by the Johns Hopkins University. If the repo is not available it falls back to 
         Only works if the module is located in the repo directory.
 
         Parameters
@@ -157,6 +152,8 @@ class JHU:
             Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
         save_to_attributes : bool, optional
             Should the returned dataframe be saved as attributes (default:true)
+        fallback: str, optional
+            Filepath to a fallback source, should be set automatically by default
 
         Returns
         -------
@@ -165,19 +162,24 @@ class JHU:
         """
         if fp_confirmed is None:
             fp_confirmed = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"
+        if fallback is None:
+            this_dir = os.path.dirname(__file__)
+            fallback = this_dir + "/../data/jhu_fallback_confirmed_gzip.dat"
 
-        confirmed = self.__to_iso(self.__download_from_source(fp_confirmed))
+        confirmed = self.__to_iso(self.__download_from_source(fp_confirmed, fallback))
         if save_to_attributes:
             self.confirmed = confirmed
         return confirmed
 
     def download_deaths(
-        self, fp_deaths: str = None, save_to_attributes: bool = True
-    ) -> pd.DataFrame:
+        self,
+        fp_deaths: str = None,
+        save_to_attributes: bool = True,
+        fallback: bool = None,
+    ):
         """
         Attempts to download the most current data for the deaths from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University
-        (and falls back to the backup provided with our repo if it fails TODO).
+        Coronavirus Visual Dashboard operated by the Johns Hopkins University.
         Only works if the module is located in the repo directory.
 
         Parameters
@@ -186,6 +188,8 @@ class JHU:
             filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
         save_to_attributes : bool, optional
             Should the returned dataframe be saved as attributes (default:true)
+        fallback: str, optional
+            Filepath to a fallback source, should be set automatically by default
 
         Returns
         -------
@@ -194,19 +198,24 @@ class JHU:
         """
         if fp_deaths is None:
             fp_deaths = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
+        if fallback is None:
+            this_dir = os.path.dirname(__file__)
+            fallback = this_dir + "/../data/jhu_fallback_deaths_gzip.dat"
 
-        deaths = self.__to_iso(self.__download_from_source(fp_deaths))
+        deaths = self.__to_iso(self.__download_from_source(fp_deaths, fallback))
         if save_to_attributes:
             self.deaths = deaths
         return deaths
 
     def download_recovered(
-        self, fp_recovered: str = None, save_to_attributes: bool = True
-    ) -> pd.DataFrame:
+        self,
+        fp_recovered: str = None,
+        save_to_attributes: bool = True,
+        fallback: bool = None,
+    ):
         """
         Attempts to download the most current data for the recovered cases from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University
-        (and falls back to the backup provided with our repo if it fails TODO).
+        Coronavirus Visual Dashboard operated by the Johns Hopkins University.
         Only works if the module is located in the repo directory.
 
         Parameters
@@ -215,6 +224,8 @@ class JHU:
             Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
         save_to_attributes : bool, optional
             Should the returned dataframe be saved as attributes (default:true)
+        fallback: str, optional
+            Filepath to a fallback source, should be set automatically by default
 
         Returns
         -------
@@ -223,13 +234,18 @@ class JHU:
         """
         if fp_recovered is None:
             fp_recovered = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
+        if fallback is None:
+            this_dir = os.path.dirname(__file__)
+            fallback = this_dir + "/../data/jhu_fallback_recovered_gzip.dat"
 
-        recovered = self.__to_iso(self.__download_from_source(fp_recovered))
+        recovered = self.__to_iso(self.__download_from_source(fp_recovered, fallback))
+
         if save_to_attributes:
             self.recovered = recovered
+
         return recovered
 
-    def __download_from_source(self, url, fallback=None) -> pd.DataFrame:
+    def __download_from_source(self, url, fallback=None):
         """
         Private method
         Downloads one csv file from an url and converts it into a pandas dataframe. A fallback source can also be given.
@@ -239,7 +255,7 @@ class JHU:
         url : str
             Where to download the csv file from
         fallback : str, optional
-            Fallback source for the csv file, filename of file that is located in /data/
+            Fallback source for the csv file
 
         Returns
         -------
@@ -251,13 +267,14 @@ class JHU:
             data["Country/Region"] = iso_3166_convert_to_iso(
                 data["Country/Region"]
             )  # Do that right after downloading for performance reasons
+            # Save to fallback url. A bit hacky but should work
+            data.to_csv(fallback, sep=",", compression="gzip")
         except Exception as e:
             log.info(f"Failed to download from {url}, using local copy.")
-            this_dir = os.path.dirname(__file__)
-            data = pd.read_csv(this_dir + "/../data/" + fallback, sep=",")
+            data = pd.read_csv(fallback, sep=",", compression="gzip")
         return data
 
-    def __to_iso(self, df) -> pd.DataFrame:
+    def __to_iso(self, df):
         """
         Convert Johns Hopkins University dataset to nicely formatted DataFrame.
         Drops Lat/Long columns and reformats to a multi-index of (country, state).
@@ -289,7 +306,7 @@ class JHU:
         state: str = None,
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
-    ) -> pd.DataFrame:
+    ):
         """
         Retrieves all confirmed, deaths and recovered cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
         Can be filtered by country and state, if only a country is given all available states get summed up.
@@ -338,7 +355,7 @@ class JHU:
         state: str = None,
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
-    ) -> pd.DataFrame:
+    ):
         """
         Retrieves all confirmed cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
         Can be filtered by country and state, if only a country is given all available states get summed up.
@@ -382,7 +399,7 @@ class JHU:
         state: str = None,
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
-    ) -> pd.DataFrame:
+    ):
         """
         Retrieves all daily confirmed cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
         Can be filtered by country and state, if only a country is given all available states get summed up.
@@ -428,7 +445,7 @@ class JHU:
         state: str = None,
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
-    ) -> pd.DataFrame:
+    ):
         """
         Retrieves all deaths from the Johns Hopkins University dataset as a DataFrame with datetime index.
         Can be filtered by country and state, if only a country is given all available states get summed up.
@@ -473,7 +490,7 @@ class JHU:
         state: str = None,
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
-    ) -> pd.DataFrame:
+    ):
         """
         Retrieves all daily deaths from the Johns Hopkins University dataset as a DataFrame with datetime index.
         Can be filtered by country and state, if only a country is given all available states get summed up.
@@ -521,7 +538,7 @@ class JHU:
         state: str = None,
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
-    ) -> pd.DataFrame:
+    ):
         """
         Retrieves all recovered cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
         Can be filtered by country and state, if only a country is given all available states get summed up.
@@ -567,7 +584,7 @@ class JHU:
         state: str = None,
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
-    ) -> pd.DataFrame:
+    ):
         """
         Retrieves all daily recovered cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
         Can be filtered by country and state, if only a country is given all available states get summed up.
@@ -616,7 +633,7 @@ class JHU:
         df,
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
-    ) -> pd.DataFrame:
+    ):
         """
         Returns give dataframe between begin and end date. Dataframe has to have a datetime index.
 
@@ -671,11 +688,12 @@ class JHU:
 
 class RKI:
     """
-    Data retrieval for the Robert Koch Institute
-    https://www.rki.de/.
+    Data retrieval for the Robert Koch Institute `Robert Koch Institute <https://www.rki.de/>`_.
 
-    The data gets retrieved from the arcgis dashboard.
-    Features:
+    The data gets retrieved from the `arcgis <https://www.arcgis.com/sharing/rest/content/items/f10774f1c63e40168479a1feb6c7ca74/data>`_  dashboard.
+
+    Features
+    ---------
         - download the full dataset
         - filter by date
         - filter by recovered, deaths and confirmed cases
@@ -689,7 +707,7 @@ class RKI:
         if auto_download:
             self.download_all_available_data()
 
-    def download_all_available_data(self) -> pd.DataFrame:
+    def download_all_available_data(self):
         """
         Attempts to download the most current data from the Robert Koch Institute. Separated into the different regions (landkreise).
 
@@ -896,7 +914,7 @@ class RKI:
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
         date_type: str = "date",
-    ) -> pd.DataFrame:
+    ):
         """
         Gets all total confirmed cases for a region as dataframe with date index. Can be filtered with multiple arguments.
 
@@ -939,7 +957,7 @@ class RKI:
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
         date_type: str = "date",
-    ) -> pd.DataFrame:
+    ):
         """
         Retrieves all new confirmed cases daily from the Johns Hopkins University dataset as a DataFrame with datetime index.
         Can be filtered by country and state, if only a country is given all available states get summed up.
@@ -985,7 +1003,7 @@ class RKI:
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
         date_type: str = "date",
-    ) -> pd.DataFrame:
+    ):
         """
         Gets all total deaths for a region as dataframe with date index. Can be filtered with multiple arguments.
 
@@ -1029,7 +1047,7 @@ class RKI:
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
         date_type: str = "date",
-    ) -> pd.DataFrame:
+    ):
         """
         Retrieves all new deaths daily from the Johns Hopkins University dataset as a DataFrame with datetime index.
         Can be filtered by country and state, if only a country is given all available states get summed up.
@@ -1078,7 +1096,7 @@ class RKI:
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
         date_type: str = "date",
-    ) -> pd.DataFrame:
+    ):
         """
         Gets all total recovered cases as dataframe with date index. Can be filtered with multiple arguments.
 
@@ -1121,7 +1139,7 @@ class RKI:
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
         date_type: str = "date",
-    ) -> pd.DataFrame:
+    ):
         """
         Retrieves all new cases daily from the Johns Hopkins University dataset as a DataFrame with datetime index.
         Can be filtered by country and state, if only a country is given all available states get summed up.
@@ -1166,7 +1184,7 @@ class RKI:
         date_type="date",
         level=None,
         value=None,
-    ) -> pd.DataFrame:
+    ):
         """
         Filters the obtained dataset for a given time period and returns an array ONLY containing only the desired variable.
 
@@ -1241,7 +1259,7 @@ class RKI:
         end_date: datetime.datetime = None,
         variable="AnzahlFall",
         date_type="date",
-    ) -> pd.DataFrame:
+    ):
         """
         Filters the full RKI dataset
 
@@ -1299,9 +1317,9 @@ class RKI:
 
 class GOOGLE:
     """
-    Google mobility data
+    `Google mobility data <https://www.google.com/covid19/mobility/>`_ 
 
-    https://www.google.com/covid19/mobility/
+    
 
     """
 
@@ -1310,7 +1328,7 @@ class GOOGLE:
         if auto_download:
             self.download_all_available_data()
 
-    def download_all_available_data(self, url: str = None) -> pd.DataFrame:
+    def download_all_available_data(self, url: str = None):
         """
         Attempts to download the most current data from the Google mobility report.
 
@@ -1318,12 +1336,11 @@ class GOOGLE:
         ----------
         try_max : int, optional
             Maximum number of tries for each query. (default:10)
+
         Returns
         -------
         : pandas.DataFrame
-            Containing all the RKI data from arcgis website.
-            In the format:
-            [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref]
+
         """
         if url is None:
             url = "https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv"
@@ -1359,7 +1376,7 @@ class GOOGLE:
 
         return self.data
 
-    def __download_from_source(self, url, fallback=None) -> pd.DataFrame:
+    def __download_from_source(self, url, fallback=None):
         """
         Private method
         Downloads one csv file from an url and converts it into a pandas dataframe. A fallback source can also be given.
@@ -1395,7 +1412,7 @@ class GOOGLE:
             )
         return data
 
-    def __to_iso(self, df) -> pd.DataFrame:
+    def __to_iso(self, df):
         # change columns & index
         if (
             "country_region" in df.columns
@@ -1421,11 +1438,12 @@ class GOOGLE:
         region: str = None,
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
-    ) -> pd.DataFrame:
+    ):
         """
         Returns a dataframe with the relative changes in mobility to a baseline, provided by google.
         They are separated into "retail and recreation", "grocery and pharmacy", "parks", "transit", "workplaces" and "residental".
         Filterable for country, state and region and date.
+
         Parameters
         ----------
         country : str
@@ -1436,6 +1454,7 @@ class GOOGLE:
             Region for the selected data if  no value is selected the whole region/country is chosen
         begin_date, end_date : datetime.datetime, optional
             Filter for the desired time period
+
         Returns
         -------
         : pandas.DataFrame
@@ -1468,7 +1487,7 @@ class GOOGLE:
 
         return df.drop(columns=["country_region_code"])[begin_date:end_date]
 
-    def get_possible_counties_states_regions(self) -> pd.DataFrame:
+    def get_possible_counties_states_regions(self):
         """
         Can be used to obtain all different possible countries with there corresponding possible states and regions.
 
