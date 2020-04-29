@@ -73,8 +73,8 @@ def create_example_instance(num_change_points=3):
 
     params_model = dict(
         new_cases_obs=new_cases_obs,
-        date_begin_data=date_begin_data,
-        num_days_forecast=num_days_forecast,
+        data_begin=date_begin_data,
+        fcast_len=num_days_forecast,
         diff_data_sim=diff_data_sim,
         N_population=83e6,
     )
