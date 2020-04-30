@@ -108,7 +108,10 @@ def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **
     # ------------------------------------------------------------------------------ #
     # plot
     # ------------------------------------------------------------------------------ #
-    ax.plot(x, data, **kwargs)
+    ax.plot(x,
+        data,
+        label="Data",
+        **kwargs)
 
     if "linewidth" in kwargs:
         del kwargs["linewidth"]
@@ -120,18 +123,18 @@ def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **
     if draw_ci_95 and y.ndim == 2:
         ax.fill_between(
             x,
-            alpha=0.1,
             np.percentile(y, q=2.5, axis=0),
             np.percentile(y, q=97.5, axis=0),
+            alpha=0.1,
             **kwargs,
         )
 
     if draw_ci_75 and y.ndim == 2:
         ax.fill_between(
             x,
-            alpha=0.1
             np.percentile(y, q=12.5, axis=0),
             np.percentile(y, q=87.5, axis=0),
+            alpha=0.1,
             **kwargs,
         )
 
@@ -139,6 +142,7 @@ def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **
 
 
 def _get_array_from_trace_via_date(model, trace_var, dates):
+    #This could be wrong!
     indices = (dates - model.data_begin).days
     # i would really like to always have the 0 index present, even when no bundeslaender
     print(f"data with ndim {trace_var.ndim}")
@@ -161,7 +165,7 @@ def get_rcparams_default():
     """
     par = Param(
         locale="en_US",
-        date_format="%x",
+        date_format="%b %-d",
         date_show_minor_ticks=True,
         rasterization_zorder=-1,
         draw_ci_95=True,
