@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-20 18:50:13
-# @Last Modified: 2020-04-21 16:47:16
+# @Last Modified: 2020-04-30 17:14:24
 # ------------------------------------------------------------------------------ #
 # Callable in your scripts as e.g. `cov.plot.timeseries()`
 # Plot functions and helper classes
@@ -19,6 +19,7 @@ import locale
 import copy
 
 import numpy as np
+import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
@@ -31,33 +32,118 @@ log = logging.getLogger(__name__)
 # ------------------------------------------------------------------------------ #
 
 
-def timeseries(
-    model,
-    trace,
-    varname,
-    ax=None,
-    add_more_later=False,
-    draw_ci_95=rcParams["draw_ci_95"],
-    draw_ci_75=rcParams["draw_ci_75"],
-    draw_inset=False,
-    color_futu=rcParams["color_plot"],
-    color_past=rcParams["color_plot"],
-    num_days_futu=None,
-    **kwargs,
-):
+def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **kwargs):
     """
-        Plot varname into provided ax.
+        low-level function to plot anything that has a date on the x-axis.
+
+        x : array of datetime.datetime
+            times for the x axis
+
+        y : array, 1d or 2d
+            data to plot. if 2d, we plot the CI as fill_between (if CI enabled in rc
+            params)
+            if 2d, then first dim is realization and second dim is time matching `x`
+            if 1d then first tim is time matching `x`
+
+        ax : mpl axes element, optional
+            plot into an existing axes element. default: None
+
+        what : str, optional
+            what type of data is provided in x. sets the style used for plotting:
+            * `data` for data points
+            * `fcast` for model forecast (prediction)
+            * `model` for model reproduction of data (past)
+
+        kwargs : dict, optional
+            directly passed to plotting mpl.
+
     """
 
+    # ------------------------------------------------------------------------------ #
+    # Default parameter
+    # ------------------------------------------------------------------------------ #
+
+    if draw_ci_95 is None:
+        draw_ci_95 = rcParams["draw_ci_95"]
+
+    if draw_ci_75 is None:
+        draw_ci_75 = rcParams["draw_ci_75"]
 
     if ax is None:
-        fig, ax = plt.subplots()
+        figure, ax = plt.subplots(figsize=(3, 6))
+
+    if x.shape[0] != y.shape[-1]:
+        log.exception(f"X rows and y rows do not match: {x.shape[0]} vs {y.shape[0]}")
+        raise KeyError("Shape mismatch")
+
+    if y.ndim == 2:
+        data = np.median(y, axis=0)
+    elif y.ndim == 1:
+        data = y
     else:
-        fig = ax.get_figure()
+        log.exception(f"y needs to be 1 or 2 dimensional, but has shape {y.shape}")
+        raise KeyError("Shape mismatch")
 
+    # ------------------------------------------------------------------------------ #
+    # kwargs
+    # ------------------------------------------------------------------------------ #
 
+    if what is "data":
+        if "color" not in kwargs:
+            kwargs = dict(kwargs, color=rcParams["color_data"])
+        if "ls" not in kwargs:
+            # this needs fixing.
+            kwargs = dict(kwargs, ls="d")
+    elif what is "fcast":
+        if "color" not in kwargs:
+            kwargs = dict(kwargs, color=rcParams["color_model"])
+        if "ls" not in kwargs:
+            kwargs = dict(kwargs, ls="--")
+    elif what is "model":
+        if "color" not in kwargs:
+            kwargs = dict(kwargs, color=rcParams["color_model"])
+        if "ls" not in kwargs:
+            kwargs = dict(kwargs, ls="-")
+
+    # ------------------------------------------------------------------------------ #
+    # plot
+    # ------------------------------------------------------------------------------ #
+
+    ax.plot(x, data, **kwargs)
+
+    if "linewidth" in kwargs:
+        del kwargs["linewidth"]
+    kwargs["lw"] = 0
+
+    # set alpha to less than 1
+    if draw_ci_95 and y.ndim == 2:
+        ax.fill_between(
+            x,
+            np.percentile(y, q=2.5, axis=0),
+            np.percentile(y, q=97.5, axis=0),
+            **kwargs,
+        )
+
+    if draw_ci_75 and y.ndim == 2:
+        ax.fill_between(
+            x,
+            np.percentile(y, q=12.5, axis=0),
+            np.percentile(y, q=87.5, axis=0),
+            **kwargs,
+        )
 
     return ax
+
+
+def _get_array_from_trace_via_date(model, trace_var, dates):
+    indices = (dates - model.data_begin).days
+    # i would really like to always have the 0 index present, even when no bundeslaender
+    print(f"data with ndim {trace_var.ndim}")
+    if trace_var.ndim == 2:
+        return trace_var[:, :, indices]
+    else:
+        return trace_var[:, indices]
+
 
 # ------------------------------------------------------------------------------ #
 # Parameters, we have to do this first so we can have default arguments
@@ -77,7 +163,8 @@ def get_rcparams_default():
         rasterization_zorder=-1,
         draw_ci_95=True,
         draw_ci_75=False,
-        color_plot="tab:green",
+        color_model="tab:green",
+        color_data="tab:blue",
         color_annot="#646464",
     )
 
@@ -114,9 +201,13 @@ def set_rcparams(par):
             For timeseries plots, indicate 75% Confidence interval via fill between.
             Default: False
 
-        color_plot : str,
-            Base color used for plots, mpl compatible color code "C0", "#303030"
-            Defalt : "tab:green"
+        color_model : str,
+            Base color used for model plots, mpl compatible color code "C0", "#303030"
+            Default : "tab:green"
+
+       color_patalot : str,
+            Base color used for data
+            Default : "tab:blue"
 
         color_annot : str,
             Color to use for annotations
@@ -177,17 +268,20 @@ class Param(dict):
 # format yaxis 10_000 as 10 k
 format_k = lambda num, _: "${:.0f}\,$k".format(num / 1_000)
 
-# format xaxis, ticks and labels
-def format_date_xticks(ax, minor=None):
+
+def _format_date_xticks(ax, minor=None):
+    """
+        format xaxis, ticks and labels
+    """
     locale.setlocale(locale.LC_ALL, rcParams.locale)
     ax.xaxis.set_major_locator(
         matplotlib.dates.WeekdayLocator(interval=1, byweekday=matplotlib.dates.SU)
     )
     if minor is None:
-        minor = date_show_minor_ticks
+        minor = rcParams.date_show_minor_ticks
     if minor:
         ax.xaxis.set_minor_locator(matplotlib.dates.DayLocator())
-    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter(date_format))
+    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter(rcParams.date_format))
 
 
 def truncate_number(number, precision):

@@ -146,6 +146,12 @@ class Cov19Model(Model):
         elif self.sim_ndim == 2:
             self.sim_shape = (sim_len, self.new_cases_obs.shape[1])
 
+        if self.data_end > datetime.datetime.today():
+            log.warning(
+                f"Your last data point is in the future ({self.data_end}). "
+                + "Are you traveling faster than light?"
+            )
+
     # helper properties
     @property
     def diff_data_sim(self):

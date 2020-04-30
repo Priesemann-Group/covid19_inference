@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-21 08:57:53
-# @Last Modified: 2020-04-29 19:03:58
+# @Last Modified: 2020-04-30 17:02:00
 # ------------------------------------------------------------------------------ #
 # Let's have a dummy instance of model and trace so we can play around with the
 # interface and plotting.
@@ -38,7 +38,9 @@ def create_example_instance(num_change_points=3):
     date_begin_data = datetime.datetime(2020, 3, 10)
     date_end_data = datetime.datetime(2020, 3, 13)
 
-    new_cases_obs = jhu.get_new_confirmed(country="Germany")
+    new_cases_obs = jhu.get_new_confirmed(
+        country="Germany", begin_date=date_begin_data, end_date=date_end_data
+    )
 
     diff_data_sim = 16  # should be significantly larger than the expected delay, in
     # order to always fit the same number of data points.

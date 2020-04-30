@@ -48,7 +48,7 @@ def iso_3166_get_country_name_from_alternative(alternative_name: str) -> str:
         for alt in alternatives:
             if alt == alternative_name:
                 return country
-    log.warning(
+    log.debug(
         f"Alternative_name '{str(alternative_name)}' not found in iso convertion list!"
     )
     return alternative_name
@@ -143,7 +143,7 @@ class JHU:
     ):
         """
         Attempts to download the most current data for the confirmed cases from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University. If the repo is not available it falls back to 
+        Coronavirus Visual Dashboard operated by the Johns Hopkins University. If the repo is not available it falls back to
         Only works if the module is located in the repo directory.
 
         Parameters
@@ -819,7 +819,6 @@ class RKI:
         df["date_ref"] = pd.to_datetime(df["date_ref"])
         return df
 
-
     def __download_via_rest_api(self, try_max=10):
         landkreise_max = 412  # Strangely there are 412 regions defined by the Robert Koch Insitute in contrast to the offical 294 rural districts or the 401 administrative districts.
         url_id = "https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0/query?where=0%3D0&objectIds=&time=&resultType=none&outFields=idLandkreis&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=true&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token="
@@ -1318,9 +1317,9 @@ class RKI:
 
 class GOOGLE:
     """
-    `Google mobility data <https://www.google.com/covid19/mobility/>`_ 
+    `Google mobility data <https://www.google.com/covid19/mobility/>`_
 
-    
+
 
     """
 
@@ -1515,6 +1514,7 @@ class RKIsituationreports:
     Filter functions for ICU, Symptoms and maybe even daily new cases for the respective categories.
 
     """
+
     def __init__(self, auto_download=True):
         self.data: pd.DataFrame
         if auto_download:
@@ -1541,7 +1541,7 @@ class RKIsituationreports:
         this_dir = os.path.dirname(__file__)
         fallback = this_dir + "/../data/rkisituationreport_fallback_gzip.dat"
 
-        #We can just download it every run since it is very small -> We have to do that anyways because to look at the date header
+        # We can just download it every run since it is very small -> We have to do that anyways because to look at the date header
         df = self.__download_from_source(url, fallback)
         print(self.__to_iso(df))
 
@@ -1575,14 +1575,14 @@ class RKIsituationreports:
                 "Failed to download current data 'confirmed cases', using local copy."
             )
             this_dir = os.path.dirname(__file__)
-            data = pd.read_csv(fallback, sep=";",header=1, compression="gzip")
-        #Save as local backup if newer
-        data.to_csv(fallback, sep=";",header=1, compression="gzip")
+            data = pd.read_csv(fallback, sep=";", header=1, compression="gzip")
+        # Save as local backup if newer
+        data.to_csv(fallback, sep=";", header=1, compression="gzip")
         return data
 
-    def __to_iso(self,df):
+    def __to_iso(self, df):
         if "Unnamed: 0" in df.columns:
             df["date"] = pd.to_datetime(df["Unnamed: 0"])
             df = df.drop(columns="Unnamed: 0")
         df = df.set_index(["date"])
-        return df     
+        return df

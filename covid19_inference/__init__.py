@@ -8,8 +8,7 @@ log = logging.getLogger(__name__)
 from . import data_retrieval
 from .data_retrieval import *
 from . import plotting
-
-# from . import plot
+from . import plot
 from .model import (
     Cov19Model,
     lambda_t_with_sigmoids,
