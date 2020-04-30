@@ -1008,5 +1008,3 @@ def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2):
         )
 
     return Y, X
-
-
