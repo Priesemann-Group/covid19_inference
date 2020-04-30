@@ -24,16 +24,31 @@ Code formatting
 We use black https://github.com/psf/black as automatic code formatter.
 Please run your code through it before you open a pull request.
 
-Try to stick to PEP 8 (https://www.python.org/dev/peps/pep-0008/).
-You can use type annotations (https://www.python.org/dev/peps/pep-0484/)
+We do not check for formatting in the testing (travis) but recommend to set up `black as a pre-commit hook <https://black.readthedocs.io/en/stable/version_control_integration.html>`_.
+
+.. code-block::
+
+    conda install -c conda-forge pre-commit
+    pre-commit install
+..
+
+
+Try to stick to `PEP 8 <https://www.python.org/dev/peps/pep-0008/>`_.
+You can use `type annotations <https://www.python.org/dev/peps/pep-0484/>`_
 if you want, but it is not necessary or encouraged.
 
 Testing
 ^^^^^^^
 
-We don't have automatic testing set up yet. Please run the two example
-notebooks in scripts, to test whether it is working, at least until
-the sampler begins sampling.
+We use travis and pytest. To check your changes locally:
+
+.. code-block:: python
+
+    python -m pytest --log-level=INFO --log-cli-level=INFO
+..
+
+It would be great if anything that is added to the code-base has an according test in the ``tests`` folder. We are not there yet, but it is on the todo. Be encouraged to add tests :)
+
 
 Documentation
 ^^^^^^^^^^^^^
