@@ -433,7 +433,7 @@ class JHU:
             else:
                 df["confirmed"] = self.confirmed[(country, state)]
         df.index.name = "date"
-        df = self.filter_date(df, begin_date, end_date)
+        df = self.filter_date(df, begin_date-datetime.timedelta(days=1), end_date)
         df = (
             df.diff().drop(df.index[0]).astype(int)
         )  # Neat oneliner to also drop the first row and set the type back to int
@@ -526,7 +526,7 @@ class JHU:
                 df["deaths"] = self.deaths[(country, state)]
 
         df.index.name = "date"
-        df = self.filter_date(df, begin_date, end_date)
+        df = self.filter_date(df, begin_date-datetime.timedelta(days=1), end_date)
         df = (
             df.diff().drop(df.index[0]).astype(int)
         )  # Neat oneliner to also drop the first row and set the type back to int
@@ -621,7 +621,7 @@ class JHU:
 
         df.index.name = "date"
 
-        df = self.filter_date(df, begin_date, end_date)
+        df = self.filter_date(df, begin_date-datetime.timedelta(days=1), end_date)
 
         df = (
             df.diff().drop(df.index[0]).astype(int)
@@ -989,7 +989,7 @@ class RKI:
         elif bundesland is not None and landkreis is not None:
             raise ValueError("bundesland and landkreis cannot be simultaneously set.")
 
-        df = self.filter(begin_date, end_date, "AnzahlFall", date_type, level, value)
+        df = self.filter(begin_date-datetime.timedelta(days=1), end_date, "AnzahlFall", date_type, level, value)
         # Get difference to the days beforehand
         df = (
             df.diff().drop(df.index[0]).astype(int)
@@ -1081,7 +1081,7 @@ class RKI:
             raise ValueError("bundesland and landkreis cannot be simultaneously set.")
 
         df = self.filter(
-            begin_date, end_date, "AnzahlTodesfall", date_type, level, value
+            begin_date-datetime.timedelta(days=1), end_date, "AnzahlTodesfall", date_type, level, value
         )
         # Get difference to the days beforehand
         df = (
@@ -1169,7 +1169,7 @@ class RKI:
             level = "Landkreis"
             value = landkreis
 
-        df = self.filter(begin_date, end_date, "AnzahlGenesen", date_type, level, value)
+        df = self.filter(begin_date-datetime.timedelta(days=1), end_date, "AnzahlGenesen", date_type, level, value)
         # Get difference to the days beforehand
         df = (
             df.diff().drop(df.index[0]).astype(int)

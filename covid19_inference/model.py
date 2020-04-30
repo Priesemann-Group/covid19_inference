@@ -125,13 +125,13 @@ class Cov19Model(Model):
         # data_end = 03 Mar
         # [data_begin, data_end]
         # (data_end - data_begin).days = 2
-
-        self.data_begin = data_begin
-        self.sim_begin = self.data_begin - datetime.timedelta(days=diff_data_sim)
-        self.data_end = self.data_begin + datetime.timedelta(
+        self.diff_data_sim = diff_data_sim
+        self._data_begin = data_begin
+        self._sim_begin = self.data_begin - datetime.timedelta(days=diff_data_sim)
+        self._data_end = self.data_begin + datetime.timedelta(
             days=len(new_cases_obs) - 1
         )
-        self.sim_end = self.data_end + datetime.timedelta(days=fcast_len)
+        self._sim_end = self.data_end + datetime.timedelta(days=fcast_len)
 
         # totel length of simulation, get later via the shape
         sim_len = len(new_cases_obs) + diff_data_sim + fcast_len
@@ -152,30 +152,76 @@ class Cov19Model(Model):
                 + "Are you traveling faster than light?"
             )
 
-    # helper properties
-    @property
-    def diff_data_sim(self):
-        return (self.data_begin - self.sim_begin).days
+    """
+    Properties
+    ----------
+    Useful properties, mainly used by the plot module.
+    """
 
+    """
+        Utility properties
+    """
+    
+    @property
+    def shape_num_regions(self):
+        # Number of regions as tuple of int
+        return () if self.sim_ndim == 1 else self.sim_shape[1]
+
+    """
+        Forecast properties
+    """
     @property
     def fcast_begin(self):
+        #Returns date on which the forecast starts i.e. the day after the data ends
         return self.data_end + datetime.timedelta(days=1)
 
     @property
     def fcast_end(self):
+        #Returns date on which the simulation and the forecast end
         return self.sim_end
 
     @property
     def fcast_len(self):
+        #Returns the length of the forecast in days
         return (self.sim_end - self.data_end).days
 
+    """
+        Data properties
+    """
     @property
     def data_len(self):
         return self.new_cases_obs.shape[0]
 
     @property
+    def data_dim(self):
+        return self.new_cases_obs.shape[1]
+    
+    @property
+    def data_begin(self):
+        return self._data_begin
+    
+    @property
+    def data_end(self):
+        return self._data_end
+    
+    """
+        Simulation properties
+    """
+    @property
     def sim_len(self):
         return self.sim_shape[0]
+
+    @property
+    def sim_diff_data(self):
+        return (self.data_begin - self.sim_begin).days
+
+    @property
+    def sim_begin(self):
+        return self._sim_begin
+
+    @property
+    def sim_end(self):
+        return self._sim_end
 
 
 def modelcontext(model):

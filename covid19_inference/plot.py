@@ -70,7 +70,7 @@ def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **
         draw_ci_75 = rcParams["draw_ci_75"]
 
     if ax is None:
-        figure, ax = plt.subplots(figsize=(3, 6))
+        figure, ax = plt.subplots(figsize=(6, 3))
 
     if x.shape[0] != y.shape[-1]:
         log.exception(f"X rows and y rows do not match: {x.shape[0]} vs {y.shape[0]}")
@@ -91,9 +91,9 @@ def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **
     if what is "data":
         if "color" not in kwargs:
             kwargs = dict(kwargs, color=rcParams["color_data"])
-        if "ls" not in kwargs:
+        if "marker" not in kwargs:
             # this needs fixing.
-            kwargs = dict(kwargs, ls="d")
+            kwargs = dict(kwargs, marker="d")
     elif what is "fcast":
         if "color" not in kwargs:
             kwargs = dict(kwargs, color=rcParams["color_model"])
@@ -108,17 +108,19 @@ def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **
     # ------------------------------------------------------------------------------ #
     # plot
     # ------------------------------------------------------------------------------ #
-
     ax.plot(x, data, **kwargs)
 
     if "linewidth" in kwargs:
         del kwargs["linewidth"]
+    if "marker" in kwargs:
+        del kwargs["marker"]
     kwargs["lw"] = 0
 
     # set alpha to less than 1
     if draw_ci_95 and y.ndim == 2:
         ax.fill_between(
             x,
+            alpha=0.1,
             np.percentile(y, q=2.5, axis=0),
             np.percentile(y, q=97.5, axis=0),
             **kwargs,
@@ -127,6 +129,7 @@ def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **
     if draw_ci_75 and y.ndim == 2:
         ax.fill_between(
             x,
+            alpha=0.1
             np.percentile(y, q=12.5, axis=0),
             np.percentile(y, q=87.5, axis=0),
             **kwargs,
@@ -158,7 +161,7 @@ def get_rcparams_default():
     """
     par = Param(
         locale="en_US",
-        date_format="%b %-d",
+        date_format="%x",
         date_show_minor_ticks=True,
         rasterization_zorder=-1,
         draw_ci_95=True,
@@ -270,18 +273,13 @@ format_k = lambda num, _: "${:.0f}\,$k".format(num / 1_000)
 
 
 def _format_date_xticks(ax, minor=None):
-    """
-        format xaxis, ticks and labels
-    """
-    locale.setlocale(locale.LC_ALL, rcParams.locale)
+    locale.setlocale(locale.LC_ALL, rcParams.locale+".UTF-8")#We have to utf-8 here atleast on my pc. I dont know if i
     ax.xaxis.set_major_locator(
         matplotlib.dates.WeekdayLocator(interval=1, byweekday=matplotlib.dates.SU)
     )
-    if minor is None:
-        minor = rcParams.date_show_minor_ticks
-    if minor:
+    if rcParams["date_show_minor_ticks"]:
         ax.xaxis.set_minor_locator(matplotlib.dates.DayLocator())
-    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter(rcParams.date_format))
+    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter(rcParams["date_format"]))
 
 
 def truncate_number(number, precision):
