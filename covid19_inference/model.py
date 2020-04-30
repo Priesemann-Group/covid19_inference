@@ -200,7 +200,7 @@ def student_t_likelihood(
 ):
     r"""
         Set the likelihood to apply to the model observations (`model.new_cases_obs`)
-        We assume a :class:`~pymc3.distributions.continuous.StudentT` distribution because it is robust against outliers [1]_.
+        We assume a :class:`~pymc3.distributions.continuous.StudentT` distribution because it is robust against outliers [Lange1989]_.
         The likelihood follows:
 
         .. math::
@@ -223,7 +223,7 @@ def student_t_likelihood(
 
         nu : float
             How flat the tail of the distribution is. Larger nu should  make the model
-            more robust to outliers. Defaults to 4 [1]_.
+            more robust to outliers. Defaults to 4 [Lange1989]_.
 
         offset_sigma : float
             An offset added to the sigma, to make the inference procedure robust. Otherwise numbers of
@@ -248,7 +248,7 @@ def student_t_likelihood(
         References
         ----------
 
-        .. [1] Lange, K., Roderick J. A. Little, & Jeremy M. G. Taylor. (1989).
+        .. [Lange1989] Lange, K., Roderick J. A. Little, & Jeremy M. G. Taylor. (1989).
             Robust Statistical Modeling Using the t Distribution.
             Journal of the American Statistical Association,
             84(408), 881-896. doi:10.2307/2290063
@@ -389,9 +389,9 @@ def SEIR(
     pr_beta_I_begin=100,
     pr_beta_new_E_begin=50,
     pr_median_mu=1 / 8,
-    pr_mean_median_incubation=5,
+    pr_mean_median_incubation=4,
     pr_sigma_median_incubation=1,
-    sigma_incubation=0.418,
+    sigma_incubation=0.4,
     pr_sigma_mu=0.2,
     model=None,
     return_all=False,
@@ -439,10 +439,15 @@ def SEIR(
             Prior for the median of the :class:`~pymc3.distributions.continuous.Lognormal` distribution of the recovery rate :math:`\mu`.
         pr_mean_median_incubation :
             Prior mean of the :class:`~pymc3.distributions.continuous.Normal` distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
+            Defaults to 4 days [Nishiura2020]_, which is the median serial interval (the important measure here is not exactly
+            the incubation period, but the delay until a person becomes infectious which seems to be about
+            1 day earlier as showing symptoms).
         pr_sigma_median_incubation :
             Prior sigma of the :class:`~pymc3.distributions.continuous.Normal` distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
+            Default is 1 day.
         sigma_incubation :
-            Scale parameter of the :class:`~pymc3.distributions.continuous.Lognormal` distribution of the incubation time
+            Scale parameter of the :class:`~pymc3.distributions.continuous.Lognormal` distribution of the incubation time/
+            delay until infectiousness. The default is set to 0.4, which is about the scale found in [Nishiura2020]_, [Lauer2020]_.
         pr_sigma_mu : float or array_like
             Prior for the sigma of the lognormal distribution of recovery rate :math:`\mu`.
         model : :class:`Cov19Model`
@@ -465,6 +470,18 @@ def SEIR(
             time series of the infected (if return_all set to True)
         S_t : :class:`~theano.tensor.TensorVariable`
             time series of the susceptible (if return_all set to True)
+
+        References
+        ----------
+
+        .. [Nishiura2020] Nishiura, H.; Linton, N. M.; Akhmetzhanov, A. R.
+            Serial Interval of Novel Coronavirus (COVID-19) Infections.
+            Int. J. Infect. Dis. 2020, 93, 284–286. https://doi.org/10.1016/j.ijid.2020.02.060.
+        .. [Lauer2020] Lauer, S. A.; Grantz, K. H.; Bi, Q.; Jones, F. K.; Zheng, Q.; Meredith, H. R.; Azman, A. S.; Reich, N. G.; Lessler, J.
+            The Incubation Period of Coronavirus Disease 2019 (COVID-19) From Publicly Reported Confirmed Cases: Estimation and Application.
+            Ann Intern Med 2020. https://doi.org/10.7326/M20-0504.
+
+
     """
     model = modelcontext(model)
 
