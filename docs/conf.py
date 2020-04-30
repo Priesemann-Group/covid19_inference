@@ -202,7 +202,7 @@ intersphinx_mapping = {'python': ('http://docs.python.org/3', None),
 imgmath_image_format = 'svg'
 imgmath_font_size = 14
 
-
+autodoc_member_order = 'bysource'
 
 # -- Options for todo extension ----------------------------------------------
 

@@ -192,24 +192,36 @@ def student_t_likelihood(
     name_student_t="_new_cases_studentT",
     name_sigma_obs="sigma_obs",
 ):
-    """
+    r"""
         Set the likelihood to apply to the model observations (`model.new_cases_obs`)
-        We assume a student-t distribution, the mean of the distribution matches `new_cases_inferred` as provided.
+        We assume a :class:`~pymc3.distributions.continuous.StudentT` distribution because it is robust against outliers [1]_.
+        The likelihood follows:
+
+        .. math::
+            P(\text{data\_obs}) &\sim StudentT(\text{mu} = \text{new\_cases\_inferred}, sigma =\sigma,
+            \text{nu} = \text{nu})\\
+            \sigma &= \sigma_r \sqrt{\text{new\_cases\_inferred} + \text{offset\_sigma}}
+
+        The parameter :math:`\sigma_r` follows
+        a :class:`~pymc3.distributions.continuous.HalfCauchy` prior distribution with parameter beta set by
+        ``pr_beta_sigma_obs``. If the input is 2 dimensional, the parameter :math:`\sigma_r` is different for every region.
 
         Parameters
         ----------
-        new_cases_inferred : array
-            One or two dimensonal array.
-            If 2 dimensional, the first dimension is time and the second are the
+        new_cases_inferred : :class:`~theano.tensor.TensorVariable`
+            One or two dimensonal array. If 2 dimensional, the first dimension is time and the second are the
             regions/countries
 
         pr_beta_sigma_obs : float
+            The beta of the :class:`~pymc3.distributions.continuous.HalfCauchy` prior distribution of :math:`\sigma_r`.
 
         nu : float
             How flat the tail of the distribution is. Larger nu should  make the model
-            more robust to outliers
+            more robust to outliers. Defaults to 4 [1]_.
 
         offset_sigma : float
+            An offset added to the sigma, to make the inference procedure robust. Otherwise numbers of
+            ``new_cases_inferred`` would lead to very small errors and diverging likelihoods. Defaults to 1.
 
         model:
             The model on which we want to add the distribution
@@ -226,6 +238,14 @@ def student_t_likelihood(
         Returns
         -------
         None
+
+        References
+        ----------
+
+        .. [1] Lange, K., Roderick J. A. Little, & Jeremy M. G. Taylor. (1989).
+            Robust Statistical Modeling Using the t Distribution.
+            Journal of the American Statistical Association,
+            84(408), 881-896. doi:10.2307/2290063
 
         TODO
         ----
@@ -382,14 +402,14 @@ def SEIR(
             S(t) &= S(t-1) - E_{\text{new}}(t)  \\
             I_\text{new}(t) &= \sum_{k=1}^{10} \beta(k) E_{\text{new}}(t-k)   \\
             I(t) &= I(t-1) + I_{\text{new}}(t) - \mu  I(t) \\
-            \beta(k) & = LogNormal(\text{log}(d_{\text{incubation}})), \text{sigma\_incubation})(k)
+            \beta(k) & = P(k) \sim LogNormal(\text{log}(d_{\text{incubation}})), \text{sigma\_incubation})
 
         The recovery rate :math:`\mu` and the incubation period is the same for all regions and follow respectively:
 
         .. math::
 
-             \mu &\sim LogNormal(\text{log(pr\_median\_mu)), pr\_sigma\_mu}) \\
-             d_{\text{incubation}} &\sim Normal(\text{pr\_mean\_median\_incubation, pr\_sigma\_median\_incubation})
+             P(\mu) &\sim LogNormal(\text{log(pr\_median\_mu)), pr\_sigma\_mu}) \\
+             P(d_{\text{incubation}}) &\sim Normal(\text{pr\_mean\_median\_incubation, pr\_sigma\_median\_incubation})
 
         The initial number of infected and newly exposed differ for each region and follow prior
         :class:`~pymc3.distributions.continuous.HalfCauchy` distributions:
