@@ -806,12 +806,12 @@ class RKI:
     def __to_iso(self, df) -> pd.DataFrame:
         if "Meldedatum" in df.columns:
             df["date"] = df["Meldedatum"].apply(
-                lambda x: datetime.datetime.strptime(x, "%Y-%m-%d %H:%M:%S")
+                lambda x: datetime.datetime.strptime(x, "%Y/%m/%d %H:%M:%S")
             )
             df = df.drop(columns="Meldedatum")
         if "Refdatum" in df.columns:
             df["date_ref"] = df["Refdatum"].apply(
-                lambda x: datetime.datetime.strptime(x, "%Y-%m-%d %H:%M:%S")
+                lambda x: datetime.datetime.strptime(x, "%Y/%m/%d %H:%M:%S")
             )
             df = df.drop(columns="Refdatum")
 
