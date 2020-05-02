@@ -204,6 +204,7 @@ def student_t_likelihood(
         The likelihood follows:
 
         .. math::
+
             P(\text{data\_obs}) &\sim StudentT(\text{mu} = \text{new\_cases\_inferred}, sigma =\sigma,
             \text{nu} = \text{nu})\\
             \sigma &= \sigma_r \sqrt{\text{new\_cases\_inferred} + \text{offset\_sigma}}
@@ -252,12 +253,6 @@ def student_t_likelihood(
             Robust Statistical Modeling Using the t Distribution.
             Journal of the American Statistical Association,
             84(408), 881-896. doi:10.2307/2290063
-
-        TODO
-        ----
-        #@jonas, can we make it more clear that this whole stuff gets attached to the
-        # model? like the with model as context...
-        #@jonas doc description for sigma parameters
 
     """
 
@@ -360,7 +355,7 @@ def SIR(
         new_I_t = lambda_t / N * I_t * S_t
         S_t = S_t - new_I_t
         I_t = I_t + new_I_t - mu * I_t
-        I_t = tt.clip(I_t, 0, N)  # for stability
+        I_t = tt.clip(I_t, -1, N)  # for stability
         S_t = tt.clip(S_t, 0, N)
         return S_t, I_t, new_I_t
 
@@ -715,7 +710,7 @@ def delay_cases(
 
 
 def week_modulation(
-    new_cases_inferred,
+    new_cases_raw,
     week_modulation_type="abs_sine",
     pr_mean_weekend_factor=0.7,
     pr_sigma_weekend_factor=0.2,
@@ -723,19 +718,45 @@ def week_modulation(
     model=None,
     save_in_trace=True,
 ):
-    """
+    r"""
+    Adds a weekly modulation of the number of new cases:
+
+    .. math::
+        \text{new\_cases} &= \text{new\_cases\_raw} \cdot (1-f(t))\,, \qquad\text{with}\\
+        f(t) &= (1-f_w) \cdot \left(1 - \left|\sin\left(\frac{\pi}{7} t- \frac{1}{2}\Phi_w\right)\right| \right),
+
+    if ``week_modulation_type`` is ``"abs_sine"`` (the default). If ``week_modulation_type`` is ``"step"``, the
+    new cases are simply multiplied by the weekend factor on the days set by ``week_end_days``
+
+    The weekend factor :math:`f_w` follows a :class:`~pymc3.distributions.continuous.Normal` distribution with
+    mean ``pr_mean_weekend_factor`` and sigma ``pr_sigma_weekend_factor``. It is hierarchically constructed if
+    the input is two-dimensional by the function :func:`hierarchical_normal` with default arguments.
+
+    The offset from Sunday :math:`\Phi_w` follows a flat :class:`~pymc3.distributions.continuous.VonMises` distribution
+    and is the same for all regions.
 
     Parameters
     ----------
-    new_cases_inferred
-    week_modulation_type
-    pr_mean_weekend_factor
-    pr_sigma_weekend_factor
-    week_end_days
-    model
+
+    new_cases_raw : :class:`~theano.tensor.TensorVariable`
+        The input array, can be one- or two-dimensional
+    week_modulation_type : str
+        The type of modulation, accepts ``"step"`` or  ``"abs_sine`` (the default).
+    pr_mean_weekend_factor : float
+        Sets the prior mean of the factor :math:`f_w` by which weekends are counted.
+    pr_sigma_weekend_factor : float
+        Sets the prior sigma of the factor :math:`f_w` by which weekends are counted.
+    week_end_days : tuple of ints
+        The days counted as weekend if ``week_modulation_type`` is ``"step"``
+    model : :class:`Cov19Model`
+        if none, it is retrieved from the context
+    save_in_trace : bool
+        If True (default) the new_cases are saved in the trace.
 
     Returns
     -------
+
+    new_cases : :class:`~theano.tensor.TensorVariable`
 
     """
     model = modelcontext(model)
@@ -767,7 +788,7 @@ def week_modulation(
         modulation = tt.shape_padaxis(modulation, axis=-1)
 
     multiplication_vec = np.ones(shape_modulation) - (1 - week_end_factor) * modulation
-    new_cases_inferred_eff = new_cases_inferred * multiplication_vec
+    new_cases_inferred_eff = new_cases_raw * multiplication_vec
     if save_in_trace:
         pm.Deterministic("new_cases", new_cases_inferred_eff)
     return new_cases_inferred_eff
@@ -826,10 +847,14 @@ def make_change_point_RVs(
 
     lambda_log_list.append(lambda_0_L2_log)
     for i, cp in enumerate(change_points_list):
+        if cp["pr_median_lambda"] == "previous":
+            pr_sigma_lambda = lambda_log_list[-1]
+        else:
+            pr_sigma_lambda = np.log(cp["pr_median_lambda"])
         lambda_cp_L2_log, lambda_cp_L1_log = hierarchical_normal(
             f"lambda_{i + 1}_log",
             f"sigma_lambda_{i + 1}",
-            np.log(cp["pr_median_lambda"]),
+            pr_sigma_lambda,
             cp["pr_sigma_lambda"],
             len_L2,
             w=0.7,
