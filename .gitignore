@@ -90,5 +90,5 @@ target/
 .flooignore
 
 # we save data locally
-data/
+data/*
 
