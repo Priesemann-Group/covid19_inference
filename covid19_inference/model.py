@@ -125,7 +125,8 @@ class Cov19Model(Model):
         # data_end = 03 Mar
         # [data_begin, data_end]
         # (data_end - data_begin).days = 2
-        self.diff_data_sim = diff_data_sim
+
+        # assign properties
         self._data_begin = data_begin
         self._sim_begin = self.data_begin - datetime.timedelta(days=diff_data_sim)
         self._data_end = self.data_begin + datetime.timedelta(
@@ -161,7 +162,7 @@ class Cov19Model(Model):
     """
         Utility properties
     """
-    
+
     @property
     def shape_num_regions(self):
         # Number of regions as tuple of int
@@ -170,24 +171,26 @@ class Cov19Model(Model):
     """
         Forecast properties
     """
+
     @property
     def fcast_begin(self):
-        #Returns date on which the forecast starts i.e. the day after the data ends
+        # Returns date on which the forecast starts i.e. the day after the data ends
         return self.data_end + datetime.timedelta(days=1)
 
     @property
     def fcast_end(self):
-        #Returns date on which the simulation and the forecast end
+        # Returns date on which the simulation and the forecast end
         return self.sim_end
 
     @property
     def fcast_len(self):
-        #Returns the length of the forecast in days
+        # Returns the length of the forecast in days
         return (self.sim_end - self.data_end).days
 
     """
         Data properties
     """
+
     @property
     def data_len(self):
         return self.new_cases_obs.shape[0]
@@ -195,25 +198,22 @@ class Cov19Model(Model):
     @property
     def data_dim(self):
         return self.new_cases_obs.shape[1]
-    
+
     @property
     def data_begin(self):
         return self._data_begin
-    
+
     @property
     def data_end(self):
         return self._data_end
-    
+
     """
         Simulation properties
     """
+
     @property
     def sim_len(self):
         return self.sim_shape[0]
-
-    @property
-    def sim_diff_data(self):
-        return (self.data_begin - self.sim_begin).days
 
     @property
     def sim_begin(self):
@@ -222,6 +222,10 @@ class Cov19Model(Model):
     @property
     def sim_end(self):
         return self._sim_end
+
+    @property
+    def diff_data_sim(self):
+        return (self.data_begin - self.sim_begin).days
 
 
 def modelcontext(model):

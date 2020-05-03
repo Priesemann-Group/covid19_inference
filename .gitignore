@@ -88,3 +88,7 @@ target/
 #floobits
 .floo
 .flooignore
+
+# we save data locally
+data/
+
