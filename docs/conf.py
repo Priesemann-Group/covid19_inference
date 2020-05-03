@@ -145,7 +145,7 @@ html_theme_options = {
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ["_static"]
+# html_static_path = ["_static"]
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -195,7 +195,7 @@ intersphinx_mapping = {
     "matplotlib": ("http://matplotlib.sourceforge.net", None),
     "pymc3": ("https://docs.pymc.io", None),
     "theano": ("http://deeplearning.net/software/theano/", None),
-    "pandas": ("https://pandas.pydata.org/", None),
+    "pandas": ("https://pandas.pydata.org/docs/", None),
 }
 
 imgmath_image_format = "svg"

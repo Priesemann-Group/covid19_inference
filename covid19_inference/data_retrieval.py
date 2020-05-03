@@ -107,9 +107,10 @@ class JHU:
         ----------
         fp_confirmed,fp_deaths,fp_recovered : str, optional
             Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases. Default download sources are
-        `Confirmed <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv>`_,
-        `Deaths <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv>`_ and
-        `Recovered <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv>`_. (default: None)
+            `Confirmed <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv>`_,
+            `Deaths <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv>`_ and
+            `Recovered <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv>`_. (default: None)
+
         save_to_attributes : bool, optional
             Should the returned dataframe tuple be saved as attributes (default:true)
 
@@ -433,7 +434,7 @@ class JHU:
             else:
                 df["confirmed"] = self.confirmed[(country, state)]
         df.index.name = "date"
-        df = self.filter_date(df, begin_date-datetime.timedelta(days=1), end_date)
+        df = self.filter_date(df, begin_date - datetime.timedelta(days=1), end_date)
         df = (
             df.diff().drop(df.index[0]).astype(int)
         )  # Neat oneliner to also drop the first row and set the type back to int
@@ -526,7 +527,7 @@ class JHU:
                 df["deaths"] = self.deaths[(country, state)]
 
         df.index.name = "date"
-        df = self.filter_date(df, begin_date-datetime.timedelta(days=1), end_date)
+        df = self.filter_date(df, begin_date - datetime.timedelta(days=1), end_date)
         df = (
             df.diff().drop(df.index[0]).astype(int)
         )  # Neat oneliner to also drop the first row and set the type back to int
@@ -621,7 +622,7 @@ class JHU:
 
         df.index.name = "date"
 
-        df = self.filter_date(df, begin_date-datetime.timedelta(days=1), end_date)
+        df = self.filter_date(df, begin_date - datetime.timedelta(days=1), end_date)
 
         df = (
             df.diff().drop(df.index[0]).astype(int)
@@ -721,7 +722,7 @@ class RKI:
         : pandas.DataFrame
             Containing all the RKI data from arcgis website.
             In the format:
-                [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref, Datenstand, ]
+            [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref, Datenstand, ]
 
         """
 
@@ -989,7 +990,14 @@ class RKI:
         elif bundesland is not None and landkreis is not None:
             raise ValueError("bundesland and landkreis cannot be simultaneously set.")
 
-        df = self.filter(begin_date-datetime.timedelta(days=1), end_date, "AnzahlFall", date_type, level, value)
+        df = self.filter(
+            begin_date - datetime.timedelta(days=1),
+            end_date,
+            "AnzahlFall",
+            date_type,
+            level,
+            value,
+        )
         # Get difference to the days beforehand
         df = (
             df.diff().drop(df.index[0]).astype(int)
@@ -1081,7 +1089,12 @@ class RKI:
             raise ValueError("bundesland and landkreis cannot be simultaneously set.")
 
         df = self.filter(
-            begin_date-datetime.timedelta(days=1), end_date, "AnzahlTodesfall", date_type, level, value
+            begin_date - datetime.timedelta(days=1),
+            end_date,
+            "AnzahlTodesfall",
+            date_type,
+            level,
+            value,
         )
         # Get difference to the days beforehand
         df = (
@@ -1169,7 +1182,14 @@ class RKI:
             level = "Landkreis"
             value = landkreis
 
-        df = self.filter(begin_date-datetime.timedelta(days=1), end_date, "AnzahlGenesen", date_type, level, value)
+        df = self.filter(
+            begin_date - datetime.timedelta(days=1),
+            end_date,
+            "AnzahlGenesen",
+            date_type,
+            level,
+            value,
+        )
         # Get difference to the days beforehand
         df = (
             df.diff().drop(df.index[0]).astype(int)
@@ -1505,7 +1525,8 @@ class RKIsituationreports:
 
     Interesting new data is for example ICU cases, deaths and recorded symptoms. For now one can look at the data by running
 
-    .. highlight:: python
+    .. code-block::
+
         rki_si_re = cov19.data_retrieval.RKIsituationreports(True)
         print(rki_si_re.data)
 
