@@ -1,6 +1,9 @@
 import datetime
 import os
 import logging
+import tempfile
+import platform
+import stat
 
 import numpy as np
 import pandas as pd
@@ -8,25 +11,84 @@ import pandas as pd
 import urllib, json
 
 log = logging.getLogger(__name__)
+# set by user, or default temp
+_data_dir = None
+# provided with the module
+_data_dir_fallback = os.path.normpath(os.path.dirname(__file__) + "/../data/")
 
 _format_date = lambda date_py: "{}/{}/{}".format(
     date_py.month, date_py.day, str(date_py.year)[2:4]
 )
 
 
+def set_data_dir(fname=None, permissions=None):
+    """
+        Set the global variable _data_dir. New downloaded data is placed there.
+        If no argument provided we try the default tmp directory.
+        If permissions are not provided, uses defaults if fname is in user folder.
+        If not in user folder, tries to set 777.
+    """
+
+    target = "/tmp" if platform.system() == "Darwin" else tempfile.gettempdir()
+
+    if fname is None:
+        fname = f"{target}/covid19_data"
+    else:
+        try:
+            fname = os.path.abspath(os.path.expanduser(fname))
+        except Exception as e:
+            log.debug("Specified file name caused an exception, using default")
+            fname = f"{target}/covid19_data"
+
+    log.debug(f"Setting global target directory to {fname}")
+    fname += "/"
+    os.makedirs(fname, exist_ok=True)
+
+    try:
+        log.debug(
+            f"Trying to set permissions of {fname} "
+            + f"({oct(os.stat(fname)[stat.ST_MODE])[-3:]}) "
+            + f"to {'defaults' if permissions is None else str(permissions)}"
+        )
+        dirusr = os.path.abspath(os.path.expanduser("~"))
+        if permissions is None:
+            if not fname.startswith(dirusr):
+                os.chmod(fname, 0o777)
+        else:
+            os.chmod(fname, int(str(permissions), 8))
+    except Exception as e:
+        log.debug(f"Unable set permissions of {fname}")
+
+    global _data_dir
+    _data_dir = fname
+    log.debug(f"Target directory set to {_data_dir}")
+    log.debug(f"{fname} (now) has permissions {oct(os.stat(fname)[stat.ST_MODE])[-3:]}")
+
+
+def get_data_dir():
+    if _data_dir is None or not os.path.exists(_data_dir):
+        set_data_dir()
+    return _data_dir
+
+
 def iso_3166_add_alternative_name_to_iso_list(
     country_in_iso_3166: str, alternative_name: str
 ):
-    this_dir = os.path.dirname(__file__)
-    data = json.load(open(this_dir + "/../data/iso_countires.json", "r"))
+    this_dir = get_data_dir()
+    try:
+        data = json.load(open(this_dir + "/iso_countries.json", "r"))
+    except Exception as e:
+        data = json.load(open(_data_dir_fallback + "/iso_countries.json", "r"))
+
     try:
         data[country_in_iso_3166].append(alternative_name)
         log.info("Added alternative '{alternative_name}' to {country_in_iso_3166}.")
     except Exception as e:
         raise e
+
     json.dump(
         data,
-        open(this_dir + "/../data/iso_countires.json", "w", encoding="utf-8"),
+        open(this_dir + "/iso_countries.json", "w", encoding="utf-8"),
         ensure_ascii=False,
         indent=4,
     )
@@ -42,8 +104,12 @@ def iso_3166_convert_to_iso(country_column_df):
 
 
 def iso_3166_get_country_name_from_alternative(alternative_name: str) -> str:
-    this_dir = os.path.dirname(__file__)
-    data = json.load(open(this_dir + "/../data/iso_countires.json", "r"))
+    this_dir = get_data_dir()
+    try:
+        data = json.load(open(this_dir + "/iso_countries.json", "r"))
+    except Exception as e:
+        data = json.load(open(_data_dir_fallback + "/iso_countries.json", "r"))
+
     for country, alternatives in data.items():
         for alt in alternatives:
             if alt == alternative_name:
@@ -55,8 +121,11 @@ def iso_3166_get_country_name_from_alternative(alternative_name: str) -> str:
 
 
 def iso_3166_country_in_iso_format(country: str) -> bool:
-    this_dir = os.path.dirname(__file__)
-    data = json.load(open(this_dir + "/../data/iso_countires.json", "r"))
+    this_dir = get_data_dir()
+    try:
+        data = json.load(open(this_dir + "/iso_countries.json", "r"))
+    except Exception as e:
+        data = json.load(open(_data_dir_fallback + "/iso_countries.json", "r"))
     if country in data:
         return True
     return False
@@ -139,7 +208,7 @@ class JHU:
         self,
         fp_confirmed: str = None,
         save_to_attributes: bool = True,
-        fallback: bool = None,
+        fallback: str = None,
     ):
         """
         Attempts to download the most current data for the confirmed cases from the online repository of the
@@ -162,11 +231,19 @@ class JHU:
         """
         if fp_confirmed is None:
             fp_confirmed = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"
-        if fallback is None:
-            this_dir = os.path.dirname(__file__)
-            fallback = this_dir + "/../data/jhu_fallback_confirmed_gzip.dat"
 
-        confirmed = self.__to_iso(self.__download_from_source(fp_confirmed, fallback))
+        fallbacks = [
+            get_data_dir() + "/jhu_fallback_confirmed.csv.gz",
+        ]
+        if fallback is not None:
+            fallbacks.append(fallback)
+        fallbacks.append(_data_dir_fallback + "/jhu_fallback_confirmed.csv.gz",)
+
+        dl = self.__download_from_source(
+            url=fp_confirmed, fallbacks=fallbacks, write_to=fallbacks[0],
+        )
+        log.debug(dl)
+        confirmed = self.__to_iso(dl)
         if save_to_attributes:
             self.confirmed = confirmed
         return confirmed
@@ -175,7 +252,7 @@ class JHU:
         self,
         fp_deaths: str = None,
         save_to_attributes: bool = True,
-        fallback: bool = None,
+        fallback: str = None,
     ):
         """
         Attempts to download the most current data for the deaths from the online repository of the
@@ -198,11 +275,20 @@ class JHU:
         """
         if fp_deaths is None:
             fp_deaths = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
-        if fallback is None:
-            this_dir = os.path.dirname(__file__)
-            fallback = this_dir + "/../data/jhu_fallback_deaths_gzip.dat"
 
-        deaths = self.__to_iso(self.__download_from_source(fp_deaths, fallback))
+        fallbacks = [
+            get_data_dir() + "/jhu_fallback_deaths.csv.gz",
+        ]
+        if fallback is not None:
+            fallbacks.append(fallback)
+        fallbacks.append(_data_dir_fallback + "/jhu_fallback_deaths.csv.gz",)
+
+        deaths = self.__to_iso(
+            self.__download_from_source(
+                url=fp_deaths, fallbacks=fallbacks, write_to=fallbacks[0],
+            )
+        )
+
         if save_to_attributes:
             self.deaths = deaths
         return deaths
@@ -211,7 +297,7 @@ class JHU:
         self,
         fp_recovered: str = None,
         save_to_attributes: bool = True,
-        fallback: bool = None,
+        fallback: str = None,
     ):
         """
         Attempts to download the most current data for the recovered cases from the online repository of the
@@ -234,18 +320,26 @@ class JHU:
         """
         if fp_recovered is None:
             fp_recovered = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
-        if fallback is None:
-            this_dir = os.path.dirname(__file__)
-            fallback = this_dir + "/../data/jhu_fallback_recovered_gzip.dat"
 
-        recovered = self.__to_iso(self.__download_from_source(fp_recovered, fallback))
+        fallbacks = [
+            get_data_dir() + "/jhu_fallback_recovered.csv.gz",
+        ]
+        if fallback is not None:
+            fallbacks.append(fallback)
+        fallbacks.append(_data_dir_fallback + "/jhu_fallback_recovered.csv.gz",)
+
+        recovered = self.__to_iso(
+            self.__download_from_source(
+                url=fp_recovered, fallbacks=fallbacks, write_to=fallbacks[0],
+            )
+        )
 
         if save_to_attributes:
             self.recovered = recovered
 
         return recovered
 
-    def __download_from_source(self, url, fallback=None):
+    def __download_from_source(self, url, fallbacks=[], write_to=None):
         """
         Private method
         Downloads one csv file from an url and converts it into a pandas dataframe. A fallback source can also be given.
@@ -254,8 +348,10 @@ class JHU:
         ----------
         url : str
             Where to download the csv file from
-        fallback : str, optional
-            Fallback source for the csv file
+        fallbacks : list, optional
+            List of optional fallback sources for the csv file.
+        write_to : str, optional
+            If provided, save the downloaded_data there. Default: None, do not write.
 
         Returns
         -------
@@ -266,12 +362,24 @@ class JHU:
             data = pd.read_csv(url, sep=",")
             data["Country/Region"] = iso_3166_convert_to_iso(
                 data["Country/Region"]
-            )  # Do that right after downloading for performance reasons
-            # Save to fallback url. A bit hacky but should work
-            data.to_csv(fallback, sep=",", compression="gzip")
+            )  # convert before saving so we do not have to do it every time
+            # Save to write_to. A bit hacky but should work
+            if write_to is not None:
+                data.to_csv(write_to, sep=",", index=False, compression="infer")
         except Exception as e:
-            log.info(f"Failed to download from {url}, using local copy.")
-            data = pd.read_csv(fallback, sep=",", compression="gzip")
+            log.info(
+                f"Failed to download {url}: {e}, trying {len(fallbacks)} fallbacks."
+            )
+            for fb in fallbacks:
+                try:
+                    data = pd.read_csv(fb, sep=",")
+                    # so this was successfull, make a copy
+                    if write_to is not None:
+                        data.to_csv(write_to, sep=",", index=False, compression="infer")
+                    log.debug(f"Fallback {fb} successful.")
+                    break
+                except Exception as e:
+                    continue
         return data
 
     def __to_iso(self, df):
@@ -433,7 +541,7 @@ class JHU:
             else:
                 df["confirmed"] = self.confirmed[(country, state)]
         df.index.name = "date"
-        df = self.filter_date(df, begin_date-datetime.timedelta(days=1), end_date)
+        df = self.filter_date(df, begin_date - datetime.timedelta(days=1), end_date)
         df = (
             df.diff().drop(df.index[0]).astype(int)
         )  # Neat oneliner to also drop the first row and set the type back to int
@@ -526,7 +634,7 @@ class JHU:
                 df["deaths"] = self.deaths[(country, state)]
 
         df.index.name = "date"
-        df = self.filter_date(df, begin_date-datetime.timedelta(days=1), end_date)
+        df = self.filter_date(df, begin_date - datetime.timedelta(days=1), end_date)
         df = (
             df.diff().drop(df.index[0]).astype(int)
         )  # Neat oneliner to also drop the first row and set the type back to int
@@ -621,7 +729,7 @@ class JHU:
 
         df.index.name = "date"
 
-        df = self.filter_date(df, begin_date-datetime.timedelta(days=1), end_date)
+        df = self.filter_date(df, begin_date - datetime.timedelta(days=1), end_date)
 
         df = (
             df.diff().drop(df.index[0]).astype(int)
@@ -725,57 +833,58 @@ class RKI:
 
         """
 
-        this_dir = os.path.dirname(__file__)
         # We need an extra url since for some reason the normal dataset website has no headers :/ --> But they get updated from the same source so that should work
         url_fulldata = "https://www.arcgis.com/sharing/rest/content/items/f10774f1c63e40168479a1feb6c7ca74/data"
 
         url_check_update = "https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0/query?where=0%3D0&objectIds=&time=&resultType=none&outFields=Datenstand&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=true&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token="
 
-        # Path to the local fallback file
-        url_local = this_dir + "/../data/rki_fallback_gzip.dat"
+        # Path to the local file, where we want the data in the end
+        url_local = get_data_dir() + "/rki_fallback.csv.gz"
+
+        # where to look for already downloaded content
+        fallbacks = [
+            get_data_dir() + "/rki_fallback.csv.gz",
+            _data_dir_fallback + "/rki_fallback.csv.gz",
+        ]
 
         # Loads local copy and gets latest data date
         df = None
 
-        try:
-            log.info("Loading local file.")
+        for fb in fallbacks:
+            try:
+                log.debug(f"Trying local file {fb}")
+                # Local copy should be properly formated, so no __to_iso() used
+                df = pd.read_csv(fb, sep=",")
+                current_file_date = datetime.datetime.strptime(
+                    df.Datenstand.unique()[0], "%d.%m.%Y, %H:%M Uhr"
+                )
+                break
+            except Exception as e:
+                log.debug(f"Local file not available: {e}")
+                current_file_date = datetime.datetime.fromtimestamp(0)
 
-            # Local copy should be properly formated, so no __to_iso() used
-            df = pd.read_csv(url_local, sep=",", compression="gzip")
-
-            current_file_date = datetime.datetime.strptime(
-                df.Datenstand.unique()[0], "%d.%m.%Y, %H:%M Uhr"
-            )
-
-        except Exception as e:
-            log.warning("Local file not available!")
-            current_file_date = datetime.datetime.fromtimestamp(0)
-
-        # Get last modified date for the repository files
+        # Get last modified date for the files from rki repo
         try:
             with urllib.request.urlopen(url_check_update) as url:
                 json_data = json.loads(url.read().decode())
-
             if len(json_data["features"]) > 1:
                 raise RuntimeError(
-                    "Date checking file has more than one Datenstand. This should not happen."
+                    "Date checking file has more than one Datenstand. "
+                    + "This should not happen."
                 )
-
             online_file_date = datetime.datetime.strptime(
                 json_data["features"][0]["attributes"]["Datenstand"],
                 "%d.%m.%Y, %H:%M Uhr",
             )
-
         except Exception as e:
-            log.warning("Could not fetch data date from online repository of the RKI")
+            log.debug("Could not fetch data date from online repository of the RKI")
             online_file_date = datetime.datetime.fromtimestamp(1)
 
         # Download file and overwrite old one if it is older
         if online_file_date > current_file_date:
-            log.info("Downloading new dataset from repository since it is newer.")
+            log.info("Downloading rki dataset from repository.")
             try:
                 df = self.__to_iso(pd.read_csv(url_fulldata, sep=","))
-
             except Exception as e:
                 log.warning(
                     "Download Failed! Trying downloading via rest api. May take longer!"
@@ -784,20 +893,17 @@ class RKI:
                 try:
                     # Dates already are datetime, so no __to_iso used
                     df = self.__download_via_rest_api(try_max=10)
-
                 except Exception as e:
                     log.warning("Downloading from the rest api also failed!")
 
                     if df is None:
                         raise RuntimeError("No source to obtain RKI data from.")
 
-            log.info(
-                "Overwriting /data/rki_fallback_gzip.dat fallback with newest downloaded ones"
-            )
-            df.to_csv(url_local, compression="gzip", index=False)
+            log.debug(f"Overwriting {url_local} with newest downloaded data.")
+            df.to_csv(url_local, compression="infer", index=False)
         else:
-            log.info("Using local file since no new data is available online.")
-            df = self.__to_iso(pd.read_csv(url_local, sep=",", compression="gzip"))
+            log.info("Using local rki data because no newer version available online.")
+            df = self.__to_iso(pd.read_csv(url_local, sep=","))
 
         self.data = df
 
@@ -989,7 +1095,14 @@ class RKI:
         elif bundesland is not None and landkreis is not None:
             raise ValueError("bundesland and landkreis cannot be simultaneously set.")
 
-        df = self.filter(begin_date-datetime.timedelta(days=1), end_date, "AnzahlFall", date_type, level, value)
+        df = self.filter(
+            begin_date - datetime.timedelta(days=1),
+            end_date,
+            "AnzahlFall",
+            date_type,
+            level,
+            value,
+        )
         # Get difference to the days beforehand
         df = (
             df.diff().drop(df.index[0]).astype(int)
@@ -1081,7 +1194,12 @@ class RKI:
             raise ValueError("bundesland and landkreis cannot be simultaneously set.")
 
         df = self.filter(
-            begin_date-datetime.timedelta(days=1), end_date, "AnzahlTodesfall", date_type, level, value
+            begin_date - datetime.timedelta(days=1),
+            end_date,
+            "AnzahlTodesfall",
+            date_type,
+            level,
+            value,
         )
         # Get difference to the days beforehand
         df = (
@@ -1169,7 +1287,14 @@ class RKI:
             level = "Landkreis"
             value = landkreis
 
-        df = self.filter(begin_date-datetime.timedelta(days=1), end_date, "AnzahlGenesen", date_type, level, value)
+        df = self.filter(
+            begin_date - datetime.timedelta(days=1),
+            end_date,
+            "AnzahlGenesen",
+            date_type,
+            level,
+            value,
+        )
         # Get difference to the days beforehand
         df = (
             df.diff().drop(df.index[0]).astype(int)
@@ -1345,10 +1470,13 @@ class GOOGLE:
         if url is None:
             url = "https://www.gstatic.com/covid19/mobility/Global_Mobility_Report.csv"
 
-        this_dir = os.path.dirname(__file__)
+        # Path to the local file where we want it in the end
+        url_local = get_data_dir() + "/google_fallback.csv.gz"
 
-        # Path to the local fallback file
-        url_local = this_dir + "/../data/google_fallback_gzip.dat"
+        fallbacks = [
+            get_data_dir() + "/google_fallback.csv.gz",
+            _data_dir_fallback + "/google_fallback.csv.gz",
+        ]
 
         # Get last modified dates for the files
         conn = urllib.request.urlopen(url, timeout=30)
@@ -1366,17 +1494,20 @@ class GOOGLE:
         # Download file and overwrite old one if it is older
         if online_file_date > current_file_date:
             log.info("Downloading new dataset from repository since it is newer.")
-            df = self.__to_iso(self.__download_from_source(url))
-            df.to_csv(url_local, compression="gzip")
+            df = self.__to_iso(
+                self.__download_from_source(
+                    url=url, fallbacks=fallbacks, write_to=url_local
+                )
+            )
         else:
             log.info("Using local file since no new data is available online.")
-            df = self.__to_iso(pd.read_csv(url_local, sep=",", compression="gzip"))
+            df = self.__to_iso(pd.read_csv(url_local, sep=",", low_memory=False))
 
         self.data = df
 
         return self.data
 
-    def __download_from_source(self, url, fallback=None):
+    def __download_from_source(self, url, fallbacks=[], write_to=None):
         """
         Private method
         Downloads one csv file from an url and converts it into a pandas dataframe. A fallback source can also be given.
@@ -1385,31 +1516,37 @@ class GOOGLE:
         ----------
         url : str
             Where to download the csv file from
-        fallback : str, optional
-            Fallback source for the csv file, filename of file that is located in /data/
+        fallbacks : list, optional
+            List of optional fallback sources for the csv file.
+        write_to : str, optional
+            If provided, save the downloaded_data there. Default: None, do not write.
 
         Returns
         -------
         : pandas.DataFrame
             Raw data from the source url as dataframe
         """
-
         try:
             data = pd.read_csv(url, sep=",")
-            log.info(
-                "Convert file to iso format, could take some time it is a huge dataset."
-            )
             data["country_region"] = iso_3166_convert_to_iso(
                 data["country_region"]
-            )  # here instead of in iso because of performance reasons
+            )  # convert before saving so we do not have to do it every time
+            if write_to is not None:
+                data.to_csv(write_to, sep=",", index=False, compression="infer")
         except Exception as e:
             log.info(
-                "Failed to download current data 'confirmed cases', using local copy."
+                f"Failed to download {url}: '{e}', trying {len(fallbacks)} fallbacks."
             )
-            this_dir = os.path.dirname(__file__)
-            data = pd.read_csv(
-                this_dir + "/../data/" + fallback, sep=",", low_memory=False
-            )
+            for fb in fallbacks:
+                try:
+                    data = pd.read_csv(fb, sep=",", low_memory=False)
+                    # so this was successfull, make a copy
+                    if write_to is not None:
+                        data.to_csv(write_to, sep=",", index=False, compression="infer")
+                    break
+                except Exception as e:
+                    continue
+        log.info("Converting file to iso format, will take time, it is a huge dataset.")
         return data
 
     def __to_iso(self, df):
@@ -1538,8 +1675,8 @@ class RKIsituationreports:
             url = "http://mlinden.de/COVID19/data/latest_report.csv"
 
         # Path to the local fallback file
-        this_dir = os.path.dirname(__file__)
-        fallback = this_dir + "/../data/rkisituationreport_fallback_gzip.dat"
+        this_dir = get_data_dir()
+        fallback = this_dir + "/../data/rkisituationreport_fallback.csv.gz"
 
         # We can just download it every run since it is very small -> We have to do that anyways because to look at the date header
         df = self.__download_from_source(url, fallback)
@@ -1574,10 +1711,10 @@ class RKIsituationreports:
             log.info(
                 "Failed to download current data 'confirmed cases', using local copy."
             )
-            this_dir = os.path.dirname(__file__)
-            data = pd.read_csv(fallback, sep=";", header=1, compression="gzip")
+            this_dir = get_data_dir()
+            data = pd.read_csv(fallback, sep=";", header=1)
         # Save as local backup if newer
-        data.to_csv(fallback, sep=";", header=1, compression="gzip")
+        data.to_csv(fallback, sep=";", header=1, compression="infer")
         return data
 
     def __to_iso(self, df):
