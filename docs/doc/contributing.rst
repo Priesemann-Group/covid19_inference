@@ -26,7 +26,7 @@ Please run your code through it before you open a pull request.
 
 We do not check for formatting in the testing (travis) but recommend to set up `black as a pre-commit hook <https://black.readthedocs.io/en/stable/version_control_integration.html>`_.
 
-.. code-block::
+.. code-block:: python
 
     conda install -c conda-forge pre-commit
     pre-commit install
