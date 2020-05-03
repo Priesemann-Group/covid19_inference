@@ -176,9 +176,10 @@ class JHU:
         ----------
         fp_confirmed,fp_deaths,fp_recovered : str, optional
             Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases. Default download sources are
-        `Confirmed <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv>`_,
-        `Deaths <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv>`_ and
-        `Recovered <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv>`_. (default: None)
+            `Confirmed <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv>`_,
+            `Deaths <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv>`_ and
+            `Recovered <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv>`_. (default: None)
+
         save_to_attributes : bool, optional
             Should the returned dataframe tuple be saved as attributes (default:true)
 
@@ -829,7 +830,7 @@ class RKI:
         : pandas.DataFrame
             Containing all the RKI data from arcgis website.
             In the format:
-                [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref, Datenstand, ]
+            [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref, Datenstand, ]
 
         """
 
@@ -1649,7 +1650,8 @@ class RKIsituationreports:
 
     Interesting new data is for example ICU cases, deaths and recorded symptoms. For now one can look at the data by running
 
-    .. highlight:: python
+    .. code-block::
+
         rki_si_re = cov19.data_retrieval.RKIsituationreports(True)
         print(rki_si_re.data)
 

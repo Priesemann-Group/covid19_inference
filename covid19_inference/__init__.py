@@ -5,8 +5,8 @@ import logging
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)-8s [%(name)s] %(message)s")
 log = logging.getLogger(__name__)
-from . import data_retrieval
 from . import plotting
+from . import data_retrieval
 from . import plot
 from .model import (
     Cov19Model,
