@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-20 18:50:13
-# @Last Modified: 2020-04-30 17:14:24
+# @Last Modified: 2020-05-03 20:38:36
 # ------------------------------------------------------------------------------ #
 # Callable in your scripts as e.g. `cov.plot.timeseries()`
 # Plot functions and helper classes
@@ -72,9 +72,10 @@ def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **
     if ax is None:
         figure, ax = plt.subplots(figsize=(6, 3))
 
-    if x.shape[0] != y.shape[-1]:
-        log.exception(f"X rows and y rows do not match: {x.shape[0]} vs {y.shape[0]}")
-        raise KeyError("Shape mismatch")
+    # still need to fix the last dimension being one
+    # if x.shape[0] != y.shape[-1]:
+    #     log.exception(f"X rows and y rows do not match: {x.shape[0]} vs {y.shape[0]}")
+    #     raise KeyError("Shape mismatch")
 
     if y.ndim == 2:
         data = np.median(y, axis=0)
@@ -92,7 +93,6 @@ def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **
         if "color" not in kwargs:
             kwargs = dict(kwargs, color=rcParams["color_data"])
         if "marker" not in kwargs:
-            # this needs fixing.
             kwargs = dict(kwargs, marker="d")
     elif what is "fcast":
         if "color" not in kwargs:
@@ -108,24 +108,23 @@ def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **
     # ------------------------------------------------------------------------------ #
     # plot
     # ------------------------------------------------------------------------------ #
-    ax.plot(x,
-        data,
-        label="Data",
-        **kwargs)
+    ax.plot(x, data, label="Data", **kwargs)
 
+    # overwrite some styles that do not play well with fill_between
     if "linewidth" in kwargs:
         del kwargs["linewidth"]
     if "marker" in kwargs:
         del kwargs["marker"]
+    if "alpha" in kwargs:
+        del kwargs["alpha"]
     kwargs["lw"] = 0
+    kwargs["alpha"] = 0.1
 
-    # set alpha to less than 1
     if draw_ci_95 and y.ndim == 2:
         ax.fill_between(
             x,
             np.percentile(y, q=2.5, axis=0),
             np.percentile(y, q=97.5, axis=0),
-            alpha=0.1,
             **kwargs,
         )
 
@@ -134,22 +133,76 @@ def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **
             x,
             np.percentile(y, q=12.5, axis=0),
             np.percentile(y, q=87.5, axis=0),
-            alpha=0.1,
             **kwargs,
         )
 
     return ax
 
 
-def _get_array_from_trace_via_date(model, trace_var, dates):
-    #This could be wrong!
-    indices = (dates - model.data_begin).days
-    # i would really like to always have the 0 index present, even when no bundeslaender
-    print(f"data with ndim {trace_var.ndim}")
-    if trace_var.ndim == 2:
-        return trace_var[:, :, indices]
+def _get_array_from_trace_via_date(
+    model, trace, var, start=None, end=None, dates=None,
+):
+    """
+        Parameters
+        ----------
+        model : model instance
+
+        trace : trace instance
+
+        var : str
+            the variable name in the trace
+
+        start : datetime.datetime
+            get all data for a range from `start` to `end`. (both boundary
+            dates included)
+
+        end :  datetime.datetime
+
+        dates : list of datetime.datetime objects, optional
+            the dates for which to get the data. Default: None, will return
+            all available data.
+
+        Returns
+        -------
+        data : nd array
+            the elements from the trace matching the dates
+
+        dates : pandas DatetimeIndex
+            the matching dates. this is essnetially an array of dates than can be passed
+            to matplotlib
+    """
+
+    ref = model.sim_begin
+    # the variable `new_cases` and some others (?) have different bounds
+    if "new_cases" in var:
+        ref = model.data_begin
+
+    if dates is None:
+        if start is None:
+            start = ref
+        if end is None:
+            end = model.sim_end
+        dates = pd.date_range(start=start, end=end)
     else:
-        return trace_var[:, indices]
+        assert start is None and end is None, "do not pass start/end with dates"
+        # make sure its the right format
+        dates = pd.DatetimeIndex(dates)
+
+    indices = (dates - ref).days
+
+    assert var in trace.varnames, "var should be in trace.varnames"
+    assert np.all(indices >= 0), (
+        "all dates should be after the model.sim_begin "
+        + "(note that `new_cases` start at model.data_begin)"
+    )
+    assert np.all(indices < model.sim_len), "all dates should be before model.sim_end"
+
+    # PS: I would really like to always have the 0 index present,
+    # even when no bundeslaender
+    if trace[var].ndim == 2:
+        return np.squeeze(trace[var][:, :, indices]), dates
+    else:
+        return np.squeeze(trace[var][:, indices]), dates
 
 
 # ------------------------------------------------------------------------------ #
@@ -277,13 +330,19 @@ format_k = lambda num, _: "${:.0f}\,$k".format(num / 1_000)
 
 
 def _format_date_xticks(ax, minor=None):
-    locale.setlocale(locale.LC_ALL, rcParams.locale+".UTF-8")#We have to utf-8 here atleast on my pc. I dont know if i
+    # ensuring utf-8 helps on some setups
+    locale.setlocale(locale.LC_ALL, rcParams.locale + ".UTF-8")
     ax.xaxis.set_major_locator(
         matplotlib.dates.WeekdayLocator(interval=1, byweekday=matplotlib.dates.SU)
     )
-    if rcParams["date_show_minor_ticks"]:
+    if minor is None:
+        # overwrite local argument with rc params only if default.
+        minor = rcParams["date_show_minor_ticks"]
+    if minor is True:
         ax.xaxis.set_minor_locator(matplotlib.dates.DayLocator())
-    ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter(rcParams["date_format"]))
+    ax.xaxis.set_major_formatter(
+        matplotlib.dates.DateFormatter(rcParams["date_format"])
+    )
 
 
 def truncate_number(number, precision):
