@@ -903,7 +903,14 @@ class RKI:
             df.to_csv(url_local, compression="infer", index=False)
         else:
             log.info("Using local rki data because no newer version available online.")
-            df = self.__to_iso(pd.read_csv(url_local, sep=","))
+            for fb in fallbacks:
+                try:
+                    df = pd.read_csv(fb, sep=",")
+                    if fb != url_local:
+                        df.to_csv(url_local, compression="infer", index=False)
+                    break
+                except Exception as e:
+                    log.debug(f"{e}")
 
         self.data = df
 
@@ -1493,7 +1500,7 @@ class GOOGLE:
 
         # Download file and overwrite old one if it is older
         if online_file_date > current_file_date:
-            log.info("Downloading new dataset from repository since it is newer.")
+            log.info("Downloading new Google dataset from repository.")
             df = self.__to_iso(
                 self.__download_from_source(
                     url=url, fallbacks=fallbacks, write_to=url_local

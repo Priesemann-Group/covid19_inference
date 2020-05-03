@@ -8,7 +8,7 @@ cache:
 language: python
 
 
-before_install: 
+before_install:
   - . ./.travis/install_miniconda.sh
   - export PATH=/home/travis/miniconda3/bin:$PATH
   - conda config --set always_yes yes --set changeps1 no
@@ -29,4 +29,4 @@ install:
 
 script:
   - conda list
-  - python -m pytest --log-level=INFO --log-cli-level=INFO 
+  - python -m pytest --log-level=DEBUG --log-cli-level=DEBUG
