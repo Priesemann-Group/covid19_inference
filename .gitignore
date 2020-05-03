@@ -89,6 +89,4 @@ target/
 .floo
 .flooignore
 
-# we save data locally
-data/*
 
