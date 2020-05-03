@@ -25,7 +25,7 @@ setup(
     author="Jonas Dehning, Johannes Zierenberg, F. Paul Spitzner, Michael Wibral, Joao Pinheiro Neto, Michael Wilczek, Viola Priesemann",
     author_email="jonas.dehning@ds.mpg.de",
     packages=["covid19_inference"],
-    url="https://github.com/Priesemann-Group/covid19_inference_forecast",
+    url="https://github.com/Priesemann-Group/covid19_inference",
     python_requires=">=3.6.0",
     version=verstr,
     install_requires=["pymc3", "matplotlib", "numpy", "pandas", "theano",],
