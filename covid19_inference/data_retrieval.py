@@ -409,7 +409,7 @@ class JHU:
         # datetime columns
         return df.T
 
-    def get_confirmed_deaths_recovered(
+    def get_total_confirmed_deaths_recovered(
         self,
         country: str = None,
         state: str = None,
@@ -453,24 +453,30 @@ class JHU:
                 df["confirmed"] = self.confirmed[(country, state)]
                 df["deaths"] = self.deaths[(country, state)]
                 df["recovered"] = self.recovered[(country, state)]
-
         df.index.name = "date"
 
         return self.filter_date(df, begin_date, end_date)
 
-    def get_confirmed(
+    def get_new(
         self,
+        value="confirmed",
         country: str = None,
         state: str = None,
-        begin_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
+        data_begin: datetime.datetime = None,
+        data_end: datetime.datetime = None,
     ):
         """
-        Retrieves all confirmed cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
-        Can be filtered by country and state, if only a country is given all available states get summed up.
+        Retrieves all new cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
+        Can be filtered by value, country and state, if only a country is given all available states get summed up.
 
         Parameters
         ----------
+        value: str
+            Which data to return, possible values are 
+                "confirmed",
+                "recovered",
+                "deaths"
+            (default: "confirmed")
         country : str, optional
             name of the country (the "Country/Region" column), can be None
         state : str, optional
@@ -483,84 +489,69 @@ class JHU:
         Returns
         -------
         : pandas.DataFrame
-            table with confirmed cases and the date as index
+            table with new cases and the date as index
         """
+        # ------------------------------------------------------------------------------ #
+        # Default Parameters
+        # ------------------------------------------------------------------------------ #
+        if value not in ["confirmed", "recovered", "deaths"]:
+            raise ValueError(
+                'Invalid value. Valid options: "confirmed", "deaths", "recovered"'
+            )
 
         if country == "None":
             country = None
         if state == "None":
             state = None
-        df = pd.DataFrame(columns=["date", "confirmed"]).set_index("date")
+
+        # If no date is given set to first and last dates in data
+        if data_begin is None:
+            data_begin = self.__get_first_date()
+        if data_end is None:
+            data_end = self.__get_last_date()
+
+        if data_begin == self.data[0].index[0]:
+            raise ValueError("Date has to be after the first dataset entry")
+
+        # ------------------------------------------------------------------------------ #
+        # Retrieve data and filter it
+        # ------------------------------------------------------------------------------ #
+        df = pd.DataFrame(columns=["date", value]).set_index("date")
         if country is None:
-            df["confirmed"] = self.confirmed.sum(axis=1, skipna=True)
+            df[value] = getattr(self, value).sum(axis=1, skipna=True)
         else:
             if state is None:
-                df["confirmed"] = self.confirmed[country].sum(axis=1, skipna=True)
+                df[value] = getattr(self, value)[country].sum(axis=1, skipna=True)
             else:
-                df["confirmed"] = self.confirmed[(country, state)]
+                df[value] = getattr(self, value)[(country, state)]
         df.index.name = "date"
-        df = self.filter_date(df, begin_date, end_date)
-        return df
 
-    def get_new_confirmed(
-        self,
-        country: str = None,
-        state: str = None,
-        begin_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
-    ):
-        """
-        Retrieves all daily confirmed cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
-        Can be filtered by country and state, if only a country is given all available states get summed up.
-
-        Parameters
-        ----------
-        country : str, optional
-            name of the country (the "Country/Region" column), can be None
-        state : str, optional
-            name of the state (the "Province/State" column), can be None
-        begin_date : datetime.datetime, optional
-            intial date for the returned data, if no value is given the first date in the dataset is used
-        end_date : datetime.datetime, optional
-            last date for the returned data, if no value is given the most recent date in the dataset is used
-
-        Returns
-        -------
-        : pandas.DataFrame
-            table with daily new recovered cases and the date as index
-        """
-        if country == "None":
-            country = None
-        if state == "None":
-            state = None
-        df = pd.DataFrame(columns=["date", "confirmed"]).set_index("date")
-        if country is None:
-            df["confirmed"] = self.confirmed.sum(axis=1, skipna=True)
-        else:
-            if state is None:
-                df["confirmed"] = self.confirmed[country].sum(axis=1, skipna=True)
-            else:
-                df["confirmed"] = self.confirmed[(country, state)]
-        df.index.name = "date"
-        df = self.filter_date(df, begin_date - datetime.timedelta(days=1), end_date)
+        df = self.filter_date(df, data_begin - datetime.timedelta(days=1), data_end)
         df = (
             df.diff().drop(df.index[0]).astype(int)
         )  # Neat oneliner to also drop the first row and set the type back to int
         return df
 
-    def get_deaths(
+    def get_total(
         self,
+        value="confirmed",
         country: str = None,
         state: str = None,
-        begin_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
+        data_begin: datetime.datetime = None,
+        data_end: datetime.datetime = None,
     ):
         """
-        Retrieves all deaths from the Johns Hopkins University dataset as a DataFrame with datetime index.
-        Can be filtered by country and state, if only a country is given all available states get summed up.
+        Retrieves all total/cumulative cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
+        Can be filtered by value, country and state, if only a country is given all available states get summed up.
 
         Parameters
         ----------
+        value: str
+            Which data to return, possible values are 
+                "confirmed",
+                "recovered",
+                "deaths"
+            (default: "confirmed")
         country : str, optional
             name of the country (the "Country/Region" column), can be None
         state : str, optional
@@ -573,168 +564,37 @@ class JHU:
         Returns
         -------
         : pandas.DataFrame
-            table with confirmed cases and the date as index
+            table with total/cumulative cases and the date as index
         """
+
+        # ------------------------------------------------------------------------------ #
+        # Default Parameters
+        # ------------------------------------------------------------------------------ #
+        if value not in ["confirmed", "recovered", "deaths"]:
+            raise ValueError(
+                'Invalid value. Valid options: "confirmed", "deaths", "recovered"'
+            )
+
         if country == "None":
             country = None
         if state == "None":
             state = None
 
-        df = pd.DataFrame(columns=["date", "deaths"]).set_index("date")
+        # Note: It should be fine to NOT check for the date since this is also done by the filter_date method
+
+        # ------------------------------------------------------------------------------ #
+        # Retrieve data and filter it
+        # ------------------------------------------------------------------------------ #
+        df = pd.DataFrame(columns=["date", value]).set_index("date")
         if country is None:
-            df["deaths"] = self.deaths.sum(axis=1, skipna=True)
+            df[value] = getattr(self, value).sum(axis=1, skipna=True)
         else:
             if state is None:
-                df["deaths"] = self.deaths[country].sum(axis=1, skipna=True)
+                df[value] = getattr(self, value)[country].sum(axis=1, skipna=True)
             else:
-                df["deaths"] = self.deaths[(country, state)]
-
+                df[value] = getattr(self, value)[(country, state)]
         df.index.name = "date"
-        df = self.filter_date(df, begin_date, end_date)
-        return df
-
-    def get_new_deaths(
-        self,
-        country: str = None,
-        state: str = None,
-        begin_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
-    ):
-        """
-        Retrieves all daily deaths from the Johns Hopkins University dataset as a DataFrame with datetime index.
-        Can be filtered by country and state, if only a country is given all available states get summed up.
-
-        Parameters
-        ----------
-        country : str, optional
-            name of the country (the "Country/Region" column), can be None
-        state : str, optional
-            name of the state (the "Province/State" column), can be None
-        begin_date : datetime.datetime, optional
-            intial date for the returned data, if no value is given the first date in the dataset is used
-        end_date : datetime.datetime, optional
-            last date for the returned data, if no value is given the most recent date in the dataset is used
-
-        Returns
-        -------
-        : pandas.DataFrame
-            table with daily new recovered cases and the date as index
-        """
-        if country == "None":
-            country = None
-        if state == "None":
-            state = None
-
-        df = pd.DataFrame(columns=["date", "deaths"]).set_index("date")
-        if country is None:
-            df["deaths"] = self.deaths.sum(axis=1, skipna=True)
-        else:
-            if state is None:
-                df["deaths"] = self.deaths[country].sum(axis=1, skipna=True)
-            else:
-                df["deaths"] = self.deaths[(country, state)]
-
-        df.index.name = "date"
-        df = self.filter_date(df, begin_date - datetime.timedelta(days=1), end_date)
-        df = (
-            df.diff().drop(df.index[0]).astype(int)
-        )  # Neat oneliner to also drop the first row and set the type back to int
-        return df
-
-    def get_recovered(
-        self,
-        country: str = None,
-        state: str = None,
-        begin_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
-    ):
-        """
-        Retrieves all recovered cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
-        Can be filtered by country and state, if only a country is given all available states get summed up.
-
-        Parameters
-        ----------
-        country : str, optional
-            name of the country (the "Country/Region" column), can be None
-        state : str, optional
-            name of the state (the "Province/State" column), can be None
-        begin_date : datetime.datetime, optional
-            intial date for the returned data, if no value is given the first date in the dataset is used
-        end_date : datetime.datetime, optional
-            last date for the returned data, if no value is given the most recent date in the dataset is used
-
-        Returns
-        -------
-        : pandas.DataFrame
-            table with recovered cases and the date as index
-        """
-        if country == "None":
-            country = None
-        if state == "None":
-            state = None
-
-        df = pd.DataFrame(columns=["date", "recovered"]).set_index("date")
-        if country is None:
-            df["recovered"] = self.recovered.sum()
-        else:
-            if state is None:
-                df["recovered"] = self.recovered.loc[country].sum()
-            else:
-                df["recovered"] = self.recovered.loc[(country, state)]
-
-        df.index.name = "date"
-
-        df = self.filter_date(df, begin_date, end_date)
-        return df
-
-    def get_new_recovered(
-        self,
-        country: str = None,
-        state: str = None,
-        begin_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
-    ):
-        """
-        Retrieves all daily recovered cases from the Johns Hopkins University dataset as a DataFrame with datetime index.
-        Can be filtered by country and state, if only a country is given all available states get summed up.
-
-        Parameters
-        ----------
-        country : str, optional
-            name of the country (the "Country/Region" column), can be None
-        state : str, optional
-            name of the state (the "Province/State" column), can be None
-        begin_date : datetime.datetime, optional
-            intial date for the returned data, if no value is given the first date in the dataset is used
-        end_date : datetime.datetime, optional
-            last date for the returned data, if no value is given the most recent date in the dataset is used
-
-        Returns
-        -------
-        : pandas.DataFrame
-            table with daily new recovered cases and the date as index
-        """
-        if country == "None":
-            country = None
-        if state == "None":
-            state = None
-
-        df = pd.DataFrame(columns=["date", "recovered"]).set_index("date")
-        if country is None:
-            df["recovered"] = self.recovered.sum()
-        else:
-            if state is None:
-                df["recovered"] = self.recovered.loc[country].sum()
-            else:
-                df["recovered"] = self.recovered.loc[(country, state)]
-
-        df.index.name = "date"
-
-        df = self.filter_date(df, begin_date - datetime.timedelta(days=1), end_date)
-
-        df = (
-            df.diff().drop(df.index[0]).astype(int)
-        )  # Neat oneliner to also drop the first row and set the type back to int
+        df = self.filter_date(df, data_begin, data_end)
         return df
 
     def filter_date(
@@ -771,11 +631,11 @@ class JHU:
 
         return df[begin_date:end_date]
 
-    def __get_first_date(self, df):
-        return df.index[0]
+    def __get_first_date(self):
+        return df.data[0].index[0]
 
-    def __get_last_date(self, df):
-        return df.index[-1]
+    def __get_last_date(self):
+        return df.data[0].index[-1]
 
     def get_possible_countries_states(self):
         """
@@ -929,6 +789,14 @@ class RKI:
             )
             df = df.drop(columns="Refdatum")
 
+        # Rename the columns to match the JHU dataset
+        if "AnzahlFall" in df.columns:
+            df.rename(columns={"AnzahlFall": "confirmed"}, inplace=True)
+        if "AnzahlTodesfall" in df.columns:
+            df.rename(columns={"AnzahlTodesfall": "deaths"}, inplace=True)
+        if "AnzahlGenesen" in df.columns:
+            df.rename(columns={"AnzahlGenesen": "recovered"}, inplace=True)
+
         df["date"] = pd.to_datetime(df["date"])
         df["date_ref"] = pd.to_datetime(df["date_ref"])
         return df
@@ -1021,12 +889,13 @@ class RKI:
 
         return df
 
-    def get_confirmed(
+    def get_total(
         self,
+        value="confirmed",
         bundesland: str = None,
         landkreis: str = None,
-        begin_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
+        data_begin: datetime.datetime = None,
+        data_end: datetime.datetime = None,
         date_type: str = "date",
     ):
         """
@@ -1034,13 +903,19 @@ class RKI:
 
         Parameters
         ----------
+        value: str
+            Which data to return, possible values are 
+                "confirmed",
+                "recovered",
+                "deaths"
+            (default: "confirmed")
         bundesland : str, optional
             if no value is provided it will use the full summed up dataset for Germany
         landkreis : str, optional
             if no value is provided it will use the full summed up dataset for the region (bundesland)
-        begin_date : datetime.datetime, optional
+        data_begin : datetime.datetime, optional
             initial date, if no value is provided it will use the first possible date
-        end_date : datetime.datetime, optional
+        data_end : datetime.datetime, optional
             last date, if no value is provided it will use the most recent possible date
         date_type : str, optional
             type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
@@ -1049,42 +924,64 @@ class RKI:
         -------
         :pd.DataFrame
         """
+
+        # ------------------------------------------------------------------------------ #
+        # Default parameters
+        # ------------------------------------------------------------------------------ #
+        if value not in ["confirmed", "recovered", "deaths"]:
+            raise ValueError(
+                'Invalid value. Valid options: "confirmed", "deaths", "recovered"'
+            )
+
+        # Note: It should be fine to NOT check for the date since this is also done by the filter_date method
+
         # Set level for filter use bundesland if no landkreis is supplied else use landkreis
         level = None
-        value = None
+        filter_value = None
         if bundesland is not None and landkreis is None:
             level = "Bundesland"
-            value = bundesland
+            filter_value = bundesland
         elif bundesland is None and landkreis is not None:
             level = "Landkreis"
-            value = landkreis
+            filter_value = landkreis
         elif bundesland is not None and landkreis is not None:
             raise ValueError("bundesland and landkreis cannot be simultaneously set.")
 
-        df = self.filter(begin_date, end_date, "AnzahlFall", date_type, level, value)
+        # ------------------------------------------------------------------------------ #
+        # Retrieve data and filter it
+        # ------------------------------------------------------------------------------ #
+        df = self.filter(data_begin, data_end, value, date_type, level, filter_value)
         return df
 
-    def get_new_confirmed(
+    def get_new(
         self,
+        value="confirmed",
         bundesland: str = None,
         landkreis: str = None,
-        begin_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
+        data_begin: datetime.datetime = None,
+        data_end: datetime.datetime = None,
         date_type: str = "date",
     ):
         """
-        Retrieves all new confirmed cases daily from the Johns Hopkins University dataset as a DataFrame with datetime index.
-        Can be filtered by country and state, if only a country is given all available states get summed up.
+        Retrieves all new cases from the Robert Koch Institute dataset as a DataFrame with datetime index.
+        Can be filtered by value, bundesland and landkreis, if only a country is given all available states get summed up.
 
         Parameters
         ----------
-        country : str, optional
-            name of the country (the "Country/Region" column), can be None
-        state : str, optional
-            name of the state (the "Province/State" column), can be None
-        begin_date : datetime.datetime, optional
-            intial date for the returned data, if no value is given the first date in the dataset is used
-        end_date : datetime.datetime, optional
+        value: str
+            Which data to return, possible values are 
+                "confirmed",
+                "recovered",
+                "deaths"
+            (default: "confirmed")
+        bundesland : str, optional
+            if no value is provided it will use the full summed up dataset for Germany
+        landkreis : str, optional
+            if no value is provided it will use the full summed up dataset for the region (bundesland)
+        data_begin : datetime.datetime, optional
+            intial date for the returned data, if no value is given the first date in the dataset is used,
+            if none is given could yield errors
+        data_end : datetime.datetime, optional
             last date for the returned data, if no value is given the most recent date in the dataset is used
 
         Returns
@@ -1092,216 +989,49 @@ class RKI:
         : pandas.DataFrame
             table with daily new confirmed and the date as index
         """
+
+        # ------------------------------------------------------------------------------ #
+        # Default parameters
+        # ------------------------------------------------------------------------------ #
+
+        if value not in ["confirmed", "recovered", "deaths"]:
+            raise ValueError(
+                'Invalid value. Valid options: "confirmed", "deaths", "recovered"'
+            )
+
         level = None
-        value = None
+        filter_value = None
         if bundesland is not None and landkreis is None:
             level = "Bundesland"
-            value = bundesland
+            filter_value = bundesland
         elif bundesland is None and landkreis is not None:
             level = "Landkreis"
-            value = landkreis
+            filter_value = landkreis
         elif bundesland is not None and landkreis is not None:
             raise ValueError("bundesland and landkreis cannot be simultaneously set.")
+
+        if data_begin is None:
+            data_begin = self.data.index[0]
+
+        if data_end is None:
+            data_end = self.data.index[-1]
+
+        if data_begin == self.data.index[0]:
+            raise ValueError(
+                "Date has to be after the first dataset entry. Set a data_begin date!"
+            )
+
+        # ------------------------------------------------------------------------------ #
+        # Retrieve data and filter it
+        # ------------------------------------------------------------------------------ #
 
         df = self.filter(
             begin_date - datetime.timedelta(days=1),
             end_date,
-            "AnzahlFall",
+            value,
             date_type,
             level,
-            value,
-        )
-        # Get difference to the days beforehand
-        df = (
-            df.diff().drop(df.index[0]).astype(int)
-        )  # Neat oneliner to also drop the first row and set the type back to int
-        return df
-
-    def get_deaths(
-        self,
-        bundesland: str = None,
-        landkreis: str = None,
-        begin_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
-        date_type: str = "date",
-    ):
-        """
-        Gets all total deaths for a region as dataframe with date index. Can be filtered with multiple arguments.
-
-        Parameters
-        ----------
-        bundesland : str, optional
-            if no value is provided it will use the full summed up dataset for Germany
-        landkreis : str, optional
-            if no value is provided it will use the full summed up dataset for the region (bundesland)
-        begin_date : datetime.datetime, optional
-            initial date, if no value is provided it will use the first possible date
-        end_date : datetime.datetime, optional
-            last date, if no value is provided it will use the most recent possible date
-        date_type : str, optional
-            type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
-
-        Returns
-        -------
-        :pd.DataFrame
-        """
-        level = None
-        value = None
-        if bundesland is not None and landkreis is None:
-            level = "Bundesland"
-            value = bundesland
-        elif bundesland is None and landkreis is not None:
-            level = "Landkreis"
-            value = landkreis
-        elif bundesland is not None and landkreis is not None:
-            raise ValueError("bundesland and landkreis cannot be simultaneously set.")
-
-        df = self.filter(
-            begin_date, end_date, "AnzahlTodesfall", date_type, level, value
-        )
-        return df
-
-    def get_new_deaths(
-        self,
-        bundesland: str = None,
-        landkreis: str = None,
-        begin_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
-        date_type: str = "date",
-    ):
-        """
-        Retrieves all new deaths daily from the Johns Hopkins University dataset as a DataFrame with datetime index.
-        Can be filtered by country and state, if only a country is given all available states get summed up.
-
-        Parameters
-        ----------
-        country : str, optional
-            name of the country (the "Country/Region" column), can be None
-        state : str, optional
-            name of the state (the "Province/State" column), can be None
-        begin_date : datetime.datetime, optional
-            intial date for the returned data, if no value is given the first date in the dataset is used
-        end_date : datetime.datetime, optional
-            last date for the returned data, if no value is given the most recent date in the dataset is used
-
-        Returns
-        -------
-        : pandas.DataFrame
-            table with daily new deaths and the date as index
-        """
-
-        level = None
-        value = None
-        if bundesland is not None and landkreis is None:
-            level = "Bundesland"
-            value = bundesland
-        elif bundesland is None and landkreis is not None:
-            level = "Landkreis"
-            value = landkreis
-        elif bundesland is not None and landkreis is not None:
-            raise ValueError("bundesland and landkreis cannot be simultaneously set.")
-
-        df = self.filter(
-            begin_date - datetime.timedelta(days=1),
-            end_date,
-            "AnzahlTodesfall",
-            date_type,
-            level,
-            value,
-        )
-        # Get difference to the days beforehand
-        df = (
-            df.diff().drop(df.index[0]).astype(int)
-        )  # Neat oneliner to also drop the first row and set the type back to int
-        return df
-
-    def get_recovered(
-        self,
-        bundesland: str = None,
-        landkreis: str = None,
-        begin_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
-        date_type: str = "date",
-    ):
-        """
-        Gets all total recovered cases as dataframe with date index. Can be filtered with multiple arguments.
-
-        Parameters
-        ----------
-        bundesland : str, optional
-            if no value is provided it will use the full summed up dataset for Germany
-        landkreis : str, optional
-            if no value is provided it will use the full summed up dataset for the region (bundesland)
-        begin_date : datetime.datetime, optional
-            initial date, if no value is provided it will use the first possible date
-        end_date : datetime.datetime, optional
-            last date, if no value is provided it will use the most recent possible date
-        date_type : str, optional
-            type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
-
-        Returns
-        -------
-        :pd.DataFrame
-        """
-        # Set level for filter use bundesland if no landkreis is supplied else us landkreis
-        level = None
-        value = None
-        if bundesland is not None and landkreis is None:
-            level = "Bundesland"
-            value = bundesland
-        elif bundesland is None and landkreis is not None:
-            level = "Landkreis"
-            value = landkreis
-        elif bundesland is not None and landkreis is not None:
-            raise ValueError("bundesland and landkreis cannot be simultaneously set.")
-
-        df = self.filter(begin_date, end_date, "AnzahlGenesen", date_type, level, value)
-        return df
-
-    def get_new_recovered(
-        self,
-        bundesland: str = None,
-        landkreis: str = None,
-        begin_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
-        date_type: str = "date",
-    ):
-        """
-        Retrieves all new cases daily from the Johns Hopkins University dataset as a DataFrame with datetime index.
-        Can be filtered by country and state, if only a country is given all available states get summed up.
-
-        Parameters
-        ----------
-        country : str, optional
-            name of the country (the "Country/Region" column), can be None
-        state : str, optional
-            name of the state (the "Province/State" column), can be None
-        begin_date : datetime.datetime, optional
-            intial date for the returned data, if no value is given the first date in the dataset is used
-        end_date : datetime.datetime, optional
-            last date for the returned data, if no value is given the most recent date in the dataset is used
-
-        Returns
-        -------
-        : pandas.DataFrame
-            table with daily new recovered cases and the date as index
-        """
-        level = None
-        value = None
-        if bundesland is not None:
-            level = "Bundesland"
-            value = bundesland
-        if landkreis is not None:
-            level = "Landkreis"
-            value = landkreis
-
-        df = self.filter(
-            begin_date - datetime.timedelta(days=1),
-            end_date,
-            "AnzahlGenesen",
-            date_type,
-            level,
-            value,
+            filter_value,
         )
         # Get difference to the days beforehand
         df = (
@@ -1313,7 +1043,7 @@ class RKI:
         self,
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
-        variable="AnzahlFall",
+        variable="confirmed",
         date_type="date",
         level=None,
         value=None,
@@ -1330,7 +1060,7 @@ class RKI:
         variable : str, optional
             type of variable to return
             possible types are:
-            "AnzahlFall"      : cases (default)
+            "confirmed"      : cases (default)
             "AnzahlTodesfall" : deaths
             "AnzahlGenesen"   : recovered
         date_type : str, optional
@@ -1350,9 +1080,9 @@ class RKI:
             array with ONLY the requested variable, in the requested range. (one dimensional)
         """
         # Input parsing
-        if variable not in ["AnzahlFall", "AnzahlTodesfall", "AnzahlGenesen"]:
+        if variable not in ["confirmed", "deaths", "recovered"]:
             raise ValueError(
-                'Invalid variable. Valid options: "AnzahlFall", "AnzahlTodesfall", "AnzahlGenesen"'
+                'Invalid variable. Valid options: "confirmed", "deaths", "recovered"'
             )
 
         if level not in ["Landkreis", "Bundesland", None]:
@@ -1414,9 +1144,9 @@ class RKI:
         : pd.DataFrame
             DataFrame with datetime dates as index, and all German regions (bundesländer) as columns
         """
-        if variable not in ["AnzahlFall", "AnzahlTodesfall", "AnzahlGenesen"]:
+        if variable not in ["confirmed", "deaths", "recovered"]:
             raise ValueError(
-                'Invalid variable. Valid options: "AnzahlFall", "AnzahlTodesfall", "AnzahlGenesen"'
+                'Invalid variable. Valid options: "confirmed", "deaths", "recovered"'
             )
 
         if date_type not in ["date", "date_ref"]:
