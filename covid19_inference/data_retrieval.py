@@ -863,7 +863,7 @@ class RKI:
             try:
                 log.debug(f"Trying local file {fb}")
                 # Local copy should be properly formated, so no __to_iso() used
-                df = pd.read_csv(fb, sep=",")
+                df = self.__to_iso(pd.read_csv(fb, sep=","))
                 current_file_date = datetime.datetime.strptime(
                     df.Datenstand.unique()[0], "%d.%m.%Y, %H:%M Uhr"
                 )
@@ -914,8 +914,9 @@ class RKI:
             log.info("Using local rki data because no newer version available online.")
             for fb in fallbacks:
                 try:
-                    df = pd.read_csv(fb, sep=",")
+                    df = self.__to_iso(pd.read_csv(fb, sep=","))
                     if fb != url_local:
+                        log.debug(f"Overwriting {url_local} from fallback.")
                         df.to_csv(url_local, compression="infer", index=False)
                     break
                 except Exception as e:
