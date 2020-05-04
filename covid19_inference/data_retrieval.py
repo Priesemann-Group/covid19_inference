@@ -2,6 +2,7 @@ import datetime
 import os
 import logging
 import tempfile
+import locale
 import platform
 import stat
 
@@ -1486,11 +1487,19 @@ class GOOGLE:
             _data_dir_fallback + "/google_fallback.csv.gz",
         ]
 
+        #Temp sets time locale to en_US.UTF8
+        lc_old = locale.getlocale(locale.LC_TIME)
+        locale.setlocale(locale.LC_TIME, locale='en_US.UTF8')
+
         # Get last modified dates for the files
         conn = urllib.request.urlopen(url, timeout=30)
         online_file_date = datetime.datetime.strptime(
             conn.headers["last-modified"].split(",")[-1], " %d %b %Y %H:%M:%S GMT"
         )
+
+        #Changes locale back
+        locale.setlocale(locale.LC_TIME, locale=lc_old)
+
 
         try:
             current_file_date = datetime.datetime.fromtimestamp(
