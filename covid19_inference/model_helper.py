@@ -150,9 +150,9 @@ def smooth_step_function(start_val, end_val, t_begin, t_end, t_total):
 def set_missing_with_default(priors_dict, default_priors):
     for prior_name in priors_dict.keys():
         if prior_name not in default_priors:
-            print(f"WARNING: Prior with name {prior_name} not known")
+            log.warning(f"Prior with name {prior_name} not known")
 
     for prior_name, value in default_priors.items():
         if prior_name not in priors_dict:
             priors_dict[prior_name] = value
-            print(f"{prior_name} was set to default value {value}")
+            log.info(f"{prior_name} was set to default value {value}")

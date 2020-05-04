@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-21 08:57:53
-# @Last Modified: 2020-04-21 09:51:57
+# @Last Modified: 2020-04-30 17:02:00
 # ------------------------------------------------------------------------------ #
 # Let's have a dummy instance of model and trace so we can play around with the
 # interface and plotting.
@@ -32,14 +32,16 @@ def create_example_instance(num_change_points=3):
             (model, trace) with example data
     """
 
-    rki = data_retrieval.RKI()
-    rki.download_all_available_data()
-
-    df_bundeslaender = rki.filter_all_bundesland("2020-03-10", "2020-04-13")
-    new_cases_obs = np.diff(np.array(df_bundeslaender), axis=0)[:, :]
+    jhu = data_retrieval.JHU()
+    jhu.download_all_available_data()
 
     date_begin_data = datetime.datetime(2020, 3, 10)
     date_end_data = datetime.datetime(2020, 3, 13)
+
+    new_cases_obs = jhu.get_new_confirmed(
+        country="Germany", begin_date=date_begin_data, end_date=date_end_data
+    )
+
     diff_data_sim = 16  # should be significantly larger than the expected delay, in
     # order to always fit the same number of data points.
     num_days_forecast = 10
@@ -71,14 +73,14 @@ def create_example_instance(num_change_points=3):
     change_points = change_points[0:num_change_points]
 
     params_model = dict(
-        new_cases_obs=new_cases_obs[:, 0],
-        date_begin_data=date_begin_data,
-        num_days_forecast=num_days_forecast,
+        new_cases_obs=new_cases_obs,
+        data_begin=date_begin_data,
+        fcast_len=num_days_forecast,
         diff_data_sim=diff_data_sim,
         N_population=83e6,
     )
 
-    with Cov19_Model(**params_model) as model:
+    with Cov19Model(**params_model) as model:
         lambda_t_log = lambda_t_with_sigmoids(
             pr_median_lambda_0=0.4, change_points_list=change_points
         )
@@ -94,6 +96,6 @@ def create_example_instance(num_change_points=3):
         student_t_likelihood(new_cases_inferred)
 
     # make it fast
-    trace = pm.sample(model=model, tune=50, draws=50)
+    trace = pm.sample(model=model, tune=1, draws=1)
 
     return model, trace

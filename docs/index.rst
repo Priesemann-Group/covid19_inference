@@ -30,6 +30,7 @@
     :maxdepth: 2
     :caption: For developpers
 
+    doc/contributing
     doc/debugging
 
 
@@ -42,5 +43,4 @@ Indices and tables
 
 
 
-.. include:: doc/gettingstarted.rst
 
