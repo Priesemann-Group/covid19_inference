@@ -1011,12 +1011,11 @@ class RKI:
             raise ValueError("bundesland and landkreis cannot be simultaneously set.")
 
         if data_begin is None:
-            data_begin = self.data.index[0]
-
+            data_begin = self.data[date_type].iloc[0]
         if data_end is None:
-            data_end = self.data.index[-1]
+            data_end = self.data[date_type].iloc[-1]
 
-        if data_begin == self.data.index[0]:
+        if data_begin == self.data[date_type].iloc[0]:
             raise ValueError(
                 "Date has to be after the first dataset entry. Set a data_begin date!"
             )
@@ -1026,8 +1025,8 @@ class RKI:
         # ------------------------------------------------------------------------------ #
 
         df = self.filter(
-            begin_date - datetime.timedelta(days=1),
-            end_date,
+            data_begin - datetime.timedelta(days=1),
+            data_end,
             value,
             date_type,
             level,
@@ -1037,12 +1036,12 @@ class RKI:
         df = (
             df.diff().drop(df.index[0]).astype(int)
         )  # Neat oneliner to also drop the first row and set the type back to int
-        return df
+        return df.fillna(0)
 
     def filter(
         self,
-        begin_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
+        data_begin: datetime.datetime = None,
+        data_end: datetime.datetime = None,
         variable="confirmed",
         date_type="date",
         level=None,
@@ -1053,9 +1052,9 @@ class RKI:
 
         Parameters
         ----------
-        begin_date : datetime.datetime, optional
+        data_begin : datetime.datetime, optional
             initial date, if no value is provided it will use the first possible date
-        end_date : datetime.datetime, optional
+        data_end : datetime.datetime, optional
             last date, if no value is provided it will use the most recent possible date
         variable : str, optional
             type of variable to return
@@ -1094,16 +1093,15 @@ class RKI:
             raise ValueError('Invalid date_type. Valid options: "date", "date_ref"')
 
         df = self.data.sort_values(date_type)
-        if begin_date is None:
-            begin_date = df[date_type].iloc[0]
-        if end_date is None:
-            end_date = df[date_type].iloc[-1]
-
-        if not isinstance(begin_date, datetime.datetime) and isinstance(
-            end_date, datetime.datetime
+        if data_begin is None:
+            data_begin = df[date_type].iloc[0]
+        if data_end is None:
+            data_end = df[date_type].iloc[-1]
+        if not isinstance(data_begin, datetime.datetime) and isinstance(
+            data_end, datetime.datetime
         ):
             raise ValueError(
-                "Invalid begin_date, end_date: has to be datetime.datetime object"
+                "Invalid data_begin, data_end: has to be datetime.datetime object"
             )
 
         # Keeps only the relevant data
@@ -1113,14 +1111,15 @@ class RKI:
             df = df[df[level] == value][[date_type, variable]]
 
         df_series = df.groupby(date_type)[variable].sum().cumsum()
+        df_series.index = pd.to_datetime(df_series.index)
 
-        return df_series[begin_date:end_date]
+        return df_series[data_begin:data_end].fillna(0)
 
     def filter_all_bundesland(
         self,
         begin_date: datetime.datetime = None,
         end_date: datetime.datetime = None,
-        variable="AnzahlFall",
+        variable="confirmed",
         date_type="date",
     ):
         """
@@ -1173,7 +1172,7 @@ class RKI:
             .pivot(index=date_type, columns="Bundesland", values=variable)
             .fillna(0)
         )
-
+        df2.index = pd.to_datetime(df2.index)
         # Returns cumsum of variable
         return df2[begin_date:end_date].cumsum()
 
