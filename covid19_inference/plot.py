@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-20 18:50:13
-# @Last Modified: 2020-05-03 20:38:36
+# @Last Modified: 2020-05-04 16:49:20
 # ------------------------------------------------------------------------------ #
 # Callable in your scripts as e.g. `cov.plot.timeseries()`
 # Plot functions and helper classes
@@ -136,6 +136,11 @@ def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **
             **kwargs,
         )
 
+    # ------------------------------------------------------------------------------ #
+    # formatting
+    # ------------------------------------------------------------------------------ #
+    _format_date_xticks(ax)
+
     return ax
 
 
@@ -164,12 +169,27 @@ def _get_array_from_trace_via_date(
 
         Returns
         -------
-        data : nd array
-            the elements from the trace matching the dates
+        data : nd array, 3 dim
+            the elements from the trace matching the dates.
+            dimensions are as follows
+                0 samples, if no samples only one entry
+                1 data with time matching the returned `dates` (if compatible variable)
+                2 region, if no regions only one entry
 
         dates : pandas DatetimeIndex
             the matching dates. this is essnetially an array of dates than can be passed
             to matplotlib
+
+        Example
+        -------
+        ```
+            import covid19_inference as cov
+            model, trace = cov.create_example_instance()
+            y, x = cov.plot._get_array_from_trace_via_date(
+                model, trace, "lambda_t", model.data_begin, model.data_end
+            )
+            ax = cov.plot._timeseries(x, y[:,:,0], what="model")
+        ```
     """
 
     ref = model.sim_begin
@@ -197,12 +217,13 @@ def _get_array_from_trace_via_date(
     )
     assert np.all(indices < model.sim_len), "all dates should be before model.sim_end"
 
-    # PS: I would really like to always have the 0 index present,
-    # even when no bundeslaender
-    if trace[var].ndim == 2:
-        return np.squeeze(trace[var][:, :, indices]), dates
-    else:
-        return np.squeeze(trace[var][:, indices]), dates
+    # here we make sure that the returned array always has the same dimensions:
+    if trace[var].ndim == 3:
+        ret = trace[var][:, indices, :]
+    elif trace[var].ndim == 2:
+        ret = trace[var][:, indices, None]
+
+    return ret, dates
 
 
 # ------------------------------------------------------------------------------ #

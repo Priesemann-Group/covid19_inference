@@ -10,6 +10,14 @@ import pandas as pd
 
 import urllib, json
 
+# ------------------------------------------------------------------------------ #
+# Todo:
+# * Baseclass for retrieval and caching - only download and preprocess should
+#   change between sources
+# * an option to NOT check for new data online, sometimes we are happy and want
+#   quick results
+# ------------------------------------------------------------------------------ #
+
 log = logging.getLogger(__name__)
 # set by user, or default temp
 _data_dir = None
