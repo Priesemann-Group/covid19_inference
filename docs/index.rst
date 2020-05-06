@@ -24,6 +24,7 @@
     doc/model
     doc/data_retrieval
     doc/plotting
+    doc/output_parameters
 
 .. toctree::
     :titlesonly:
@@ -32,6 +33,7 @@
 
     doc/contributing
     doc/debugging
+
 
 
 Indices and tables

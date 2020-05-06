@@ -549,10 +549,12 @@ def SEIR(
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
     # We choose to consider the transitions of newly exposed people of the last 10 days.
     if num_regions == ():
-        new_E_begin = pm.HalfCauchy(name="E_begin", beta=pr_beta_new_E_begin, shape=11)
+        new_E_begin = pm.HalfCauchy(
+            name="new_E_begin", beta=pr_beta_new_E_begin, shape=11
+        )
     else:
         new_E_begin = pm.HalfCauchy(
-            name="E_begin", beta=pr_beta_new_E_begin, shape=(11, num_regions)
+            name="new_E_begin", beta=pr_beta_new_E_begin, shape=(11, num_regions)
         )
     I_begin = pm.HalfCauchy(name="I_begin", beta=pr_beta_I_begin, shape=num_regions)
     S_begin = N - I_begin - pm.math.sum(new_E_begin, axis=0)

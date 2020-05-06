@@ -1487,9 +1487,9 @@ class GOOGLE:
             _data_dir_fallback + "/google_fallback.csv.gz",
         ]
 
-        #Temp sets time locale to en_US.UTF8
+        # Temp sets time locale to en_US.UTF8
         lc_old = locale.getlocale(locale.LC_TIME)
-        locale.setlocale(locale.LC_TIME, locale='en_US.UTF8')
+        locale.setlocale(locale.LC_TIME, locale="en_US.UTF8")
 
         # Get last modified dates for the files
         conn = urllib.request.urlopen(url, timeout=30)
@@ -1497,9 +1497,8 @@ class GOOGLE:
             conn.headers["last-modified"].split(",")[-1], " %d %b %Y %H:%M:%S GMT"
         )
 
-        #Changes locale back
+        # Changes locale back
         locale.setlocale(locale.LC_TIME, locale=lc_old)
-
 
         try:
             current_file_date = datetime.datetime.fromtimestamp(
