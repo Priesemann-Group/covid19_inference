@@ -133,19 +133,32 @@ def iso_3166_country_in_iso_format(country: str) -> bool:
 
 class JHU:
     """
-    Retrieving and filtering data from the online repository of the coronavirus visual dashboard operated by the `Johns Hopkins University <https://coronavirus.jhu.edu/>`_.
+    This class can be used to retrieve and filter the dataset from the online repository of the coronavirus visual dashboard operated
+    by the `Johns Hopkins University <https://coronavirus.jhu.edu/>`_.
 
     Features
-    ---------
-    - download all files from the online repository of the coronavirus visual dashboard operated by the Johns Hopkins University.
-    - filter by deaths, confirmed cases and recovered cases
-    - filter by country and state
-    - filter by date
+        - download all files from the online repository of the coronavirus visual dashboard operated by the Johns Hopkins University.
+        - filter by deaths, confirmed cases and recovered cases
+        - filter by country and state
+        - filter by date
 
     Parameters
     ----------
     auto_download : bool, optional
         whether or not to automatically download the data from jhu (default: false)
+
+    Example
+    -------
+    .. code-block::
+    
+        jhu = cov19.data_retrieval.JHU()
+        jhu.download_all_available_data()
+
+        #Acess the data by
+        jhu.data
+        #or
+        jhu.get_new(args)
+        jhu.get_total(args)
     """
 
     @property
@@ -200,12 +213,12 @@ class JHU:
         # Fallbacks should be set automatically in the download_* functions
 
         return (
-            self.download_confirmed(fp_confirmed, save_to_attributes),
-            self.download_deaths(fp_deaths, save_to_attributes),
-            self.download_recovered(fp_recovered, save_to_attributes),
+            self._download_confirmed(fp_confirmed, save_to_attributes),
+            self._download_deaths(fp_deaths, save_to_attributes),
+            self._download_recovered(fp_recovered, save_to_attributes),
         )
 
-    def download_confirmed(
+    def _download_confirmed(
         self,
         fp_confirmed: str = None,
         save_to_attributes: bool = True,
@@ -249,7 +262,7 @@ class JHU:
             self.confirmed = confirmed
         return confirmed
 
-    def download_deaths(
+    def _download_deaths(
         self,
         fp_deaths: str = None,
         save_to_attributes: bool = True,
@@ -294,7 +307,7 @@ class JHU:
             self.deaths = deaths
         return deaths
 
-    def download_recovered(
+    def _download_recovered(
         self,
         fp_recovered: str = None,
         save_to_attributes: bool = True,
@@ -473,9 +486,9 @@ class JHU:
         ----------
         value: str
             Which data to return, possible values are 
-                "confirmed",
-                "recovered",
-                "deaths"
+            - "confirmed",
+            - "recovered",
+            - "deaths"
             (default: "confirmed")
         country : str, optional
             name of the country (the "Country/Region" column), can be None
@@ -490,7 +503,9 @@ class JHU:
         -------
         : pandas.DataFrame
             table with new cases and the date as index
+
         """
+
         # ------------------------------------------------------------------------------ #
         # Default Parameters
         # ------------------------------------------------------------------------------ #
@@ -548,9 +563,9 @@ class JHU:
         ----------
         value: str
             Which data to return, possible values are 
-                "confirmed",
-                "recovered",
-                "deaths"
+            - "confirmed",
+            - "recovered",
+            - "deaths"
             (default: "confirmed")
         country : str, optional
             name of the country (the "Country/Region" column), can be None
@@ -609,9 +624,9 @@ class JHU:
         Parameters
         ----------
         begin_date : datetime.datetime, optional
-            First day that should be filtered, in format '%m/%d/%y'
+            First day that should be filtered
         end_date : datetime.datetime, optional
-            Last day that should be filtered, in format '%m/%d/%y'
+            Last day that should be filtered
 
         Returns
         -------
@@ -639,7 +654,7 @@ class JHU:
 
     def get_possible_countries_states(self):
         """
-        Used to obtain all different possible countries with there corresponding possible states.
+        Can be used to get a list with all possible states and coutries.
 
         Returns
         -------
@@ -657,17 +672,32 @@ class JHU:
 
 class RKI:
     """
-    Data retrieval for the Robert Koch Institute `Robert Koch Institute <https://www.rki.de/>`_.
-
+    This class can be used to retrive and filter the dataset from the Robert Koch Institute `Robert Koch Institute <https://www.rki.de/>`_.
     The data gets retrieved from the `arcgis <https://www.arcgis.com/sharing/rest/content/items/f10774f1c63e40168479a1feb6c7ca74/data>`_  dashboard.
 
     Features
-    ---------
         - download the full dataset
         - filter by date
+        - filter by bundesland
         - filter by recovered, deaths and confirmed cases
 
+    Parameters
+    ----------
+    auto_download : bool, optional
+        whether or not to automatically download the data from rki (default: false)
 
+    Example
+    -------
+    .. code-block::
+    
+        rki = cov19.data_retrieval.RKI()
+        rki.download_all_available_data()
+
+        #Acess the data by
+        rki.data
+        #or
+        rki.get_new("confirmed","Sachsen")
+        rki.get_total(args)    
     """
 
     def __init__(self, auto_download=False):
@@ -905,9 +935,9 @@ class RKI:
         ----------
         value: str
             Which data to return, possible values are 
-                "confirmed",
-                "recovered",
-                "deaths"
+            - "confirmed",
+            - "recovered",
+            - "deaths"
             (default: "confirmed")
         bundesland : str, optional
             if no value is provided it will use the full summed up dataset for Germany
@@ -922,7 +952,7 @@ class RKI:
 
         Returns
         -------
-        :pd.DataFrame
+        :pandas.DataFrame
         """
 
         # ------------------------------------------------------------------------------ #
@@ -970,9 +1000,9 @@ class RKI:
         ----------
         value: str
             Which data to return, possible values are 
-                "confirmed",
-                "recovered",
-                "deaths"
+            - "confirmed",
+            - "recovered",
+            - "deaths"
             (default: "confirmed")
         bundesland : str, optional
             if no value is provided it will use the full summed up dataset for Germany
