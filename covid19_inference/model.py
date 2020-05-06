@@ -95,8 +95,6 @@ class Cov19Model(Model):
 
             with Cov19Model(**params) as model:
                 # Define model here
-
-
     """
 
     def __init__(
@@ -154,9 +152,9 @@ class Cov19Model(Model):
             )
 
     """
-    Properties
-    ----------
-    Useful properties, mainly used by the plot module.
+        Properties
+        ----------
+        Useful properties, mainly used by the plot module.
     """
 
     """
@@ -167,6 +165,10 @@ class Cov19Model(Model):
     def shape_num_regions(self):
         # Number of regions as tuple of int
         return () if self.sim_ndim == 1 else self.sim_shape[1]
+
+    @property
+    def is_hierarchical(self):
+        return self.new_cases_obs.ndim == 2
 
     """
         Forecast properties

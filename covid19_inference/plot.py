@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-20 18:50:13
-# @Last Modified: 2020-05-06 13:17:41
+# @Last Modified: 2020-05-06 18:00:03
 # ------------------------------------------------------------------------------ #
 # Callable in your scripts as e.g. `cov.plot.timeseries()`
 # Plot functions and helper classes
@@ -20,15 +20,17 @@ import copy
 
 import numpy as np
 import pandas as pd
+import pymc3 as pm
 import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from scipy import stats
 
 log = logging.getLogger(__name__)
 
 # ------------------------------------------------------------------------------ #
-# Plotting functions
+# Time series plotting functions
 # ------------------------------------------------------------------------------ #
 
 
@@ -659,6 +661,131 @@ def _new_cases_to_cum_cases(x, y, what, offset=0):
 
 
 # ------------------------------------------------------------------------------ #
+# Distribution plotting
+# ------------------------------------------------------------------------------ #
+
+
+def _distribution(model, trace, key, ax=None, color=None, draw_prior=True):
+
+    # check if model was hierarchical
+    # if model.is_hierarchical
+    # or like this
+    # is_hc = False
+    # for var in trace.varnames:
+    #     if re.fullmatch('lambda_[0-9]+_L[0-9]', var) is not None:
+    #         is_hc = True
+    #     break
+
+    # shape L2: samples, region, except sigma_L2 then no region
+    # shape L1: samples
+
+    if color is None:
+        color = rcParams.color_model
+
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig = ax.get_figure()
+
+    # todo: check compatible key before spending more time here
+    data = trace[key]
+
+    # apply additional transformations, if required
+    if "transient_day" in key:
+        # data = pd.to_datetime(data, origin=model.sim_begin, unit="D")
+        data = _days_to_mpl_dates(data, origin=model.sim_begin)
+    elif "weekend_factor_rad" == key:
+        data = data / np.pi / 2 * 7
+
+    ax.set_xlabel(_label_for_varname(key))
+    ax.xaxis.set_label_position("top")
+
+    # posteriors
+    ax.hist(
+        data,
+        bins=50,
+        density=True,
+        color=color,
+        label="Posterior",
+        alpha=0.7,
+        zorder=-5,
+    )
+
+    # xlim
+    if "lambda" in key or "mu" == key:
+        ax.set_xlim(0, 0.5)
+        ax.axvline(np.median(trace["mu"]), ls=":", color="black")
+    elif "I_begin" == key:
+        ax.set_xlim(0)
+    elif "transient_len" in key:
+        ax.set_xlim(0, 7)
+    elif "transient_day" in key:
+        md = np.median(data)
+        ax.set_xlim([int(md) - 4, int(md) + 4])
+        _format_date_xticks(ax)
+
+    if draw_prior:
+        # sample using pymc3. this avoids the headache of analytic solutions for
+        # combined variables when we do not have analytic priors
+        prior = pm.sample_prior_predictive(samples=500, model=model, var_names=[key])[
+            key
+        ]
+        # smooth density from discrete histogram
+        prior = stats.kde.gaussian_kde(prior)
+
+        # may need to convert axes values, and restore xlimits after adding prior
+        xlim = ax.get_xlim()
+        x_for_ax = np.linspace(*xlim, num=100)
+        x_for_pr = x_for_ax
+
+        if "transient_day" in key:
+            beg_x = matplotlib.dates.num2date(x_for_ax[0])
+            diff_dates_x = (beg_x.replace(tzinfo=None) - model.sim_begin).days
+            x_for_pr = x_for_ax - x_for_ax[0] + diff_dates_x
+        if "weekend_factor_rad" == key:
+            x_for_ax *= np.pi * 2 / 7
+
+        ax.plot(
+            x_for_ax,
+            prior(x_for_pr),
+            label="Prior",
+            color=rcParams.color_prior,
+            linewidth=3,
+        )
+        ax.set_xlim(*xlim)
+
+
+def _label_for_varname(key):
+    """
+        get the label for trace variable names
+    """
+    res = key
+
+    return res
+
+
+def _days_to_mpl_dates(days, origin):
+    """
+        convert days as number to matplotlib compatible date numbers.
+        this is not the same as pandas dateindices, but numpy operations work on them
+
+        Parameters
+        ----------
+        days : number, 1d array of numbers
+            the day number to convert
+
+        origin : datetime.datetime
+            the date object corresponding to day 0
+    """
+    try:
+        return matplotlib.dates.date2num(
+            [datetime.timedelta(days=float(date)) + origin for date in days]
+        )
+    except:
+        return matplotlib.dates.date2num(datetime.timedelta(days=float(days)) + origin)
+
+
+# ------------------------------------------------------------------------------ #
 # Parameters, we have to do this first so we can have default arguments
 # ------------------------------------------------------------------------------ #
 
@@ -678,6 +805,7 @@ def get_rcparams_default():
         draw_ci_75=False,
         color_model="tab:green",
         color_data="tab:blue",
+        color_prior="#708090",
         color_annot="#646464",
     )
 
@@ -686,7 +814,8 @@ def get_rcparams_default():
 
 def set_rcparams(par):
     """
-        Set the rcparameters used for plotting. provided instance of `Param` has to have the following keys (attributes).
+        Set the rcparameters used for plotting. provided instance of `Param` has to have
+        the following keys (attributes).
 
         Attributes
         ----------
@@ -718,13 +847,17 @@ def set_rcparams(par):
             Base color used for model plots, mpl compatible color code "C0", "#303030"
             Default : "tab:green"
 
-       color_patalot : str,
+       color_data : str,
             Base color used for data
             Default : "tab:blue"
 
         color_annot : str,
             Color to use for annotations
             Default : "#646464"
+
+        color_prior : str,
+            Color to used for priors in distributions
+            Default : "#708090"
 
         Example
         ------
