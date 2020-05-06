@@ -17,3 +17,4 @@ from .model import (
     student_t_likelihood,
 )
 from ._dev_helper import create_example_instance
+from . import dummy_data

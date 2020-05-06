@@ -23,6 +23,7 @@
 
     doc/model
     doc/data_retrieval
+    doc/dummy_data
     doc/plotting
 
 .. toctree::
