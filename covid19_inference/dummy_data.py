@@ -207,10 +207,6 @@ def _random_noise(array):
         n, p = convert_params(data, 10)
         # mean, var, skew, kurt = nbinom.stats(n=n, p=p, moments='mvsk', )
         # log.debug(f"Mean {mean}, var {var}, data {data}")
-        try:
-            data = nbinom.rvs(n=n, p=p)
-            log.debug(f"Drawn {data}")
-        except Exception as e:
-            print(data)
-            raise e
+        data = nbinom.rvs(n=n, p=p)
+        log.debug(f"Drawn {data}")
     return array
