@@ -7,7 +7,7 @@ import pandas as pd
 log = logging.getLogger(__name__)
 
 
-def get_dummy_data(data_begin, data_end, lambda_initial):
+def get_dummy_data(data_begin, data_end, lambda_initial, mu):
     r"""
     Generates a random dataset by drawing random initial values and random changepoints.
     By numericaly solving the SIR differential equation with these initial values a dataset is created.
@@ -28,7 +28,7 @@ def get_dummy_data(data_begin, data_end, lambda_initial):
   """
 
     # Draw initial SIR parameters
-    S_initial = np.random.randint(500, 100000)  # Population in germany as upper bound
+    S_initial = np.random.randint(50000, 100000)  # Population in germany as upper bound
     I_initial = int(halfcauchy.rvs(loc=4))  # Offset by one to get atleast one
     R_initial = 0
 
@@ -36,8 +36,8 @@ def get_dummy_data(data_begin, data_end, lambda_initial):
     log.info(f"Initial infected {I_initial}")
     # Draw changepoints every weekend
     changepoints = []
+    """
     lambda_t = lambda_initial
-
     for date in pd.date_range(data_begin, data_end):
         if date.weekday() == 6:
             # Draw a date
@@ -46,13 +46,15 @@ def get_dummy_data(data_begin, data_end, lambda_initial):
             # Draw a lambda
             lambda_t = np.random.normal(lambda_initial, lambda_initial / 2)
             changepoints.append([date_random, lambda_t])
-
+    """
+    changepoints.append([datetime.datetime(2020, 3, 22), 0.4])
+    changepoints.append([datetime.datetime(2020, 4, 1), 0.2])
     # Generate SIR data from the random changepoints
-    t_n, data = _generate_SIR(
+    t_n, data, lambda_t = _generate_SIR(
         data_begin,
         data_end,
         [S_initial, I_initial, R_initial],
-        0.4,
+        mu,
         lambda_initial,
         changepoints,
     )
@@ -61,10 +63,9 @@ def get_dummy_data(data_begin, data_end, lambda_initial):
 
     df = pd.DataFrame()
     df["date"] = pd.date_range(data_begin, data_end)
-
     df["confirmed"] = _random_noise(cumulative_I)
     df["recovered"] = _random_noise(cumulative_R)
-
+    df["lambda_t"] = np.array(lambda_t)
     df["confirmed"] = df["confirmed"].astype(int)
     df["recovered"] = df["recovered"].astype(int)
     df = df.set_index("date")
@@ -157,19 +158,28 @@ def _generate_SIR(data_begin, data_end, SIR_initial, mu, lambda_init, changepoin
     t_n = [0]
     y_n = [np.array(SIR_initial)]
     dt = 1
-    lambda_t = lambda_init
+
     # Changepoints
+    lambda_t = [lambda_init]
+    lambda_cp = lambda_init
     changepoints.sort(key=lambda x: x[0])  # Sort by date (increasing)
+    changepoints = np.array(changepoints)
     j = 0
     for i in range(time_range):
-        # Check if lambda_t has to change (initial value is also set by this)
-        if (data_begin + datetime.timedelta(days=i)) in changepoints[:][0]:
-            lambda_t = changepoints[j][1]
+        if (data_begin + datetime.timedelta(days=i)) in changepoints[:, 0]:
+            lambda_cp = changepoints[j][1]
             j = j + 1
-        t_n.append(t_n[i] + dt)
-        y_n.append(RK4(dt, t_n[i], y_n[i], lambda_t))
+        lambda_t.append(lambda_cp)
 
-    return t_n, np.array(y_n)
+    # ------------------------------------------------------------------------------ #
+    # Timesteps
+    # ------------------------------------------------------------------------------ #
+    for i in range(time_range):
+        # Check if lambda_t has to change (initial value is also set by this)
+        t_n.append(t_n[i] + dt)
+        y_n.append(RK4(dt, t_n[i], y_n[i], lambda_t[i]))
+
+    return t_n, np.array(y_n), lambda_t
 
 
 def _random_noise(array):
