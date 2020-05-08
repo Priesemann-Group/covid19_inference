@@ -1,13 +1,15 @@
 import logging
 import numpy as np
+from numpy import exp
 import datetime
-from scipy.stats import nbinom, halfcauchy
+from scipy.stats import halfcauchy, rv_discrete, nbinom
+from scipy.special import binom, gammaln as gamln
 import pandas as pd
 
 log = logging.getLogger(__name__)
 
 
-def get_dummy_data(data_begin, data_end, lambda_initial, mu):
+def get_dummy_data(data_begin, data_end, lambda_initial, mu, noise_factor=0.02):
     r"""
     Generates a random dataset by drawing random initial values and random changepoints.
     By numericaly solving the SIR differential equation with these initial values a dataset is created.
@@ -18,12 +20,18 @@ def get_dummy_data(data_begin, data_end, lambda_initial, mu):
     data_begin, data_end : datetime.datetime
         Range for the random date
 
-    lambda_initial:
+    lambda_initial: number
         initial lambda value
+
+    mu: number
+        value for the recovery rate mu
+
+    noise_factor: number
+        scaling for the noise function
 
     Returns
     -------
-    df, changepoints : pandas.DataFrame,array
+    df, changepoints, lambda_t : pandas.DataFrame,array
 
   """
 
@@ -63,8 +71,8 @@ def get_dummy_data(data_begin, data_end, lambda_initial, mu):
 
     df = pd.DataFrame()
     df["date"] = pd.date_range(data_begin, data_end)
-    df["confirmed"] = _random_noise(cumulative_I)
-    df["recovered"] = _random_noise(cumulative_R)
+    df["confirmed"] = _random_noise(cumulative_I, noise_factor)
+    df["recovered"] = _random_noise(cumulative_R, noise_factor)
     df["lambda_t"] = np.array(lambda_t)
     df["confirmed"] = df["confirmed"].astype(int)
     df["recovered"] = df["recovered"].astype(int)
@@ -182,17 +190,24 @@ def _generate_SIR(data_begin, data_end, SIR_initial, mu, lambda_init, changepoin
     return t_n, np.array(y_n), lambda_t
 
 
-def _random_noise(array):
+def _random_noise(array, factor):
     r"""
     Generates random noise on an observable by a Negative Binomial :math:`NB`.
+    References to the negative binomial can be found `here <https://ncss-wpengine.netdna-ssl.com/wp-content/themes/ncss/pdf/Procedures/NCSS/Negative_Binomial_Regression.pdf>`_
+    .
 
     .. math::
-        O &\sim NB(\mu=data,\theta=10)
-        
+        O &\sim NB(\mu=datapoint,\alpha=0.0001)
+    
+    We keep the alpha parameter low to obtain a small variance which is than always approximatly the size of the mean.
+
     Parameters
     ----------
     array : 1-dim
         observable on which we want to add the noise
+
+    factor : number
+
 
     Returns
     -------
@@ -200,23 +215,44 @@ def _random_noise(array):
         observable with added noise
     """
 
-    def convert_params(mu, theta):
-        """
-        Convert mean/dispersion parameterization of a negative binomial to the ones scipy supports
-
-        See https://en.wikipedia.org/wiki/Negative_binomial_distribution#Alternative_formulations
-        """
-        r = theta
-        var = mu + 1 / r * mu ** 2
-        p = (var - mu) / var
+    def convert(mu, alpha):
+        r = 1 / alpha
+        p = mu / (mu + r)
         return r, 1 - p
 
-    for data in array:
-        if data == 0:
+    for i in range(len(array)):
+        if array[i] == 0:
             continue
-        n, p = convert_params(data, 10)
-        # mean, var, skew, kurt = nbinom.stats(n=n, p=p, moments='mvsk', )
-        # log.debug(f"Mean {mean}, var {var}, data {data}")
-        data = nbinom.rvs(n=n, p=p)
-        log.debug(f"Drawn {data}")
+        log.debug(f"Data {array[i]}")
+        r, p = convert(array[i], 0.000001)
+        log.debug(f"n {r}, p {p}")
+        mean, var = nbinom.stats(r, p, moments="mv")
+        log.debug(f"mean {mean} var {var}")
+        array[i] = nbinom.rvs(r, p)
+        log.debug(f"Drawn {array[i]}")
+
     return array
+
+
+class nbinom_gen(rv_discrete):
+    """
+    Own version of negative binomial using mean and variance
+    https://github.com/scipy/scipy/blob/v1.4.1/scipy/stats/_discrete_distns.py
+    """
+
+    def _pmf(self, n, mu, sigma):
+
+        return exp(self._logpmf(n, mu, sigma))
+
+    def _logpmf(self, n, mu, sigma):
+        x = n + mu ** 2 / (sigma ** 2 - mu) - 1
+        y = n
+        coeff = gamln(x + 1) - gamln(y + 1) - gamln(x - y + 1)
+        return (
+            coeff
+            + n * np.log((sigma ** 2 - mu) / sigma ** 2)
+            + (mu ** 2 / (sigma ** 2 - mu)) * np.log(mu / sigma ** 2)
+        )
+
+
+_nbinom = nbinom_gen()
