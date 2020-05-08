@@ -12,10 +12,6 @@ class GOOGLE(Retrieval):
 
     def __init__(self, auto_download=False):
         # ------------------------------------------------------------------------------ #
-        #  Init Data Base Class
-        # ------------------------------------------------------------------------------ #
-
-        # ------------------------------------------------------------------------------ #
         #  Init Retrieval Base Class
         # ------------------------------------------------------------------------------ #
         """
@@ -36,28 +32,73 @@ class GOOGLE(Retrieval):
         # Init the retrieval base class
         Retrieval.__init__(self, name, url_csv, [], auto_download, **kwargs)
 
-    def _to_iso(self, df):
-        # change columns & index
-        if (
-            "country_region" in df.columns
-            and "sub_region_1" in df.columns
-            and "sub_region_2" in df.columns
-        ):
-            df = df.rename(
-                columns={
-                    "country_region": "country",
-                    "sub_region_1": "state",
-                    "sub_region_2": "region",
-                }
-            )
-        df = df.set_index(["country", "state", "region"])
-        # datetime columns
-        df["date"] = pd.to_datetime(df["date"])
-        return df
-
     def download_all_available_data(self, force_local=False, force_download=False):
-        Retrieval.download_all_available_data(self, force_local, force_download)
-        self._to_iso(self.data)
+        """
+        Attempts to download from the main url (self.url_csv) which was given on initialization.
+        If this fails download from the fallbacks. It can also be specified to use the local files
+        or to force the download. The download methods get inhereted from the base retrieval class.
+
+        Parameters
+        ----------
+        force_local : bool, optional
+            If True forces to load the local files.
+        force_download : bool, optional
+            If True forces the download of new files
+        """
+        if force_local and force_download:
+            raise ValueError("force_local and force_download cant both be True!!")
+
+        # ------------------------------------------------------------------------------ #
+        # 1 Download or get local file
+        # ------------------------------------------------------------------------------ #
+        retrieved_local = False
+        if self._timestamp_local_old(force_local) or force_download:
+            self._download_helper(**self.kwargs)
+        else:
+            retrieved_local = self._local_helper()
+
+        # ------------------------------------------------------------------------------ #
+        # 2 Save local
+        # ------------------------------------------------------------------------------ #
+        self._save_to_local() if not retrieved_local else None
+
+        # ------------------------------------------------------------------------------ #
+        # 3 Convert to useable format
+        # ------------------------------------------------------------------------------ #
+        self._to_iso()
+
+    def _to_iso(self):
+        """
+        Converts the data to a usable format i.e. converts all date string to
+        datetime objects and some other column names.
+
+        This is most of the time the first place one has to look at if something breaks!
+
+        self.data -> self.data converted
+        """
+        try:
+            df = self.data
+            if (
+                "country_region" in df.columns
+                and "sub_region_1" in df.columns
+                and "sub_region_2" in df.columns
+            ):
+                df = df.rename(
+                    columns={
+                        "country_region": "country",
+                        "sub_region_1": "state",
+                        "sub_region_2": "region",
+                    }
+                )
+            df = df.set_index(["country", "state", "region"])
+            # datetime columns
+            df["date"] = pd.to_datetime(df["date"])
+            self.data = df
+            return True
+        except Exception as e:
+            log.warning(f"There was an error formating the data! {e}")
+            raise e
+        return False
 
     def get_changes(
         self,

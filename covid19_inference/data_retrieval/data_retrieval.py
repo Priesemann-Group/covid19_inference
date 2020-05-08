@@ -10,7 +10,6 @@ import pandas as pd
 
 import urllib, json
 
-
 log = logging.getLogger(__name__)
 
 
@@ -153,6 +152,12 @@ class Retrieval:
     """
     name = ""
 
+    """
+    If the local file is older than the update_interval it gets updated once the 
+    download all function is called. Can be diffent values depending on the parent class
+    """
+    update_interval = datetime.timedelta(days=1)
+
     def __init__(self, name, url_csv, fallbacks, auto_download=False, **kwargs):
         self.name = name
         self.url_csv = url_csv
@@ -203,7 +208,9 @@ class Retrieval:
                     log.info(
                         f"That is weird fallback is not of type string nor a callable function {type(fallback)}"
                     )
-                    raise Exception(f"Type error {type(fallback)}")
+                    raise Exception(
+                        f"Fallback type not supported (yet?) {type(fallback)}"
+                    )
             except Exception as e:
                 info.log(f"Fallback {i} failed! {fallback}:{e}")
 
@@ -214,7 +221,7 @@ class Retrieval:
                 log.debug(f"Fallback {i} successful! {fallback}")
                 return True
             if len(self.fallbacks) == i:
-                log.warning(f"ALL fallbacks failed! This should not happen")
+                log.warning(f"ALL fallbacks failed! This should not happen!")
                 return False
 
             # ---------------------------------------------------------------#
@@ -226,57 +233,86 @@ class Retrieval:
         success = execute_fallback(self.fallbacks[0], 0)
         return success
 
-    def _update_local_files(self, force_local=False) -> bool:
+    def _timestamp_local_old(self, force_local=False) -> bool:
         """
         TODO function that decides if the online files have to be loaded
+        Timestamps are save as self.name_timestamp.json
+
+            1. Get timestamp if it exists
+            2. compare with the date today
+            3. update if data is older than set intervall -> can be parent dependant
         """
+        if not os.path.isfile(get_data_dir() + self.name + "_timestamp.json"):
+            return True
+
         if force_local:
             return False
 
-        return True
+        timestamp = json.load(open(get_data_dir() + self.name + "_timestamp.json", "r"))
+        timestamp = datetime.datetime.strptime(timestamp, "%m/%d/%Y, %H:%M:%S")
 
-    def download_all_available_data(self, force_local=False, force_download=False):
+        if (datetime.datetime.now() - timestamp) > self.update_interval:
+            log.debug("Timestamp old. Trying to download new files")
+            return True
+
+        return False
+
+    def _download_helper(self, **kwargs):
+        # First we check if the date of the online file is newer and if we have to download a new file
+        # this is done by a function which can be seen above
+        try:
+            # Try to download from original souce
+            self._download_csv_from_source(self.url_csv, **kwargs)
+        except Exception as e:
+            # Try all fallbacks
+            log.info(f"Failed to download from url {self.url_csv} : {e}")
+            self._fallback_handler()
+        finally:
+            # We save it to the local files
+            # self.data._save_to_local()
+            log.info(f"Successfully downloaded new files.")
+
+    def _local_helper(self):
+        # If we can use a local file we construct the path from the given local name
+        try:
+            self._download_csv_from_source(
+                get_data_dir() + self.name + ".csv.gz", **self.kwargs
+            )
+            log.info(f"Successfully loaded data from local")
+            return True
+        except Exception as e:
+            log.info(f"Failed to load local files! {e} Trying fallbacks!")
+            self.download_helper(**self.kwargs)
+        return False
+
+    def _save_to_local(self):
         """
-        Attempts to download from the main url (self.url_csv) which was given on initialization.
-        If this fails download from the fallbacks. It can also be specified to use the local files.
-
-        Parameters
-        ----------
-        force_local:bool,optional
-            If True forces to load the local files.
+        Creates a local backup for the self.data pandas.DataFrame. And a timestamp for the source.
         """
-        if force_local and force_download:
-            raise ValueError("force_local and force_download cant both be True!!")
 
-        def download_helper(**kwargs):
-            # First we check if the date of the online file is newer and if we have to download a new file
-            # this is done by a function which can be seen above
+        def create_timestamp():
             try:
-                # Try to download from original souce
-                self._download_csv_from_source(self.url_csv, **kwargs)
+                timestamp = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+                json.dump(
+                    timestamp,
+                    open(
+                        get_data_dir() + self.name + "_timestamp.json",
+                        "w",
+                        encoding="utf-8",
+                    ),
+                    ensure_ascii=False,
+                    indent=4,
+                )
             except Exception as e:
-                # Try all fallbacks
-                log.info(f"Failed to download from url {self.url_csv} : {e}")
-                self._fallback_handler()
-            finally:
-                # We save it to the local files
-                # self.data._save_to_local()
-                log.info(f"Successfully downloaded and saved new files")
+                raise e
 
-        def local_helper():
-            # If we can use a local file we construct the path from the given local name
-            try:
-                self.data._get_local()
-            except Exception as e:
-                log.info(f"Failed to load local files! {e} Trying fallbacks!")
-                download_helper()
-
-        # ------------------------------------------------------------------------------ #
-        # Start of function
-        # ------------------------------------------------------------------------------ #
-
-        # If necessary download else use local files
-        if self._update_local_files(force_local) or force_download:
-            download_helper(**self.kwargs)
-        else:
-            local_helper()
+        filepath = get_data_dir() + self.name + ".csv.gz"
+        try:
+            self.data.to_csv(filepath, compression="infer", index=False)
+            create_timestamp()
+            log.info(f"Local backup to {filepath} successful.")
+            return True
+        except Exception as e:
+            log.warning(f"Could not create local backup {e}")
+            raise e
+        return False
