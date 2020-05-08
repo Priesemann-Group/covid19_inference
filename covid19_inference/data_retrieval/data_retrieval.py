@@ -10,7 +10,10 @@ import pandas as pd
 
 import urllib, json
 
+
 log = logging.getLogger(__name__)
+
+
 # set by user, or default temp
 _data_dir = None
 # provided with the module
@@ -131,7 +134,7 @@ def iso_3166_country_in_iso_format(country: str) -> bool:
     return False
 
 
-class Retrieval(Data):
+class Retrieval:
 
     """
     The url to the main dataset as csv, if none if supplied the fallback routines get used
@@ -150,20 +153,21 @@ class Retrieval(Data):
     """
     name = ""
 
-    def __init__(url, name, url_csv, fallbacks, auto_download=False):
+    def __init__(self, name, url_csv, fallbacks, auto_download=False, **kwargs):
         self.name = name
         self.url_csv = url_csv
         self.fallbacks = fallbacks
+        self.kwargs = kwargs
 
         if auto_download:
-            self.download_all_available_data()
+            self.download_all_available_data(**self.kwargs)
 
-    def __download_csv_from_source(self, filepath, **kwargs):
+    def _download_csv_from_source(self, filepath, **kwargs):
         """
         Uses pandas read csv to download the csv file.
         The possible kwargs can be seen in the pandas `documentation <https://pandas.pydata.org/docs/reference/api/pandas.read_csv.html#pandas.read_csv>`_.
 
-        These kwargs can vary for the different parent classes.
+        These kwargs can vary for the different parent classes and should be defined there!
 
         Parameter
         ---------
@@ -194,20 +198,20 @@ class Retrieval(Data):
                     success = fallback()
                 # If it is not executable we try to download from the source
                 elif isinstance(fallback, str):
-                    success = __download_csv_from_source()
+                    success = self._download_csv_from_source()
                 else:
                     log.info(
                         f"That is weird fallback is not of type string nor a callable function {type(fallback)}"
                     )
                     raise Exception(f"Type error {type(fallback)}")
             except Exception as e:
-                info.log(f"Fallback {i+1} failed! {fallback}:{e}")
+                info.log(f"Fallback {i} failed! {fallback}:{e}")
 
             # ---------------------------------------------------------------#
             # Break conditions
             # ---------------------------------------------------------------#
             if success:
-                log.debug(f"Fallback {i+1} successful! {fallback}")
+                log.debug(f"Fallback {i} successful! {fallback}")
                 return True
             if len(self.fallbacks) == i:
                 log.warning(f"ALL fallbacks failed! This should not happen")
@@ -228,9 +232,10 @@ class Retrieval(Data):
         """
         if force_local:
             return False
+
         return True
 
-    def download_all_available_data(self, force_local=False):
+    def download_all_available_data(self, force_local=False, force_download=False):
         """
         Attempts to download from the main url (self.url_csv) which was given on initialization.
         If this fails download from the fallbacks. It can also be specified to use the local files.
@@ -240,20 +245,23 @@ class Retrieval(Data):
         force_local:bool,optional
             If True forces to load the local files.
         """
+        if force_local and force_download:
+            raise ValueError("force_local and force_download cant both be True!!")
 
-        def download_helper():
+        def download_helper(**kwargs):
             # First we check if the date of the online file is newer and if we have to download a new file
             # this is done by a function which can be seen above
             try:
                 # Try to download from original souce
-                self.__download_csv_from_source(self.url_csv)
+                self._download_csv_from_source(self.url_csv, **kwargs)
             except Exception as e:
                 # Try all fallbacks
                 log.info(f"Failed to download from url {self.url_csv} : {e}")
                 self._fallback_handler()
             finally:
                 # We save it to the local files
-                self.data._save_to_local()
+                # self.data._save_to_local()
+                log.info(f"Successfully downloaded and saved new files")
 
         def local_helper():
             # If we can use a local file we construct the path from the given local name
@@ -268,4 +276,7 @@ class Retrieval(Data):
         # ------------------------------------------------------------------------------ #
 
         # If necessary download else use local files
-        download_helper() if self._update_local_files(force_local) else local_helper()
+        if self._update_local_files(force_local) or force_download:
+            download_helper(**self.kwargs)
+        else:
+            local_helper()

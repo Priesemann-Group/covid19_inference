@@ -14,7 +14,7 @@ import logging
 import numpy as np
 import pymc3 as pm
 
-from . import data_retrieval
+
 from .model import *
 
 log = logging.getLogger(__name__)

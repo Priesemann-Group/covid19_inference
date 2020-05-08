@@ -1,3 +1,7 @@
+import pandas as pd
+import datetime
+
+
 class RKI:
     """
     This class can be used to retrive and filter the dataset from the Robert Koch Institute `Robert Koch Institute <https://www.rki.de/>`_.
