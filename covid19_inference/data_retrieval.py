@@ -908,6 +908,7 @@ class RKI:
             for fb in fallbacks:
                 try:
                     df = pd.read_csv(fb, sep=",")
+                    df = self.__to_iso(df)
                     if fb != url_local:
                         df.to_csv(url_local, compression="infer", index=False)
                     break
