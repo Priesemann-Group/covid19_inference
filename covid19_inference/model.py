@@ -327,13 +327,7 @@ def student_t_likelihood(
 
 
 def SIR(
-    lambda_t_log,
-    pr_I_begin=100,
-    pr_median_mu=1 / 8,
-    pr_sigma_mu=0.2,
-    model=None,
-    return_all=False,
-    save_all=False,
+    lambda_t_log, mu, pr_I_begin=100, model=None, return_all=False, save_all=False,
 ):
     r"""
         Implements the susceptible-infected-recovered model.
@@ -353,6 +347,10 @@ def SIR(
         lambda_t_log : :class:`~theano.tensor.TensorVariable`
             time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional the first
             dimension is time.
+
+        mu : :class:`~theano.tensor.TensorVariable`
+            the recovery rate :math:`\mu`, typically a random variable. Can be 0 or 1-dimensional. If 1-dimensional,
+            the dimension are the different regions.
 
         pr_I_begin : float or array_like or :class:`~theano.tensor.TensorVariable`
             Prior beta of the Half-Cauchy distribution of :math:`I(0)`.
@@ -383,9 +381,6 @@ def SIR(
 
     """
     model = modelcontext(model)
-
-    # Build prior distributions:
-    mu = pm.Lognormal(name="mu", mu=np.log(pr_median_mu), sigma=pr_sigma_mu)
 
     # Total number of people in population
     N = model.N_population
@@ -1049,7 +1044,7 @@ def hierarchical_normal(
         y_{i, \text{L2}} &= Normal(x_\text{L1}, \sigma_\text{L2})\\
         \sigma_\text{L2} &= HalfCauchy(\text{error\_fact} \cdot \text{pr\_sigma})
 
-    It is however implemented in a non-central way, that the second line is changed to:
+    It is however implemented in a non-centered way, that the second line is changed to:
 
      .. math::
 
@@ -1083,11 +1078,6 @@ def hierarchical_normal(
     x : :class:`~theano.tensor.TensorVariable`
         the random variable :math:`x_\text{L1}`
 
-    Todo
-    ----
-    Think about the sigma prior, whether one should model it hierarchically:
-    https://projecteuclid.org/download/pdf_1/euclid.ba/1340371048 section 6
-
     """
     if not len_L2:  # not hierarchical
         Y = pm.Normal(name, mu=pr_mean, sigma=pr_sigma)
@@ -1102,9 +1092,9 @@ def hierarchical_normal(
 
         X = pm.Normal(name + "_L1", mu=pr_mean, sigma=pr_sigma)
         phi = pm.Normal(
-            name + "_L2_raw", mu=X, sigma=pr_sigma, shape=len_L2
+            name + "_L2_raw", mu=0, sigma=1, shape=len_L2
         )  # (1-w**2)*sigma_X+1*w**2, shape=len_Y)
-        Y = w * X + (phi - X) * sigma_Y / pr_sigma
+        Y = w * X + phi * sigma_Y
         pm.Deterministic(name + "_L2", Y)
 
     return Y, X
@@ -1138,6 +1128,8 @@ def make_prior_I(
     I_begin: :class:`~theano.tensor.TensorVariable`
 
     """
+    model = modelcontext(model)
+
     num_regions = () if model.sim_ndim == 1 else model.sim_shape[1]
 
     lambda_t = tt.exp(lambda_t_log)
