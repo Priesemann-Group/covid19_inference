@@ -17,5 +17,6 @@ from .model import (
     delay_cases,
     week_modulation,
     student_t_likelihood,
+    make_prior_I,
 )
 from ._dev_helper import create_example_instance
