@@ -1,10 +1,20 @@
 import pandas as pd
 import datetime
+import logging
+import numpy as np
+
+# Import base class
+from .data_retrieval import Retrieval, get_data_dir
+
+import urllib, json
 
 
-class RKI:
+log = logging.getLogger(__name__)
+
+
+class RKI(Retrieval):
     """
-    This class can be used to retrive and filter the dataset from the Robert Koch Institute `Robert Koch Institute <https://www.rki.de/>`_.
+    This class can be used to retrieve and filter the dataset from the Robert Koch Institute `Robert Koch Institute <https://www.rki.de/>`_.
     The data gets retrieved from the `arcgis <https://www.arcgis.com/sharing/rest/content/items/f10774f1c63e40168479a1feb6c7ca74/data>`_  dashboard.
 
     Features
@@ -12,11 +22,6 @@ class RKI:
         - filter by date
         - filter by bundesland
         - filter by recovered, deaths and confirmed cases
-
-    Parameters
-    ----------
-    auto_download : bool, optional
-        whether or not to automatically download the data from rki (default: false)
 
     Example
     -------
@@ -29,117 +34,90 @@ class RKI:
         rki.data
         #or
         rki.get_new("confirmed","Sachsen")
-        rki.get_total(args)    
+        rki.get_total(filter)    
     """
 
     def __init__(self, auto_download=False):
-        self.data: pd.DataFrame
-
-        if auto_download:
-            self.download_all_available_data()
-
-    def download_all_available_data(self):
         """
-        Attempts to download the most current data from the Robert Koch Institute. Separated into the different regions (landkreise).
+        On init of this class the base Retrieval Class __init__ is called, with rki specific
+        arguments.
 
         Parameters
         ----------
-        try_max : int, optional
-            Maximum number of tries for each query. (default:10)
-
-        Returns
-        -------
-        : pandas.DataFrame
-            Containing all the RKI data from arcgis website.
-            In the format:
-            [Altersgruppe, AnzahlFall, AnzahlGenesen, AnzahlTodesfall, Bundesland, Geschlecht, Landkreis, Meldedatum, NeuGenesen, NeuerFall, Refdatum, date, date_ref, Datenstand, ]
-
+        auto_download : bool, optional
+            Whether or not to automatically call the download_all_available_data() method.
+            One should explicitly call this method for more configuration options
+            (default: false)
         """
 
-        # We need an extra url since for some reason the normal dataset website has no headers :/ --> But they get updated from the same source so that should work
-        url_fulldata = "https://www.arcgis.com/sharing/rest/content/items/f10774f1c63e40168479a1feb6c7ca74/data"
+        # ------------------------------------------------------------------------------ #
+        #  Init Retrieval Base Class
+        # ------------------------------------------------------------------------------ #
+        """
+        A name mainly used for the Local Filename
+        """
+        name = "Rki"
 
-        url_check_update = "https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0/query?where=0%3D0&objectIds=&time=&resultType=none&outFields=Datenstand&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=true&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token="
+        """
+        The url to the main dataset as csv, if none if supplied the fallback routines get used
+        """
+        url_csv = "https://www.arcgis.com/sharing/rest/content/items/f10774f1c63e40168479a1feb6c7ca74/data"
 
-        # Path to the local file, where we want the data in the end
-        url_local = get_data_dir() + "/rki_fallback.csv.gz"
+        """
+        Kwargs for pandas read csv
+        """
+        kwargs = {}  # Surpress warning
 
-        # where to look for already downloaded content
-        fallbacks = [
-            get_data_dir() + "/rki_fallback.csv.gz",
-            _data_dir_fallback + "/rki_fallback.csv.gz",
-        ]
+        """
+        fallback array can be anything a filepath or callable methods
+        """
+        fallbacks = [self.__download_via_rest_api]
+        """
+        If the local file is older than the update_interval it gets updated once the 
+        download all function is called. Can be diffent values depending on the parent class        
+        """
+        update_interval = datetime.timedelta(days=1)
 
-        # Loads local copy and gets latest data date
-        df = None
+        # Init the retrieval base class
+        Retrieval.__init__(self, name, url_csv, fallbacks, update_interval, **kwargs)
 
-        for fb in fallbacks:
-            try:
-                log.debug(f"Trying local file {fb}")
-                # Local copy should be properly formated, so no __to_iso() used
-                df = pd.read_csv(fb, sep=",")
-                current_file_date = datetime.datetime.strptime(
-                    df.Datenstand.unique()[0], "%d.%m.%Y, %H:%M Uhr"
-                )
-                break
-            except Exception as e:
-                log.debug(f"Local file not available: {e}")
-                current_file_date = datetime.datetime.fromtimestamp(0)
+    def download_all_available_data(self, force_local=False, force_download=False):
+        """
+        Attempts to download from the main url (self.url_csv) which was given on initialization.
+        If this fails download from the fallbacks. It can also be specified to use the local files
+        or to force the download. The download methods get inhereted from the base retrieval class.
 
-        # Get last modified date for the files from rki repo
-        try:
-            with urllib.request.urlopen(url_check_update) as url:
-                json_data = json.loads(url.read().decode())
-            if len(json_data["features"]) > 1:
-                raise RuntimeError(
-                    "Date checking file has more than one Datenstand. "
-                    + "This should not happen."
-                )
-            online_file_date = datetime.datetime.strptime(
-                json_data["features"][0]["attributes"]["Datenstand"],
-                "%d.%m.%Y, %H:%M Uhr",
-            )
-        except Exception as e:
-            log.debug("Could not fetch data date from online repository of the RKI")
-            online_file_date = datetime.datetime.fromtimestamp(1)
+        Parameters
+        ----------
+        force_local : bool, optional
+            If True forces to load the local files.
+        force_download : bool, optional
+            If True forces the download of new files
+        """
+        if force_local and force_download:
+            raise ValueError("force_local and force_download cant both be True!!")
 
-        # Download file and overwrite old one if it is older
-        if online_file_date > current_file_date:
-            log.info("Downloading rki dataset from repository.")
-            try:
-                df = self.__to_iso(pd.read_csv(url_fulldata, sep=","))
-            except Exception as e:
-                log.warning(
-                    "Download Failed! Trying downloading via rest api. May take longer!"
-                )
-                log.warning(e)
-                try:
-                    # Dates already are datetime, so no __to_iso used
-                    df = self.__download_via_rest_api(try_max=10)
-                except Exception as e:
-                    log.warning("Downloading from the rest api also failed!")
-
-                    if df is None:
-                        raise RuntimeError("No source to obtain RKI data from.")
-
-            log.debug(f"Overwriting {url_local} with newest downloaded data.")
-            df.to_csv(url_local, compression="infer", index=False)
+        # ------------------------------------------------------------------------------ #
+        # 1 Download or get local file
+        # ------------------------------------------------------------------------------ #
+        retrieved_local = False
+        if self._timestamp_local_old(force_local) or force_download:
+            self._download_helper(**self.kwargs)
         else:
-            log.info("Using local rki data because no newer version available online.")
-            for fb in fallbacks:
-                try:
-                    df = pd.read_csv(fb, sep=",")
-                    if fb != url_local:
-                        df.to_csv(url_local, compression="infer", index=False)
-                    break
-                except Exception as e:
-                    log.debug(f"{e}")
+            retrieved_local = self._local_helper()
 
-        self.data = df
+        # ------------------------------------------------------------------------------ #
+        # 2 Save local
+        # ------------------------------------------------------------------------------ #
+        self._save_to_local() if not retrieved_local else None
 
-        return df
+        # ------------------------------------------------------------------------------ #
+        # 3 Convert to useable format
+        # ------------------------------------------------------------------------------ #
+        self._to_iso()
 
-    def __to_iso(self, df) -> pd.DataFrame:
+    def _to_iso(self):
+        df = self.data
         if "Meldedatum" in df.columns:
             df["date"] = df["Meldedatum"].apply(
                 lambda x: datetime.datetime.strptime(x, "%Y/%m/%d %H:%M:%S")
@@ -161,7 +139,7 @@ class RKI:
 
         df["date"] = pd.to_datetime(df["date"])
         df["date_ref"] = pd.to_datetime(df["date_ref"])
-        return df
+        self.data = df
 
     def __download_via_rest_api(self, try_max=10):
         landkreise_max = 412  # Strangely there are 412 regions defined by the Robert Koch Insitute in contrast to the offical 294 rural districts or the 401 administrative districts.

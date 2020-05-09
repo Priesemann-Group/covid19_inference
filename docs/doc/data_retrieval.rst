@@ -5,7 +5,7 @@ Data Retrieval
 
 Utility
 -------
-.. automodule:: covid19_inference.data_retrieval
+.. automodule:: covid19_inference.data_retrieval.data_retrieval
 	:members: set_data_dir
 
 Johns Hops University
@@ -25,3 +25,10 @@ Google
 
 .. autoclass:: covid19_inference.data_retrieval.GOOGLE
 	:members:
+
+Base Retrieval Class
+--------------------
+
+.. autoclass:: covid19_inference.data_retrieval.data_retrieval.Retrieval
+	:members:
+	:private-members:

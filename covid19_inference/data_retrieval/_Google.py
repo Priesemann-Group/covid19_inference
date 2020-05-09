@@ -1,16 +1,44 @@
 import datetime
 import pandas as pd
+import logging
 
 # Import base class
 from .data_retrieval import Retrieval
 
+log = logging.getLogger(__name__)
+
 
 class GOOGLE(Retrieval):
     """
-    Google mobility data <https://www.google.com/covid19/mobility/>`_
+    This class can be used to retrieve the mobility dataset from 
+    `Google <https://coronavirus.jhu.edu/>`_.
+
+    Example
+    -------
+    .. code-block::
+    
+        gl = cov19.data_retrieval.GOOGLE()
+        gl.download_all_available_data()
+
+        #Acess the data by
+        gl.data
+        #or
+        gl.get_changes(filter)
     """
 
     def __init__(self, auto_download=False):
+        """
+        On init of this class the base Retrieval Class __init__ is called, with google specific
+        arguments.
+
+        Parameters
+        ----------
+        auto_download : bool, optional
+            Whether or not to automatically call the download_all_available_data() method.
+            One should explicitly call this method for more configuration options
+            (default: false)
+        """
+
         # ------------------------------------------------------------------------------ #
         #  Init Retrieval Base Class
         # ------------------------------------------------------------------------------ #
@@ -29,8 +57,14 @@ class GOOGLE(Retrieval):
         """
         kwargs = {"low_memory": False}  # Surpress warning
 
+        """
+        If the local file is older than the update_interval it gets updated once the 
+        download all function is called. Can be diffent values depending on the parent class        
+        """
+        update_interval = datetime.timedelta(days=1)
+
         # Init the retrieval base class
-        Retrieval.__init__(self, name, url_csv, [], auto_download, **kwargs)
+        Retrieval.__init__(self, name, url_csv, [], update_interval ** kwargs)
 
     def download_all_available_data(self, force_local=False, force_download=False):
         """

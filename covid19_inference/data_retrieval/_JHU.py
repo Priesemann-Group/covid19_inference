@@ -1,4 +1,14 @@
-class JHU:
+import datetime
+import pandas as pd
+import logging
+
+# Import base class
+from .data_retrieval import Retrieval, get_data_dir
+
+log = logging.getLogger(__name__)
+
+
+class JHU(Retrieval):
     """
     This class can be used to retrieve and filter the dataset from the online repository of the coronavirus visual dashboard operated
     by the `Johns Hopkins University <https://coronavirus.jhu.edu/>`_.
@@ -8,11 +18,6 @@ class JHU:
         - filter by deaths, confirmed cases and recovered cases
         - filter by country and state
         - filter by date
-
-    Parameters
-    ----------
-    auto_download : bool, optional
-        whether or not to automatically download the data from jhu (default: false)
 
     Example
     -------
@@ -24,8 +29,8 @@ class JHU:
         #Acess the data by
         jhu.data
         #or
-        jhu.get_new(args)
-        jhu.get_total(args)
+        jhu.get_new("confirmed","Italy")
+        jhu.get_total(filter)
     """
 
     @property
@@ -33,261 +38,112 @@ class JHU:
         return (self.confirmed, self.deaths, self.recovered)
 
     def __init__(self, auto_download=True):
-        self.confirmed: pd.DataFrame
-        self.deaths: pd.DataFrame
-        self.recovered: pd.DataFrame
-
-        if auto_download:
-            self.download_all_available_data()
-
-    def download_all_available_data(
-        self,
-        fp_confirmed: str = None,
-        fp_deaths: str = None,
-        fp_recovered: str = None,
-        save_to_attributes: bool = True,
-    ):
         """
-        Attempts to download the most current data for the confirmed cases, deaths and recovered cases from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University. If the repo is not available it should fallback to the local files located in /data/.
-        Only works if the module is located in the repo directory.
+        On init of this class the base Retrieval Class __init__ is called, with jhu specific
+        arguments.
 
         Parameters
         ----------
-        fp_confirmed,fp_deaths,fp_recovered : str, optional
-            Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases. Default download sources are
-            `Confirmed <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv>`_,
-            `Deaths <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv>`_ and
-            `Recovered <https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv>`_. (default: None)
+        auto_download : bool, optional
+            Whether or not to automatically call the download_all_available_data() method.
+            One should explicitly call this method for more configuration options
+            (default: false)
+        """
 
-        save_to_attributes : bool, optional
-            Should the returned dataframe tuple be saved as attributes (default:true)
-
-        Returns
-        -------
-        : pandas.DataFrame tuple
-            tuple of table with confirmed, deaths and recovered cases
-
+        # ------------------------------------------------------------------------------ #
+        #  Init Retrieval Base Class
+        # ------------------------------------------------------------------------------ #
+        """
+        A name mainly used for the Local Filename
+        """
+        name = "Jhu"
 
         """
-        if fp_confirmed is None:
-            fp_confirmed = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"
-        if fp_deaths is None:
-            fp_deaths = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
-        if fp_recovered is None:
-            fp_recovered = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
-
-        # Fallbacks should be set automatically in the download_* functions
-
-        return (
-            self._download_confirmed(fp_confirmed, save_to_attributes),
-            self._download_deaths(fp_deaths, save_to_attributes),
-            self._download_recovered(fp_recovered, save_to_attributes),
-        )
-
-    def _download_confirmed(
-        self,
-        fp_confirmed: str = None,
-        save_to_attributes: bool = True,
-        fallback: str = None,
-    ):
+        The url to the main dataset as csv, if none if supplied the fallback routines get used
         """
-        Attempts to download the most current data for the confirmed cases from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University. If the repo is not available it falls back to
-        Only works if the module is located in the repo directory.
-
-        Parameters
-        ----------
-        fp_confirmed : str, optional
-            Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
-        save_to_attributes : bool, optional
-            Should the returned dataframe be saved as attributes (default:true)
-        fallback: str, optional
-            Filepath to a fallback source, should be set automatically by default
-
-        Returns
-        -------
-        : pandas.DataFrame
-            Table with confirmed cases, indexed by date
-        """
-        if fp_confirmed is None:
-            fp_confirmed = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv"
-
-        fallbacks = [
-            get_data_dir() + "/jhu_fallback_confirmed.csv.gz",
+        url_csv = [
+            "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv",
+            "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv",
+            "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv",
         ]
-        if fallback is not None:
-            fallbacks.append(fallback)
-        fallbacks.append(_data_dir_fallback + "/jhu_fallback_confirmed.csv.gz",)
 
-        dl = self.__download_from_source(
-            url=fp_confirmed, fallbacks=fallbacks, write_to=fallbacks[0],
-        )
-        log.debug(dl)
-        confirmed = self.__to_iso(dl)
-        if save_to_attributes:
-            self.confirmed = confirmed
-        return confirmed
-
-    def _download_deaths(
-        self,
-        fp_deaths: str = None,
-        save_to_attributes: bool = True,
-        fallback: str = None,
-    ):
         """
-        Attempts to download the most current data for the deaths from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University.
-        Only works if the module is located in the repo directory.
+        Kwargs for pandas read csv
+        """
+        kwargs = {}  # Surpress warning
+
+        """
+        If the local file is older than the update_interval it gets updated once the 
+        download all function is called. Can be diffent values depending on the parent class        
+        """
+        update_interval = datetime.timedelta(days=1)
+
+        # Init the retrieval base class
+        Retrieval.__init__(self, name, url_csv, [], update_interval, **kwargs)
+
+    def download_all_available_data(self, force_local=False, force_download=False):
+        """
+        Attempts to download from the main urls (self.url_csv) which was set on initialization of
+        this class.
+        If this fails it downloads from the fallbacks. It can also be specified to use the local files
+        or to force the download. The download methods get inhereted from the base retrieval class.
 
         Parameters
         ----------
-        fp_deaths : str, optional
-            filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
-        save_to_attributes : bool, optional
-            Should the returned dataframe be saved as attributes (default:true)
-        fallback: str, optional
-            Filepath to a fallback source, should be set automatically by default
-
-        Returns
-        -------
-        : pandas.DataFrame
-            Table with deaths, indexed by date
+        force_local : bool, optional
+            If True forces to load the local files.
+        force_download : bool, optional
+            If True forces the download of new files
         """
-        if fp_deaths is None:
-            fp_deaths = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"
+        if force_local and force_download:
+            raise ValueError("force_local and force_download cant both be True!!")
 
-        fallbacks = [
-            get_data_dir() + "/jhu_fallback_deaths.csv.gz",
-        ]
-        if fallback is not None:
-            fallbacks.append(fallback)
-        fallbacks.append(_data_dir_fallback + "/jhu_fallback_deaths.csv.gz",)
+        # ------------------------------------------------------------------------------ #
+        # 1 Download or get local file
+        # ------------------------------------------------------------------------------ #
+        retrieved_local = False
+        if self._timestamp_local_old(force_local) or force_download:
+            self._download_helper(**self.kwargs)
+        else:
+            retrieved_local = self._local_helper()
 
-        deaths = self.__to_iso(
-            self.__download_from_source(
-                url=fp_deaths, fallbacks=fallbacks, write_to=fallbacks[0],
-            )
-        )
+        # ------------------------------------------------------------------------------ #
+        # 2 Save local
+        # ------------------------------------------------------------------------------ #
+        self._save_to_local() if not retrieved_local else None
 
-        if save_to_attributes:
-            self.deaths = deaths
-        return deaths
+        # ------------------------------------------------------------------------------ #
+        # 3 Convert to useable format
+        # ------------------------------------------------------------------------------ #
+        self._to_iso()
 
-    def _download_recovered(
-        self,
-        fp_recovered: str = None,
-        save_to_attributes: bool = True,
-        fallback: str = None,
-    ):
+    def _to_iso(self):
         """
-        Attempts to download the most current data for the recovered cases from the online repository of the
-        Coronavirus Visual Dashboard operated by the Johns Hopkins University.
-        Only works if the module is located in the repo directory.
+        Converts the data to a usable format i.e. converts all date string to
+        datetime objects and some other column names.
 
-        Parameters
-        ----------
-        fp_recovered : str, optional
-            Filepath or URL pointing to the original CSV of global confirmed cases, deaths or recovered cases
-        save_to_attributes : bool, optional
-            Should the returned dataframe be saved as attributes (default:true)
-        fallback: str, optional
-            Filepath to a fallback source, should be set automatically by default
+        This is most of the time the first place one has to look at if something breaks!
 
-        Returns
-        -------
-        : pandas.DataFrame
-            Table with recovered cases, indexed by date
-        """
-        if fp_recovered is None:
-            fp_recovered = "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv"
-
-        fallbacks = [
-            get_data_dir() + "/jhu_fallback_recovered.csv.gz",
-        ]
-        if fallback is not None:
-            fallbacks.append(fallback)
-        fallbacks.append(_data_dir_fallback + "/jhu_fallback_recovered.csv.gz",)
-
-        recovered = self.__to_iso(
-            self.__download_from_source(
-                url=fp_recovered, fallbacks=fallbacks, write_to=fallbacks[0],
-            )
-        )
-
-        if save_to_attributes:
-            self.recovered = recovered
-
-        return recovered
-
-    def __download_from_source(self, url, fallbacks=[], write_to=None):
-        """
-        Private method
-        Downloads one csv file from an url and converts it into a pandas dataframe. A fallback source can also be given.
-
-        Parameters
-        ----------
-        url : str
-            Where to download the csv file from
-        fallbacks : list, optional
-            List of optional fallback sources for the csv file.
-        write_to : str, optional
-            If provided, save the downloaded_data there. Default: None, do not write.
-
-        Returns
-        -------
-        : pandas.DataFrame
-            Raw data from the source url as dataframe
-        """
-        try:
-            data = pd.read_csv(url, sep=",")
-            data["Country/Region"] = iso_3166_convert_to_iso(
-                data["Country/Region"]
-            )  # convert before saving so we do not have to do it every time
-            # Save to write_to. A bit hacky but should work
-            if write_to is not None:
-                data.to_csv(write_to, sep=",", index=False, compression="infer")
-        except Exception as e:
-            log.info(
-                f"Failed to download {url}: {e}, trying {len(fallbacks)} fallbacks."
-            )
-            for fb in fallbacks:
-                try:
-                    data = pd.read_csv(fb, sep=",")
-                    # so this was successfull, make a copy
-                    if write_to is not None:
-                        data.to_csv(write_to, sep=",", index=False, compression="infer")
-                    log.debug(f"Fallback {fb} successful.")
-                    break
-                except Exception as e:
-                    continue
-        return data
-
-    def __to_iso(self, df):
-        """
-        Convert Johns Hopkins University dataset to nicely formatted DataFrame.
-        Drops Lat/Long columns and reformats to a multi-index of (country, state).
-
-        Parameters
-        ----------
-        df : pandas.DataFrame
-            Dataframe to convert to the iso format
-
-        Returns
-        -------
-        : pandas.DataFrame
+        self.data -> self.data converted
         """
 
-        # change columns & index
+        def helper(df):
+            try:
+                df = df.drop(columns=["Lat", "Long"]).rename(
+                    columns={"Province/State": "state", "Country/Region": "country"}
+                )
+                df = df.set_index(["country", "state"])
+                df.columns = pd.to_datetime(df.columns)
+            except Exception as e:
+                log.warning(f"There was an error formating the data! {e}")
+                raise e
+            return df
 
-        df = df.drop(columns=["Lat", "Long"]).rename(
-            columns={"Province/State": "state", "Country/Region": "country"}
-        )
-        df = df.set_index(["country", "state"])
-        df.columns = pd.to_datetime(df.columns)
+        self.confirmed = helper(self.confirmed)
+        self.deaths = helper(self.deaths)
+        self.recovered = helper(self.recovered)
 
-        # datetime columns
-        return df.T
+        return True
 
     def get_total_confirmed_deaths_recovered(
         self,
@@ -535,3 +391,68 @@ class JHU:
         df = pd.DataFrame(all_entrys, columns=["country", "state"])
 
         return df
+
+    # ------------------------------------------------------------------------------ #
+    # Helper methods, overload from the base class
+    # ------------------------------------------------------------------------------ #
+    def _download_helper(self, **kwargs):
+        """
+        Overloads the method method from the Base Retrival class
+        """
+        try:
+            # Try to download from original souce
+            self._download_csvs_from_source(self.url_csv, **kwargs)
+        except Exception as e:
+            # Try all fallbacks
+            log.info(f"Failed to download from url {self.url_csv} : {e}")
+            self._fallback_handler()
+        finally:
+            # We save it to the local files
+            # self.data._save_to_local()
+            log.info(f"Successfully downloaded new files.")
+
+    def _local_helper(self):
+        """
+        Overloads the method method from the Base Retrival class
+        """
+        try:
+            self._download_csvs_from_source(
+                [
+                    get_data_dir() + self.name + "_confirmed" + ".csv.gz",
+                    get_data_dir() + self.name + "_deaths" + ".csv.gz",
+                    get_data_dir() + self.name + "_recovered" + ".csv.gz",
+                ],
+                **self.kwargs,
+            )
+            log.info(f"Successfully loaded data from local")
+            return True
+        except Exception as e:
+            log.info(f"Failed to load local files! {e} Trying fallbacks!")
+            self.download_helper(**self.kwargs)
+        return False
+
+    def _save_to_local(self):
+        """
+        Overloads the method method from the Base Retrival class
+        """
+        filepaths = [
+            get_data_dir() + self.name + "_confirmed" + ".csv.gz",
+            get_data_dir() + self.name + "_deaths" + ".csv.gz",
+            get_data_dir() + self.name + "_recovered" + ".csv.gz",
+        ]
+        try:
+            self.confirmed.to_csv(filepaths[0], compression="infer", index=False)
+            self.deaths.to_csv(filepaths[1], compression="infer", index=False)
+            self.recovered.to_csv(filepaths[2], compression="infer", index=False)
+            self._create_timestamp()
+            log.info(f"Local backup to {filepaths} successful.")
+            return True
+        except Exception as e:
+            log.warning(f"Could not create local backup {e}")
+            raise e
+        return False
+
+    def _download_csvs_from_source(self, filepaths, **kwargs):
+        self.confirmed = pd.read_csv(filepaths[0], **kwargs)
+        self.deaths = pd.read_csv(filepaths[1], **kwargs)
+        self.recovered = pd.read_csv(filepaths[2], **kwargs)

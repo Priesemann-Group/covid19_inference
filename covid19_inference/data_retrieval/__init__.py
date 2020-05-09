@@ -2,7 +2,7 @@
 # import RKI as *
 
 from ._Google import *
+from ._JHU import *
+from ._RKI import *
 
-# from . import RKI
-# from . import JHU
 # from . import RKI_situation_reports

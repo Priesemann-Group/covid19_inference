@@ -134,38 +134,44 @@ def iso_3166_country_in_iso_format(country: str) -> bool:
 
 
 class Retrieval:
+    """ 
+    Each source class should inherit this base retrieval class, it streamlines alot of base functions.
+    It manages downloads, multiple fallbacks and local backups via timestamp. At init of the parent class
+    the Retrieval init should be called with the following arguments, these get saved as attributes.
 
-    """
-    The url to the main dataset as csv, if none if supplied the fallback routines get used
+    An example for the usage can be seen in the _Google, _RKI and _JHU source files. 
     """
 
     url_csv = ""
 
-    """
-    The fallback sources for the downloads can be local/online urls
-    or even functions defined in the parent class
-    """
     fallbacks = []
 
-    """
-    A name mainly for the local file
-    """
     name = ""
 
-    """
-    If the local file is older than the update_interval it gets updated once the 
-    download all function is called. Can be diffent values depending on the parent class
-    """
     update_interval = datetime.timedelta(days=1)
 
-    def __init__(self, name, url_csv, fallbacks, auto_download=False, **kwargs):
+    def __init__(self, name, url_csv, fallbacks, update_interval=None, **kwargs):
+        """
+        Parameters
+        ----------
+        name : str
+            A name for the Parent class, mainly used for the local file backup.
+        url_csv : str
+            The url to the main dataset as csv, if an empty string if supplied the fallback routines get used.
+        fallbacks : array
+            Fallbacks can be filepaths to local or online sources
+            or even methods defined in the parent class.
+        update_interval : datetime.timedelta
+            If the local file is older than the update_interval it gets updated once the 
+            download all function is called.
+        """
         self.name = name
         self.url_csv = url_csv
         self.fallbacks = fallbacks
         self.kwargs = kwargs
 
-        if auto_download:
-            self.download_all_available_data(**self.kwargs)
+        if update_interval is not None:
+            self.update_interval = update_interval
 
     def _download_csv_from_source(self, filepath, **kwargs):
         """
@@ -235,12 +241,9 @@ class Retrieval:
 
     def _timestamp_local_old(self, force_local=False) -> bool:
         """
-        TODO function that decides if the online files have to be loaded
-        Timestamps are save as self.name_timestamp.json
-
-            1. Get timestamp if it exists
-            2. compare with the date today
-            3. update if data is older than set intervall -> can be parent dependant
+        1. Get timestamp if it exists
+        2. compare with the date today
+        3. update if data is older than set intervall -> can be parent dependant
         """
         if not os.path.isfile(get_data_dir() + self.name + "_timestamp.json"):
             return True
@@ -290,29 +293,29 @@ class Retrieval:
         Creates a local backup for the self.data pandas.DataFrame. And a timestamp for the source.
         """
 
-        def create_timestamp():
-            try:
-                timestamp = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
-                json.dump(
-                    timestamp,
-                    open(
-                        get_data_dir() + self.name + "_timestamp.json",
-                        "w",
-                        encoding="utf-8",
-                    ),
-                    ensure_ascii=False,
-                    indent=4,
-                )
-            except Exception as e:
-                raise e
-
         filepath = get_data_dir() + self.name + ".csv.gz"
         try:
             self.data.to_csv(filepath, compression="infer", index=False)
-            create_timestamp()
+            self._create_timestamp()
             log.info(f"Local backup to {filepath} successful.")
             return True
         except Exception as e:
             log.warning(f"Could not create local backup {e}")
             raise e
         return False
+
+    def _create_timestamp(self):
+        try:
+            timestamp = datetime.datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
+            json.dump(
+                timestamp,
+                open(
+                    get_data_dir() + self.name + "_timestamp.json",
+                    "w",
+                    encoding="utf-8",
+                ),
+                ensure_ascii=False,
+                indent=4,
+            )
+        except Exception as e:
+            raise e
