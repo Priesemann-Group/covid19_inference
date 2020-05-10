@@ -1140,7 +1140,9 @@ def make_prior_I(
     I_ref = num_new_I_ref / lambda_t[days_diff]
     I0_ref = I_ref / (1 + lambda_t[days_diff // 2] - mu) ** days_diff
     I_begin = I0_ref * tt.exp(
-        pm.Normal(name="I_begin_ratio", mu=0, sigma=pr_sigma_I_begin, shape=num_regions)
+        pm.Normal(
+            name="I_begin_ratio_log", mu=0, sigma=pr_sigma_I_begin, shape=num_regions
+        )
     )
     pm.Deterministic("I_begin", I_begin)
     return I_begin
