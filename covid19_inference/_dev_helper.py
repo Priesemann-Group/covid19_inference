@@ -16,6 +16,7 @@ import pymc3 as pm
 
 
 from .model import *
+from . import data_retrieval
 
 log = logging.getLogger(__name__)
 
