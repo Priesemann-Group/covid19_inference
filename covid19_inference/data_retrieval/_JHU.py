@@ -37,7 +37,7 @@ class JHU(Retrieval):
     def data(self):
         return (self.confirmed, self.deaths, self.recovered)
 
-    def __init__(self, auto_download=True):
+    def __init__(self, auto_download=False):
         """
         On init of this class the base Retrieval Class __init__ is called, with jhu specific
         arguments.
@@ -80,6 +80,9 @@ class JHU(Retrieval):
 
         # Init the retrieval base class
         Retrieval.__init__(self, name, url_csv, [], update_interval, **kwargs)
+
+        if auto_download:
+            self.download_all_available_data()
 
     def download_all_available_data(self, force_local=False, force_download=False):
         """
@@ -255,13 +258,15 @@ class JHU(Retrieval):
         # Retrieve data and filter it
         # ------------------------------------------------------------------------------ #
         df = pd.DataFrame(columns=["date", value]).set_index("date")
+        orig = getattr(self, value)
         if country is None:
-            df[value] = getattr(self, value).sum(axis=1, skipna=True)
+            df[value] = orig.sum(axis=0, skipna=True)
         else:
             if state is None:
-                df[value] = getattr(self, value)[country].sum(axis=1, skipna=True)
+                filter1 = orig.index.get_level_values("country") == country
+                df[value] = orig.loc[filter1].sum(axis=0, skipna=True)
             else:
-                df[value] = getattr(self, value)[(country, state)]
+                df[value] = orig[(country, state)]
         df.index.name = "date"
 
         df = self.filter_date(df, data_begin - datetime.timedelta(days=1), data_end)

@@ -64,7 +64,10 @@ class GOOGLE(Retrieval):
         update_interval = datetime.timedelta(days=1)
 
         # Init the retrieval base class
-        Retrieval.__init__(self, name, url_csv, [], update_interval ** kwargs)
+        Retrieval.__init__(self, name, url_csv, [], update_interval, **kwargs)
+
+        if auto_download:
+            self.download_all_available_data()
 
     def download_all_available_data(self, force_local=False, force_download=False):
         """
@@ -139,8 +142,8 @@ class GOOGLE(Retrieval):
         country: str,
         state: str = None,
         region: str = None,
-        begin_date: datetime.datetime = None,
-        end_date: datetime.datetime = None,
+        data_begin: datetime.datetime = None,
+        data_enb: datetime.datetime = None,
     ):
         """
         Returns a dataframe with the relative changes in mobility to a baseline, provided by google.
@@ -155,7 +158,7 @@ class GOOGLE(Retrieval):
             State for the selected data if no value is selected the whole country is chosen
         region : str, optional
             Region for the selected data if  no value is selected the whole region/country is chosen
-        begin_date, end_date : datetime.datetime, optional
+        data_begin, data_end : datetime.datetime, optional
             Filter for the desired time period
 
         Returns
@@ -168,9 +171,9 @@ class GOOGLE(Retrieval):
             raise ValueError("Invalid state!")
         if region not in self.data.index and region is not None:
             raise ValueError("Invalid region!")
-        if begin_date is not None and isinstance(begin_date, datetime.datetime):
-            raise ValueError("Invalid begin_date!")
-        if end_date is not None and isinstance(end_date, datetime.datetime):
+        if data_begin is not None and isinstance(data_begin, datetime.datetime):
+            raise ValueError("Invalid data_begin!")
+        if data_end is not None and isinstance(data_end, datetime.datetime):
             raise ValueError("Invalid end_date!")
 
         # Select everything with that country

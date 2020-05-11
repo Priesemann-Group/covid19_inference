@@ -4,5 +4,4 @@
 from ._Google import *
 from ._JHU import *
 from ._RKI import *
-
-# from . import RKI_situation_reports
+from ._RKI_situation_reports import *

@@ -20,11 +20,22 @@ Robert Koch Institute
 .. autoclass:: covid19_inference.data_retrieval.RKI
 	:members:
 
+
+Robert Koch Institute situation reports
+---------------------------------------
+
+.. autoclass:: covid19_inference.data_retrieval.RKIsituationreports
+	:members:
+
+
+
 Google
 ------
 
 .. autoclass:: covid19_inference.data_retrieval.GOOGLE
 	:members:
+
+
 
 Base Retrieval Class
 --------------------
