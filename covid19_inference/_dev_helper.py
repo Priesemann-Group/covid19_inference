@@ -85,7 +85,7 @@ def create_example_instance(num_change_points=3):
             pr_median_lambda_0=0.4, change_points_list=change_points
         )
 
-        new_I_t = SIR(lambda_t_log, pr_median_mu=1 / 8)
+        new_I_t = SIR(lambda_t_log, mu=0.13)
 
         new_cases_inferred_raw = delay_cases(
             new_I_t, pr_median_delay=10, pr_median_scale_delay=0.3
