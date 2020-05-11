@@ -178,9 +178,9 @@ class GOOGLE(Retrieval):
             raise ValueError("Invalid state!")
         if region not in self.data.index and region is not None:
             raise ValueError("Invalid region!")
-        if data_begin is not None and isinstance(data_begin, datetime.datetime):
+        if data_begin is not None and not isinstance(data_begin, datetime.datetime):
             raise ValueError("Invalid data_begin!")
-        if data_end is not None and isinstance(data_end, datetime.datetime):
+        if data_end is not None and not isinstance(data_end, datetime.datetime):
             raise ValueError("Invalid end_date!")
 
         # Select everything with that country
@@ -198,7 +198,7 @@ class GOOGLE(Retrieval):
 
         df = df.set_index("date")
 
-        return df.drop(columns=["country_region_code"])[begin_date:end_date]
+        return df.drop(columns=["country_region_code"])[data_begin:data_end]
 
     def get_possible_counties_states_regions(self):
         """
