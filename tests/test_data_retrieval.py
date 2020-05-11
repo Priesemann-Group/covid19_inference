@@ -23,7 +23,7 @@ def test_google():
     # Test different filter function
     gl.get_changes(
         country="Germany",
-        data_begin=datetime.datetime(2020, 3, 14),
+        data_begin=datetime.datetime(2020, 3, 15),
         data_end=datetime.datetime(2020, 3, 25),
     )
 
@@ -42,7 +42,7 @@ def test_rki():
     rki.get_new(
         "confirmed",
         "Sachsen",
-        data_begin=datetime.datetime(2020, 3, 14),
+        data_begin=datetime.datetime(2020, 3, 15),
         data_end=datetime.datetime(2020, 3, 25),
     )
 
@@ -59,12 +59,12 @@ def test_jhu():
     jhu.get_total(
         "confirmed",
         country="Italy",
-        data_begin=datetime.datetime(2020, 3, 14),
+        data_begin=datetime.datetime(2020, 3, 15),
         data_end=datetime.datetime(2020, 3, 25),
     )
     jhu.get_new(
         "confirmed",
         country="Italy",
-        data_begin=datetime.datetime(2020, 3, 14),
+        data_begin=datetime.datetime(2020, 3, 15),
         data_end=datetime.datetime(2020, 3, 25),
     )

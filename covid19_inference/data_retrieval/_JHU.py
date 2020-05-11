@@ -142,9 +142,9 @@ class JHU(Retrieval):
                 raise e
             return df
 
-        self.confirmed = helper(self.confirmed)
-        self.deaths = helper(self.deaths)
-        self.recovered = helper(self.recovered)
+        self.confirmed = helper(self.confirmed).T
+        self.deaths = helper(self.deaths).T
+        self.recovered = helper(self.recovered).T
 
         return True
 
@@ -258,15 +258,14 @@ class JHU(Retrieval):
         # Retrieve data and filter it
         # ------------------------------------------------------------------------------ #
         df = pd.DataFrame(columns=["date", value]).set_index("date")
-        orig = getattr(self, value)
+
         if country is None:
-            df[value] = orig.sum(axis=0, skipna=True)
+            df[value] = orig.sum(axis=1, skipna=True)
         else:
             if state is None:
-                filter1 = orig.index.get_level_values("country") == country
-                df[value] = orig.loc[filter1].sum(axis=0, skipna=True)
+                df[value] = getattr(self, value)[country].sum(axis=1, skipna=True)
             else:
-                df[value] = orig[(country, state)]
+                df[value] = getattr(self, value)[(country, state)]
         df.index.name = "date"
 
         df = self.filter_date(df, data_begin - datetime.timedelta(days=1), data_end)
@@ -329,6 +328,7 @@ class JHU(Retrieval):
         # Retrieve data and filter it
         # ------------------------------------------------------------------------------ #
         df = pd.DataFrame(columns=["date", value]).set_index("date")
+        orig = getattr(self, value)
         if country is None:
             df[value] = getattr(self, value).sum(axis=1, skipna=True)
         else:
