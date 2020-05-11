@@ -3,7 +3,7 @@ import pandas as pd
 import logging
 
 # Import base class
-from .data_retrieval import Retrieval
+from .data_retrieval import Retrieval, _data_dir_fallback
 
 log = logging.getLogger(__name__)
 
@@ -64,7 +64,14 @@ class GOOGLE(Retrieval):
         update_interval = datetime.timedelta(days=1)
 
         # Init the retrieval base class
-        Retrieval.__init__(self, name, url_csv, [], update_interval, **kwargs)
+        Retrieval.__init__(
+            self,
+            name,
+            url_csv,
+            [_data_dir_fallback + "/" + name + "_fallback.csv.gz"],
+            update_interval,
+            **kwargs,
+        )
 
         if auto_download:
             self.download_all_available_data()
@@ -143,7 +150,7 @@ class GOOGLE(Retrieval):
         state: str = None,
         region: str = None,
         data_begin: datetime.datetime = None,
-        data_enb: datetime.datetime = None,
+        data_end: datetime.datetime = None,
     ):
         """
         Returns a dataframe with the relative changes in mobility to a baseline, provided by google.

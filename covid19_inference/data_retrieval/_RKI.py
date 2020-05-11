@@ -4,7 +4,7 @@ import logging
 import numpy as np
 
 # Import base class
-from .data_retrieval import Retrieval, get_data_dir
+from .data_retrieval import Retrieval, get_data_dir, _data_dir_fallback
 
 import urllib, json
 
@@ -71,7 +71,10 @@ class RKI(Retrieval):
         """
         fallback array can be anything a filepath or callable methods
         """
-        fallbacks = [self.__download_via_rest_api]
+        fallbacks = [
+            self.__download_via_rest_api,
+            _data_dir_fallback + "/" + name + "_fallback.csv.gz",
+        ]
         """
         If the local file is older than the update_interval it gets updated once the 
         download all function is called. Can be diffent values depending on the parent class        

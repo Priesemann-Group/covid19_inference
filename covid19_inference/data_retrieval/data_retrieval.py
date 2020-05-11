@@ -16,7 +16,7 @@ log = logging.getLogger(__name__)
 # set by user, or default temp
 _data_dir = None
 # provided with the module
-_data_dir_fallback = os.path.normpath(os.path.dirname(__file__) + "/../data/")
+_data_dir_fallback = os.path.normpath(os.path.dirname(__file__) + "/../../data/")
 
 _format_date = lambda date_py: "{}/{}/{}".format(
     date_py.month, date_py.day, str(date_py.year)[2:4]
@@ -209,7 +209,7 @@ class Retrieval:
                     success = fallback()
                 # If it is not executable we try to download from the source
                 elif isinstance(fallback, str):
-                    success = self._download_csv_from_source()
+                    success = self._download_csv_from_source(fallback, **self.kwargs)
                 else:
                     log.info(
                         f"That is weird fallback is not of type string nor a callable function {type(fallback)}"
@@ -218,7 +218,7 @@ class Retrieval:
                         f"Fallback type not supported (yet?) {type(fallback)}"
                     )
             except Exception as e:
-                info.log(f"Fallback {i} failed! {fallback}:{e}")
+                log.info(f"Fallback {i} failed! {fallback}:{e}")
 
             # ---------------------------------------------------------------#
             # Break conditions
@@ -226,7 +226,7 @@ class Retrieval:
             if success:
                 log.debug(f"Fallback {i} successful! {fallback}")
                 return True
-            if len(self.fallbacks) == i:
+            if len(self.fallbacks) == i + 1:
                 log.warning(f"ALL fallbacks failed! This should not happen!")
                 return False
 

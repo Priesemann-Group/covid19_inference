@@ -3,7 +3,7 @@ import pandas as pd
 import logging
 
 # Import base class
-from .data_retrieval import Retrieval, get_data_dir
+from .data_retrieval import Retrieval, get_data_dir, _data_dir_fallback
 
 log = logging.getLogger(__name__)
 
@@ -73,13 +73,18 @@ class JHU(Retrieval):
         kwargs = {}  # Surpress warning
 
         """
+        Fallbacks
+        """
+        fallbacks = [self._fallback_local_backup]
+
+        """
         If the local file is older than the update_interval it gets updated once the 
         download all function is called. Can be diffent values depending on the parent class        
         """
         update_interval = datetime.timedelta(days=1)
 
         # Init the retrieval base class
-        Retrieval.__init__(self, name, url_csv, [], update_interval, **kwargs)
+        Retrieval.__init__(self, name, url_csv, fallbacks, update_interval, **kwargs)
 
         if auto_download:
             self.download_all_available_data()
@@ -461,3 +466,27 @@ class JHU(Retrieval):
         self.confirmed = pd.read_csv(filepaths[0], **kwargs)
         self.deaths = pd.read_csv(filepaths[1], **kwargs)
         self.recovered = pd.read_csv(filepaths[2], **kwargs)
+
+    def _fallback_local_backup(self):
+        path_confirmed = (
+            _data_dir_fallback
+            + "/"
+            + self.name
+            + "_confirmed"
+            + "_fallback"
+            + ".csv.gz"
+        )
+        path_deaths = (
+            _data_dir_fallback + "/" + self.name + "_deaths" + "_fallback" + ".csv.gz"
+        )
+        path_recovered = (
+            _data_dir_fallback
+            + "/"
+            + self.name
+            + "_recovered"
+            + "_fallback"
+            + ".csv.gz"
+        )
+        self.confirmed = pd.read_csv(path_confirmed, **self.kwargs)
+        self.deaths = pd.read_csv(path_deaths, **self.kwargs)
+        self.recovered = pd.read_csv(path_recovered, **self.kwargs)
