@@ -9,250 +9,211 @@ import pandas as pd
 log = logging.getLogger(__name__)
 
 
-def get_dummy_data(data_begin, data_end, lambda_initial, mu, noise_factor=0.02):
-    r"""
-    Generates a random dataset by drawing random initial values and random changepoints.
-    By numericaly solving the SIR differential equation with these initial values a dataset is created.
-    Finally a noise term is added onto the dataset.
+class DummyData(object):
+    """docstring for DummyData"""
 
-    Parameters
-    ----------
-    data_begin, data_end : datetime.datetime
-        Range for the random date
+    def __init__(
+        self, data_begin, data_end, mu=0.13, auto_generate=False, **initial_values
+    ):
+        """
+        Creates a dummy dataset from initial values, these initial values get randomly
+        generated or can be given via a dict.
 
-    lambda_initial: number
-        initial lambda value
+        Parameters
+        ----------
+        data_begin, data_end : datetime.datetime
+            Time range for the dataset
+        auto_generate : bool
+            Whether or not to generate a dataset on class init. Calls the self.generate() method.
+        initial_values : dict
 
-    mu: number
-        value for the recovery rate mu
+        """
 
-    noise_factor: number
-        scaling for the noise function
+        self.data_begin = data_begin
+        self.data_end = data_end
+        self._update_initial(**initial_values)
 
-    Returns
-    -------
-    df, changepoints, lambda_t : pandas.DataFrame,array
+        if auto_generate:
+            self.generate()
 
-  """
+    @property
+    def dates(self):
+        return pd.date_range(self.data_begin, self.data_end)
 
-    # Draw initial SIR parameters
-    S_initial = np.random.randint(50000, 100000)  # Population in germany as upper bound
-    I_initial = int(halfcauchy.rvs(loc=4))  # Offset by one to get atleast one
-    R_initial = 0
+    @property
+    def data_len(self):
+        return (self.data_end - self.data_begin).days
 
-    log.debug(f"Initial susceptible {S_initial}")
-    log.info(f"Initial infected {I_initial}")
-    # Draw changepoints every weekend
-    changepoints = []
-    """
-    lambda_t = lambda_initial
-    for date in pd.date_range(data_begin, data_end):
-        if date.weekday() == 6:
-            # Draw a date
-            date_index = int(np.random.normal((date - data_begin).days, 3))
-            date_random = data_begin + datetime.timedelta(days=date_index)
-            # Draw a lambda
-            lambda_t = np.random.normal(lambda_initial, lambda_initial / 2)
-            changepoints.append([date_random, lambda_t])
-    """
-    changepoints.append([datetime.datetime(2020, 3, 22), 0.4])
-    changepoints.append([datetime.datetime(2020, 4, 1), 0.2])
-    # Generate SIR data from the random changepoints
-    t_n, data, lambda_t = _generate_SIR(
-        data_begin,
-        data_end,
-        [S_initial, I_initial, R_initial],
-        mu,
-        lambda_initial,
-        changepoints,
-    )
-    cumulative_I = _create_cumulative(data[:, 1])
-    cumulative_R = _create_cumulative(data[:, 2])
+    def _update_initial(self, **initial_values):
+        # Generate inital values if they are not in the dict
+        self.initials = {}
 
-    df = pd.DataFrame()
-    df["date"] = pd.date_range(data_begin, data_end)
-    df["confirmed"] = _random_noise(cumulative_I, noise_factor)
-    df["recovered"] = _random_noise(cumulative_R, noise_factor)
-    df["lambda_t"] = np.array(lambda_t)
-    df["confirmed"] = df["confirmed"].astype(int)
-    df["recovered"] = df["recovered"].astype(int)
-    df = df.set_index("date")
-    return df, changepoints
-
-
-def _create_cumulative(array):
-    r"""
-    Since we cant measure a negative number of new cases. All the negative values are cut from the I/R array
-    and the counts are added up to create the cumulative/total cases dataset.
-    """
-    # Confirmed
-    diff = [array[0]]
-    for i in range(1, len(array)):
-        if (array[i] - array[i - 1]) > 0:
-            diff.append(array[i] - array[i - 1] + diff[i - 1])
+        if "S_initial" in initial_values:
+            self.initials["S_initial"] = initial_values.get("S_initial")
         else:
-            diff.append(diff[i - 1])
+            self.initials["S_initial"] = np.random.randint(50000, 100000)
 
-    return diff
+        if "I_initial" in initial_values:
+            self.initials["I_initial"] = initial_values.get("I_initial")
+        else:
+            self.initials["I_initial"] = int(halfcauchy.rvs(loc=3))
 
+        if "R_initial" in initial_values:
+            self.initials["R_initial"] = initial_values.get("R_initial")
+        else:
+            self.initials["R_initial"] = 0
 
-def _generate_SIR(data_begin, data_end, SIR_initial, mu, lambda_init, changepoints):
-    r"""
-    Generates a dummy dataset for the SIR model using the vector 
+        if "lambda_initial" in initial_values:
+            self.initials["lambda_initial"] = initial_values.get("lambda_initial")
+        else:
+            self.initials["lambda_initial"] = np.random.uniform(0, 1)
 
-    .. math::
-        y = \begin{bmatrix}
-            S \\ I \\ R 
-        \end{bmatrix}
-        = \begin{bmatrix}
-            y_0 \\ y_1 \\ y_2 
-        \end{bmatrix}
+        if "change_points" in initial_values:
+            self.initials["change_points"] = initial_values.get("change_points")
+        else:
+            self.initials["change_points"] = self._generate_change_points_we()
 
-    The differential euqation
+    def _generate_change_points_we(self):
+        """
+        Generates random change points each weekend in the give time period.
 
-    .. math::
-        \frac{dy}{dt}  = \lambda(t) \cdot
-        \begin{bmatrix}
-            -1 \\ 1 \\ 0 
-        \end{bmatrix}
-        \frac{y_0 \cdot y_1}{N} -
-        \begin{bmatrix}
-            0 \\ \mu y_1 \\ -\mu y_1
-        \end{bmatrix}
-    
-    gets solved numerically for the initial SIR parameters using runge kutta.
-    Additionally the force of infection :math:`\lambda(t)` can be supplied using the changepoints
-    parameter. The population size :math:`N` is the sum over :math:`S`, :math:`I` and :math:`R`.
+        The date is normal distributed with mean on each Saturday and a variance of 3 days.
 
-    Parameters
-    ----------
-    data_begin : datetime.datetime
-        date at which the dummy data begins
-    data_end : datetime.datetime
-        end date for the dummy data
-    SIR_initial : np.array [S_initial,I_initial,R_initial]
-        starting values for the numerical integration, population gets calculated by S+I+R
-    mu : number
-        recovery rate
-    changepoints : list
-        should contain the lambda_t value and the corresponding date, in decending order
-        ([date_1,lambda_1 ,],[lambda_2, date_2])
+        The lambda is draw uniform between 0 and 1
+        """
+        change_points = []
+        for date in pd.date_range(self.data_begin, self.data_end):
+            if date.weekday() == 6:
+                # Draw a date
+                date_index = int(np.random.normal(0, 3))
+                date_random = date + datetime.timedelta(days=date_index)
+                # Draw a lambda
+                lambda_t = np.random.uniform(0, 1)
+                change_points.append([date_random, lambda_t])
+        return change_points
 
-    Return
-    ------
-    dataframe : pandas.DataFrame
+    def generate(self):
 
-    """
+        # ------------------------------------------------------------------------------ #
+        # Generate lambda(t) array
+        # ------------------------------------------------------------------------------ #
+        # From our lambda_t array we model the changepoints by logistics function whereby
+        # the initial changepoints are the max/min values
+        change_points = self.initials["change_points"]
+        change_points.sort(key=lambda x: x[0])
+        # We create an lambda_t array for each date in our time period
 
-    # SIR model as vector
-    def f(t, y, lambda_t):
-        return lambda_t * np.array([-1.0, 1.0, 0.0]) * y[0] * y[1] / N + np.array(
-            [0, -mu * y[1], mu * y[1]]
-        )
+        lambda_t = [self.initials["lambda_initial"]]
+        lambda_cp = self.initials["lambda_initial"]
+        change_points = np.array(change_points)
+        j = 0
+        for i in range(time_range):
+            if (data_begin + datetime.timedelta(days=i)) in change_points[:, 0]:
+                lambda_cp = change_points[j][1]
+                j = j + 1
+            lambda_t.append(lambda_cp)
 
-    # Runge_Kutta_4 timesteps
-    def RK4(dt, t_n, y_n, lambda_t):
-        k_1 = f(t_n, y_n, lambda_t)
-        k_2 = f(t_n + dt / 2, y_n + k_1 * dt / 2, lambda_t)
-        k_3 = f(t_n + dt / 2, y_n + k_2 * dt / 2, lambda_t)
-        k_4 = f(t_n + dt, y_n + k_3 * dt, lambda_t)
-        return y_n + dt / 6 * (k_1 + 2 * k_2 + 2 * k_3 + k_4)
+        print(lambda_t)
 
-    # ------------------------------------------------------------------------------ #
-    # Preliminar parameters
-    # ------------------------------------------------------------------------------ #
-    time_range = (data_end - data_begin).days
-    N = SIR_initial[0] + SIR_initial[1] + SIR_initial[2]
-    t_n = [0]
-    y_n = [np.array(SIR_initial)]
-    dt = 1
+        """
+        # Generate SIR data from the random changepoints
+        t_n, data, lambda_t = self._generate_SIR(
+                                self.data_begin,
+                                self.data_end,
+                                [self.initials["S_initial"], self.initials["I_initial"], self.initials["R_initial"],
+                                self.initials["mu"],
+                                self.initials[]])
+        """
 
-    # Changepoints
-    lambda_t = [lambda_init]
-    lambda_cp = lambda_init
-    changepoints.sort(key=lambda x: x[0])  # Sort by date (increasing)
-    changepoints = np.array(changepoints)
-    j = 0
-    for i in range(time_range):
-        if (data_begin + datetime.timedelta(days=i)) in changepoints[:, 0]:
-            lambda_cp = changepoints[j][1]
-            j = j + 1
-        lambda_t.append(lambda_cp)
+    def _generate_SIR(data_begin, data_end, SIR_initial, mu, lambda_init, changepoints):
+        r"""
+        Generates a dummy dataset for the SIR model using the vector 
 
-    # ------------------------------------------------------------------------------ #
-    # Timesteps
-    # ------------------------------------------------------------------------------ #
-    for i in range(time_range):
-        # Check if lambda_t has to change (initial value is also set by this)
-        t_n.append(t_n[i] + dt)
-        y_n.append(RK4(dt, t_n[i], y_n[i], lambda_t[i]))
+        .. math::
+            y = \begin{bmatrix}
+                S \\ I \\ R 
+            \end{bmatrix}
+            = \begin{bmatrix}
+                y_0 \\ y_1 \\ y_2 
+            \end{bmatrix}
 
-    return t_n, np.array(y_n), lambda_t
+        The differential euqation
 
+        .. math::
+            \frac{dy}{dt}  = \lambda(t) \cdot
+            \begin{bmatrix}
+                -1 \\ 1 \\ 0 
+            \end{bmatrix}
+            \frac{y_0 \cdot y_1}{N} -
+            \begin{bmatrix}
+                0 \\ \mu y_1 \\ -\mu y_1
+            \end{bmatrix}
+        
+        gets solved numerically for the initial SIR parameters using runge kutta.
+        Additionally the force of infection :math:`\lambda(t)` can be supplied using the changepoints
+        parameter. The population size :math:`N` is the sum over :math:`S`, :math:`I` and :math:`R`.
 
-def _random_noise(array, factor):
-    r"""
-    Generates random noise on an observable by a Negative Binomial :math:`NB`.
-    References to the negative binomial can be found `here <https://ncss-wpengine.netdna-ssl.com/wp-content/themes/ncss/pdf/Procedures/NCSS/Negative_Binomial_Regression.pdf>`_
-    .
+        Parameters
+        ----------
+        data_begin : datetime.datetime
+            date at which the dummy data begins
+        data_end : datetime.datetime
+            end date for the dummy data
+        SIR_initial : np.array [S_initial,I_initial,R_initial]
+            starting values for the numerical integration, population gets calculated by S+I+R
+        mu : number
+            recovery rate
+        changepoints : list
+            should contain the lambda_t value and the corresponding date, in decending order
+            ([date_1,lambda_1 ,],[lambda_2, date_2])
 
-    .. math::
-        O &\sim NB(\mu=datapoint,\alpha=0.0001)
-    
-    We keep the alpha parameter low to obtain a small variance which is than always approximatly the size of the mean.
+        Return
+        ------
+        dataframe : pandas.DataFrame
 
-    Parameters
-    ----------
-    array : 1-dim
-        observable on which we want to add the noise
+        """
 
-    factor : number
+        # SIR model as vector
+        def f(t, y, lambda_t):
+            return lambda_t * np.array([-1.0, 1.0, 0.0]) * y[0] * y[1] / N + np.array(
+                [0, -mu * y[1], mu * y[1]]
+            )
 
+        # Runge_Kutta_4 timesteps
+        def RK4(dt, t_n, y_n, lambda_t):
+            k_1 = f(t_n, y_n, lambda_t)
+            k_2 = f(t_n + dt / 2, y_n + k_1 * dt / 2, lambda_t)
+            k_3 = f(t_n + dt / 2, y_n + k_2 * dt / 2, lambda_t)
+            k_4 = f(t_n + dt, y_n + k_3 * dt, lambda_t)
+            return y_n + dt / 6 * (k_1 + 2 * k_2 + 2 * k_3 + k_4)
 
-    Returns
-    -------
-    array : 1-dim
-        observable with added noise
-    """
+        # ------------------------------------------------------------------------------ #
+        # Preliminar parameters
+        # ------------------------------------------------------------------------------ #
+        time_range = (data_end - data_begin).days
+        N = SIR_initial[0] + SIR_initial[1] + SIR_initial[2]
+        t_n = [0]
+        y_n = [np.array(SIR_initial)]
+        dt = 1
 
-    def convert(mu, alpha):
-        r = 1 / alpha
-        p = mu / (mu + r)
-        return r, 1 - p
+        # Changepoints
+        lambda_t = [lambda_init]
+        lambda_cp = lambda_init
+        changepoints.sort(key=lambda x: x[0])  # Sort by date (increasing)
+        changepoints = np.array(changepoints)
+        j = 0
+        for i in range(time_range):
+            if (data_begin + datetime.timedelta(days=i)) in changepoints[:, 0]:
+                lambda_cp = changepoints[j][1]
+                j = j + 1
+            lambda_t.append(lambda_cp)
 
-    for i in range(len(array)):
-        if array[i] == 0:
-            continue
-        log.debug(f"Data {array[i]}")
-        r, p = convert(array[i], 0.000001)
-        log.debug(f"n {r}, p {p}")
-        mean, var = nbinom.stats(r, p, moments="mv")
-        log.debug(f"mean {mean} var {var}")
-        array[i] = nbinom.rvs(r, p)
-        log.debug(f"Drawn {array[i]}")
+        # ------------------------------------------------------------------------------ #
+        # Timesteps
+        # ------------------------------------------------------------------------------ #
+        for i in range(time_range):
+            # Check if lambda_t has to change (initial value is also set by this)
+            t_n.append(t_n[i] + dt)
+            y_n.append(RK4(dt, t_n[i], y_n[i], lambda_t[i]))
 
-    return array
-
-
-class nbinom_gen(rv_discrete):
-    """
-    Own version of negative binomial using mean and variance
-    https://github.com/scipy/scipy/blob/v1.4.1/scipy/stats/_discrete_distns.py
-    """
-
-    def _pmf(self, n, mu, sigma):
-
-        return exp(self._logpmf(n, mu, sigma))
-
-    def _logpmf(self, n, mu, sigma):
-        x = n + mu ** 2 / (sigma ** 2 - mu) - 1
-        y = n
-        coeff = gamln(x + 1) - gamln(y + 1) - gamln(x - y + 1)
-        return (
-            coeff
-            + n * np.log((sigma ** 2 - mu) / sigma ** 2)
-            + (mu ** 2 / (sigma ** 2 - mu)) * np.log(mu / sigma ** 2)
-        )
-
-
-_nbinom = nbinom_gen()
+        return t_n, np.array(y_n), lambda_t
