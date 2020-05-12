@@ -366,9 +366,9 @@ class JHU(Retrieval):
         : pandas.DataFrame
         """
         if begin_date is None:
-            begin_date = self.__get_first_date(df)
+            begin_date = self.__get_first_date()
         if end_date is None:
-            end_date = self.__get_last_date(df)
+            end_date = self.__get_last_date()
 
         if not isinstance(begin_date, datetime.datetime) and isinstance(
             end_date, datetime.datetime
@@ -380,10 +380,10 @@ class JHU(Retrieval):
         return df[begin_date:end_date]
 
     def __get_first_date(self):
-        return df.data[0].index[0]
+        return self.data[0].index[0]
 
     def __get_last_date(self):
-        return df.data[0].index[-1]
+        return self.data[0].index[-1]
 
     def get_possible_countries_states(self):
         """
