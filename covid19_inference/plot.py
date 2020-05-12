@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-20 18:50:13
-# @Last Modified: 2020-05-06 18:00:03
+# @Last Modified: 2020-05-12 16:43:36
 # ------------------------------------------------------------------------------ #
 # Callable in your scripts as e.g. `cov.plot.timeseries()`
 # Plot functions and helper classes
@@ -17,13 +17,14 @@ import logging
 import datetime
 import locale
 import copy
+import re
 
 import numpy as np
 import pandas as pd
 import pymc3 as pm
-import matplotlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
+import matplotlib.patches
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from scipy import stats
 
@@ -172,7 +173,7 @@ def timeseries_overview(
                 # get the shortest one. todo: needs to be change depending on region.
                 delay_vars = [var for var in trace.varnames if "delay" in var]
                 delay_var = delay_vars.sort(key=len)[0]
-                delay = matplotlib.dates.date2num(model.data_end) - np.percentile(
+                delay = mpl.dates.date2num(model.data_end) - np.percentile(
                     trace[delay_var], q=75
                 )
                 ax.vlines(delay, -10, 10, linestyles="-", colors=color_annot)
@@ -692,6 +693,7 @@ def _distribution(model, trace, key, ax=None, color=None, draw_prior=True):
 
     # apply additional transformations, if required
     if "transient_day" in key:
+        # panda date time frame cannot do np.median, which we need
         # data = pd.to_datetime(data, origin=model.sim_begin, unit="D")
         data = _days_to_mpl_dates(data, origin=model.sim_begin)
     elif "weekend_factor_rad" == key:
@@ -700,10 +702,15 @@ def _distribution(model, trace, key, ax=None, color=None, draw_prior=True):
     ax.set_xlabel(_label_for_varname(key))
     ax.xaxis.set_label_position("top")
 
+    # sometimes the bins are spread over very different x-ranges
+    bins = 50
+    if "lambda" in key or "mu" == key:
+        bins = np.arange(0, 0.5 + 0.5 / bins, 0.5 / bins)
+
     # posteriors
     ax.hist(
         data,
-        bins=50,
+        bins=bins,
         density=True,
         color=color,
         label="Posterior",
@@ -720,8 +727,9 @@ def _distribution(model, trace, key, ax=None, color=None, draw_prior=True):
     elif "transient_len" in key:
         ax.set_xlim(0, 7)
     elif "transient_day" in key:
-        md = np.median(data)
-        ax.set_xlim([int(md) - 4, int(md) + 4])
+        # we will use this again later to align the printed median
+        transient_day_md_mpl = np.median(data)
+        ax.set_xlim([int(transient_day_md_mpl) - 4, int(transient_day_md_mpl) + 4])
         _format_date_xticks(ax)
 
     if draw_prior:
@@ -739,9 +747,8 @@ def _distribution(model, trace, key, ax=None, color=None, draw_prior=True):
         x_for_pr = x_for_ax
 
         if "transient_day" in key:
-            beg_x = matplotlib.dates.num2date(x_for_ax[0])
-            diff_dates_x = (beg_x.replace(tzinfo=None) - model.sim_begin).days
-            x_for_pr = x_for_ax - x_for_ax[0] + diff_dates_x
+            # cast datetime.datetime from model to mpl date format
+            x_for_pr = x_for_ax - mpl.dates.date2num(model.sim_begin)
         if "weekend_factor_rad" == key:
             x_for_ax *= np.pi * 2 / 7
 
@@ -754,12 +761,176 @@ def _distribution(model, trace, key, ax=None, color=None, draw_prior=True):
         )
         ax.set_xlim(*xlim)
 
+    # add the overlay with median and CI values. these are two strings
+    text_md = ""
+    text_ci = ""
+    if "lambda" in key or "mu" == key or "sigma_random_walk" == key:
+        text_md, text_ci = _string_median_CI(data, prec=2)
+    elif "transient_day" in key:
+        # convert median from mpl date into datetime to adjust by month
+        temp = mpl.dates.num2date(transient_day_md_mpl)
+        data_shifted = data - mpl.dates.date2num(
+            datetime.datetime(year=temp.year, month=temp.month, day=1)
+        )
+        # align 0 index with the first day of the month
+        data_shifted = data_shifted + 1
+        text_md, text_ci = _string_median_CI(data_shifted, prec=1,)
+    else:
+        text_md, text_ci = _string_median_CI(data, prec=1)
+
+    text_md = _math_for_varname(key) + "$ = " + text_md + "$"
+
+    # create the inset text elements, and we want a bounding box around the compound
+    try:
+        tel_md = ax.text(
+            0.6,
+            0.9,
+            text_md,
+            fontsize=12,
+            transform=ax.transAxes,
+            verticalalignment="top",
+            horizontalalignment="center",
+            zorder=100,
+        )
+        x_min, x_max, y_min, y_max = _get_mpl_text_coordinates(tel_md, ax)
+        tel_ci = ax.text(
+            0.6,
+            y_min * 0.9,  # let's have a ten perecent margin or so
+            text_ci,
+            fontsize=9,
+            transform=ax.transAxes,
+            verticalalignment="top",
+            horizontalalignment="center",
+            zorder=101,
+        )
+        _add_mpl_rect_around_text(
+            [tel_md, tel_ci], ax, facecolor="white", alpha=0.5, zorder=99,
+        )
+    except Exception as e:
+        log.debug(f"unable to create inset with {key} value: {e}")
+
+    # finalize
+    ax.tick_params(labelleft=False)
+    ax.set_rasterization_zorder(rcParams.rasterization_zorder)
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    if not "transient_day" in key:
+        ax.locator_params(nbins=4)
+
 
 def _label_for_varname(key):
     """
-        get the label for trace variable names
+        get the label for trace variable names (e.g. placed on top of distributions)
+
+        default for unknown keys is the key itself
+
+        TODO
+        ----
+        add more parameters
     """
     res = key
+
+    if re.fullmatch("lambda_0.*", key):
+        res = "Initial rate"
+    elif re.fullmatch("lambda.*", key):
+        res = "Spreading rate " + _rx_cp_id(key)
+    elif re.fullmatch("transient_day.*", key):
+        res = "Change time " + _rx_cp_id(key)
+    elif re.fullmatch("transient_len.*", key):
+        res = "Change duration " + _rx_cp_id(key)
+    elif re.fullmatch("delay.*", key):
+        res = "Delay"
+    elif re.fullmatch("mu.*", key):
+        res = "Recovery rate"
+
+    return res
+
+
+def _rx_cp_id(key):
+    """
+        get the change_point index from a compatible variable name
+    """
+    return re.search("_[0-9]+(_|$)", key).group().replace("_", "")
+
+
+def _rx_hc_id(key):
+    """
+        get the L1 / L2 value of hierarchical variable name
+    """
+    if "_L1" in key:
+        return 1
+    elif "_L2" in key:
+        return 2
+    else:
+        return None
+
+
+def _math_for_varname(key):
+    """
+        get the math string for trace variable name, e.g. used to print the median
+        representation.
+
+        default for unknown keys is "$x$"
+
+        TODO
+        ----
+        use regex
+    """
+    # default
+    res = "x"
+
+    # three options: unique, hierarchical and/or changepoint like
+    is_un = True
+    is_hc = False
+    is_cp = False
+
+    if "_L1" in key or "_L2" in key:
+        is_hc = True
+    if re.fullmatch(".+_[0-9]+.*", key):
+        is_cp = True
+    if is_cp or is_hc:
+        is_un = False
+    log.debug(f"_math_for_varname({key}): {int(is_un)} | {int(is_hc)} | {int(is_cp)}")
+
+    # not unique
+    if re.fullmatch("lambda.*", key):
+        res = r"\lambda"
+    elif re.fullmatch("transient_day.*", key):
+        res = r"t"
+    elif re.fullmatch("transient_len.*", key):
+        res = r"\Delta t"
+    elif re.fullmatch("sigma.*", key):
+        # there is a lot of these guys. not making a distinction yet
+        res = r"\sigma"
+    elif re.fullmatch("delay.*", key):
+        res = r"D"
+
+    # unique keys
+    if is_un:
+        if "lambda_t" == key:
+            res = r"\lambda_t"
+        elif "I_begin" == key:
+            res = r"I_0"
+        elif "mu" == key:
+            res = r"\mu"
+        elif "sigma_obs" == key:
+            res = r"\sigma"
+
+    # change-point keys, give lower index
+    if is_cp:
+        # get cp index
+        res = res + f"_{_rx_cp_id(key)}"
+
+    # hierarchical, give upper index
+    if is_hc:
+        hc_suffix = ""
+        if "_L1" in key:
+            hc_suffix = r"^{1}"
+        elif "_L2" in key:
+            hc_suffix = r"^{2}"
+        res = res + hc_suffix
+
+    res = "$" + res + "$"
 
     return res
 
@@ -772,17 +943,100 @@ def _days_to_mpl_dates(days, origin):
         Parameters
         ----------
         days : number, 1d array of numbers
-            the day number to convert
+            the day number to convert, e.g. integer values >= 0, one day per int
 
         origin : datetime.datetime
             the date object corresponding to day 0
     """
     try:
-        return matplotlib.dates.date2num(
+        return mpl.dates.date2num(
             [datetime.timedelta(days=float(date)) + origin for date in days]
         )
     except:
-        return matplotlib.dates.date2num(datetime.timedelta(days=float(days)) + origin)
+        return mpl.dates.date2num(datetime.timedelta(days=float(days)) + origin)
+
+
+def _get_mpl_text_coordinates(text, ax):
+    """
+        helper to get coordinates of a text object in the coordinates of the
+        axes element [0,1].
+        used for the rectangle backdrop.
+
+        Returns:
+        x_min, x_max, y_min, y_max
+    """
+    fig = ax.get_figure()
+
+    try:
+        fig.canvas.renderer
+    except Exception as e:
+        log.debug(e)
+        # otherwise no renderer, needed for text position calculation
+        fig.canvas.draw()
+
+    x_min = None
+    x_max = None
+    y_min = None
+    y_max = None
+
+    # get bounding box of text
+    transform = ax.transAxes.inverted()
+    try:
+        bb = text.get_window_extent(renderer=fig.canvas.get_renderer())
+    except:
+        bb = text.get_window_extent()
+    bb = bb.transformed(transform)
+    x_min = bb.get_points()[0][0]
+    x_max = bb.get_points()[1][0]
+    y_min = bb.get_points()[0][1]
+    y_max = bb.get_points()[1][1]
+
+    return x_min, x_max, y_min, y_max
+
+
+def _add_mpl_rect_around_text(text_list, ax, x_padding=0.05, y_padding=0.05, **kwargs):
+    """
+        add a rectangle to the axes (behind the text)
+
+        provide a list of text elements and possible options passed to
+        mpl.patches.Rectangle
+        e.g.
+        facecolor="grey",
+        alpha=0.2,
+        zorder=99,
+    """
+
+    x_gmin = 1
+    y_gmin = 1
+    x_gmax = 0
+    y_gmax = 0
+
+    for text in text_list:
+        x_min, x_max, y_min, y_max = _get_mpl_text_coordinates(text, ax)
+        if x_min < x_gmin:
+            x_gmin = x_min
+        if y_min < y_gmin:
+            y_gmin = y_min
+        if x_max > x_gmax:
+            x_gmax = x_max
+        if y_max > y_gmax:
+            y_gmax = y_max
+
+    # coords between 0 and 1 (relative to axes) add 10% margin
+    y_gmin = np.clip(y_gmin - y_padding, 0, 1)
+    y_gmax = np.clip(y_gmax + y_padding, 0, 1)
+    x_gmin = np.clip(x_gmin - x_padding, 0, 1)
+    x_gmax = np.clip(x_gmax + x_padding, 0, 1)
+
+    rect = mpl.patches.Rectangle(
+        (x_gmin, y_gmin),
+        x_gmax - x_gmin,
+        y_gmax - y_gmin,
+        transform=ax.transAxes,
+        **kwargs,
+    )
+
+    ax.add_patch(rect)
 
 
 # ------------------------------------------------------------------------------ #
@@ -929,30 +1183,29 @@ def _format_date_xticks(ax, minor=None):
     # ensuring utf-8 helps on some setups
     locale.setlocale(locale.LC_ALL, rcParams.locale + ".UTF-8")
     ax.xaxis.set_major_locator(
-        matplotlib.dates.WeekdayLocator(interval=1, byweekday=matplotlib.dates.SU)
+        mpl.dates.WeekdayLocator(interval=1, byweekday=mpl.dates.SU)
     )
     if minor is None:
         # overwrite local argument with rc params only if default.
         minor = rcParams["date_show_minor_ticks"]
     if minor is True:
-        ax.xaxis.set_minor_locator(matplotlib.dates.DayLocator())
-    ax.xaxis.set_major_formatter(
-        matplotlib.dates.DateFormatter(rcParams["date_format"])
-    )
+        ax.xaxis.set_minor_locator(mpl.dates.DayLocator())
+    ax.xaxis.set_major_formatter(mpl.dates.DateFormatter(rcParams["date_format"]))
 
 
 def _truncate_number(number, precision):
     return "{{:.{}f}}".format(precision).format(number)
 
 
-def print_median_CI(arr, prec=2):
-    f_trunc = lambda n: truncate_number(n, prec)
+def _string_median_CI(arr, prec=2):
+    f_trunc = lambda n: _truncate_number(n, prec)
     med = f_trunc(np.median(arr))
     perc1, perc2 = (
         f_trunc(np.percentile(arr, q=2.5)),
         f_trunc(np.percentile(arr, q=97.5)),
     )
-    return "Median: {}\nCI: [{}, {}]".format(med, perc1, perc2)
+    # return "Median: {}\nCI: [{}, {}]".format(med, perc1, perc2)
+    return f"{med}", f"[{perc1}, {perc2}]"
 
 
 def _add_watermark(ax, mark="Dehning et al. arXiv:2004.01105"):
