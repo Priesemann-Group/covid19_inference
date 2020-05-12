@@ -37,7 +37,6 @@ class DummyData(object):
         data_end,
         mu=0.13,
         noise=False,
-        noise_factor=0.00001,
         auto_generate=False,
         seed=None,
         **initial_values,
@@ -56,21 +55,21 @@ class DummyData(object):
             Value for the recovery rate
         noise : bool
             Add random noise to the output
-        noise_factor : number
-            Alpha value for the negative binomial rn generator 
         auto_generate : bool
-            Whether or not to generate a dataset on class init. Calls the self.generate() method.
+            Whether or not to generate a dataset on class init. Calls the :py:meth:`generate` method.
         seed : number
-            seed for the random number generation
+            Seed for the random number generation. Also accessible by `self.seed` later on. 
         initial_values : dict
         """
         if seed is not None:
-            np.random.seed(seed)
+            self.seed = seed
+        else:
+            self.seed = np.randint(1000000,9999999)
+        np.random.seed(self.seed)
 
-        self.noise = noise
+        self.add_noise = noise
         self.data_begin = data_begin
         self.data_end = data_end
-        self.noise_factor = noise_factor
         self.mu = mu
 
         self._update_initial(**initial_values)
@@ -96,7 +95,36 @@ class DummyData(object):
         return df
 
     def _update_initial(self, **initial_values):
-        # Generate inital values if they are not in the dict
+        """
+        Generates the initial values for a lot of attributes that get used by the following functions.
+        Some are generated random uniform some are generated from a normal distribution and even other
+        ones are just set to a fixed value.
+        
+        They can be set/changed by editing the attributes before running :py:meth:`generate` or by passing
+        a keyword dict into the class at initialization.
+        """
+
+        def _generate_change_points_we():
+            """
+            Generates random change points each weekend in the give time period.
+
+            The date is normal distributed with mean on each Saturday and a variance of 3 days.
+
+            The lambda is draw uniform between 0 and 1
+            """
+            change_points = []
+            for date in pd.date_range(self.data_begin, self.data_end):
+                if date.weekday() == 6:
+                    # Draw a date
+                    date_index = int(np.random.normal(0, 3))
+                    date_random = date + datetime.timedelta(days=date_index)
+                    # Draw a lambda
+                    lambda_t = np.random.uniform(0, 1)
+                    change_points.append([date_random, lambda_t])
+            return change_points
+
+
+
         self.initials = {}
 
         if "S_initial" in initial_values:
@@ -122,35 +150,100 @@ class DummyData(object):
         if "change_points" in initial_values:
             self.initials["change_points"] = initial_values.get("change_points")
         else:
-            self.initials["change_points"] = self._generate_change_points_we()
+            self.initials["change_points"] = _generate_change_points_we()
 
-    def _generate_change_points_we(self):
+        if "noise_factor" in initial_values:
+            self.initials["noise_factor"] = initial_values.get("noise_factor")
+        else:
+            self.initials["noise_factor"] = 0.00001
+
+        if "offset_sunday" in initial_values:
+            self.initials["offset_sunday"] = initial_values.get("offset_sunday")
+        else:
+            d = self.data_begin
+            offset = 0
+            while d.weekday() != 6: # 0=Monday 6=Sunday
+                d += datetime.timedelta(days=1)
+                offset += 1
+            self.initials["offset_sunday"] = offset
+
+        if "weekend_factor" in initial_values:
+            self.initials["weekend_factor"] = initial_values.get("weekend_factor")
+        else:
+            self.initials["weekend_factor"] = np.random.uniform(0.1, 0.5)
+
+
+        if "case_delay" in initial_values:
+            self.initials["case_delay"] = initial_values.get("case_delay")
+        else:
+            self.initials["case_delay"] = 6
+
+        return self.initials
+
+    def generate(self):
+        r"""
+        Generates a dummy dataset with the given initial values by performing the following steps.
+
+        #. Converts given change points to daily lambda_t values :py:meth:`_change_points_to_lambda_t`.
+        #. Numerically solving SIR model with the given initial values e.g. lambda_t :py:meth:`_generate_SIR`.
+        #. Calculate new cases raw from SIR data :py:meth:`_calc_new_cases_raw`. 
+        #. Add week modulation onto new cases raw :py:meth:`_week_modulation`. 
+        #. Delay new cases :py:meth:`_delay_cases`.
+        #. Add noise onto the dataset :py:meth:`_random_noise`.
+
+        Returns
+        -------
+        dataset : pandas.dataFrame
         """
-        Generates random change points each weekend in the give time period.
 
-        The date is normal distributed with mean on each Saturday and a variance of 3 days.
+        # ------------------------------------------------------------------------------ #
+        # 1. Create daily lambda_t values from change points
+        # ------------------------------------------------------------------------------ #
+        self.lambda_t = self._change_points_to_lambda_t()
 
-        The lambda is draw uniform between 0 and 1
+        # ------------------------------------------------------------------------------ #
+        # 2. solve SIR differential equation by RK4
+        # ------------------------------------------------------------------------------ #
+        t_n, data = self._generate_SIR() #data[:,0]=S data[:,1]=I data[:,2]=R
+
+        # ------------------------------------------------------------------------------ #
+        # 3. calculate new cases raw
+        # ------------------------------------------------------------------------------ #
+        new_cases_raw = self._calc_new_cases_raw(data[:, 1])
+
+        # ------------------------------------------------------------------------------ #
+        # 4. Week modulation
+        # ------------------------------------------------------------------------------ #
+        new_cases = self._week_modulation(t_n, new_cases_raw)
+
+        # ------------------------------------------------------------------------------ #
+        # 5. Construct dataframe and delay cases
+        # ------------------------------------------------------------------------------ #
+        df = pd.DataFrame()
+        df["date"] = pd.date_range(self.data_begin, self.data_end)
+        df["new_cases"] = new_cases
+        df = df.set_index("date")
+        df = self._delay_cases(df)
+        df["lambda_t"] = self.lambda_t
+
+        # ------------------------------------------------------------------------------ #
+        # 6. Add noise onto the data
+        # ------------------------------------------------------------------------------ #
+        if self.add_noise:
+            df["new_cases"] = self._random_noise(df["new_cases"])
+
+
+        return df
+
+    def _change_points_to_lambda_t(self):
         """
-        change_points = []
-        for date in pd.date_range(self.data_begin, self.data_end):
-            if date.weekday() == 6:
-                # Draw a date
-                date_index = int(np.random.normal(0, 3))
-                date_random = date + datetime.timedelta(days=date_index)
-                # Draw a lambda
-                lambda_t = np.random.uniform(0, 1)
-                change_points.append([date_random, lambda_t])
-        return change_points
+        Generates a lambda_t array from the objects change points `self.initials["change_points"]`.
+        For now the lambda value jumps from one change point to the next i.e. a discontinuous function.
 
-    def _changepoints_to_lambda_t(self):
-        """
-        Generates a lambda_t array from the objects changepoints (self.changepoints).
-        For now the lambda value jumps from one changepoint to the next.
-        
         TODO
         ----
-        Implement sigmoids/logistics 
+        Implement continuous sigmoids/logistics function from one change point to the next one.
+
         """
 
         # We create an lambda_t array for each date in our time period
@@ -172,54 +265,8 @@ class DummyData(object):
 
         return lambda_t
 
-    def generate(self):
-        """
-        Generates a dataset from the initial values which were gives at initialization of the class
-        or which were generated random. This generated data is saved to the `self.data` attribute.
-
-        Returns
-        -------
-        dataset : pandas.dataFrame
-        """
-
-        # Create lambda_t array
-        self.lambda_t = self._changepoints_to_lambda_t()
-
-        # solves sir differential equation using rk4
-        t_n, data = self._generate_SIR()
-
-        # Add noise
-
-        # Create cumulative cases
-        if self.noise:
-            cumulative_I = self._random_noise(
-                self._create_cumulative(data[:, 1]), self.noise_factor
-            )
-            cumulative_R = self._random_noise(
-                self._create_cumulative(data[:, 2]), self.noise_factor
-            )
-        else:
-            cumulative_I = self._create_cumulative(data[:, 1])
-            cumulative_R = self._create_cumulative(data[:, 2])
-
-        # Construct pandas dataframe to return
-        df = pd.DataFrame()
-        df["date"] = pd.date_range(self.data_begin, self.data_end)
-        df["confirmed"] = cumulative_I
-        df["recovered"] = cumulative_R
-        df["confirmed"] = df["confirmed"].astype(int)
-        df["recovered"] = df["recovered"].astype(int)
-        df = df.set_index("date")
-
-        # shift the recovered and confirmed cases
-        df = self._delay_cases(df)
-
-        # Save as attribute and return
-        self.data = df
-        return df
-
     def _generate_SIR(self):
-        r"""
+        r"""        
         Numerically solves the differential equation
 
         .. math::
@@ -246,24 +293,21 @@ class DummyData(object):
 
         The initial SIR parameters and the force of infection :math:`\lambda(t)` are obtained from the object.
         
-        Parameters
+        Attributes
         ----------
-        data_begin : datetime.datetime
-            date at which the dummy data begins
-        data_end : datetime.datetime
-            end date for the dummy data
-        SIR_initial : np.array [S_initial,I_initial,R_initial]
-            starting values for the numerical integration, population gets calculated by S+I+R
-        mu : number
-            recovery rate
-        changepoints : list
-            should contain the lambda_t value and the corresponding date, in decending order
-            ([date_1,lambda_1 ,],[lambda_2, date_2])
+        initials["S_initial"] : :math:`S_0`
+            Number of initial susceptible
+        initials["I_initial"] : :math:`I_0`
+            Number of initial infected 
+        initials["R_initial"] : :math:`I_0`
+            Number of initial recovered
+        lambda_t : :math:`\lambda(t)`
+            lambda_t array for each time step. Generated by :py:meth:`_change_points_to_lambda_t`
 
         Return
         ------
-        dataframe : pandas.DataFrame
-
+        t_n, y_n : array array ,1-dim
+            Returns the time steps t_n and the time series of the S I R values y_n as vector
         """
 
         # SIR model as vector
@@ -311,6 +355,142 @@ class DummyData(object):
 
         return t_n, np.array(y_n)
 
+    def _calc_new_cases_raw(self, I):
+        r"""
+        Since the solved SIR model also gives us declining cases, which we can't observe from
+        real data, we have to manipulate our data to look more like real observed data.
+        
+        .. math:: 
+            \text{new\_cases\_raw}_i = \begin{cases} I_i - I_{i-1} & (I_i - I_{i-1})>0\\
+            0 & \text{otherwise}
+            \end{cases}
+
+        Parameters
+        ----------
+        I : array, 1-dim
+            Time series of the infected people
+        """
+        y = []
+        for i in range(len(I)):
+            if i == 0:
+                y.append(0) #to get the same arrays size for new cases and cumulative cases
+                continue
+            value = I[i]-I[i-1]
+            if value > 0:
+                y.append(value)
+            else:
+                y.append(0)
+
+        return y
+
+    def _week_modulation(self, t_n, new_cases_raw):
+        r"""
+        Adds week modulation on top of the number of new cases
+
+        .. math:: 
+            \text{new\_cases} = \text{new\_cases\_raw} \cdot (1-f(t)),
+    
+        with
+
+        .. math::
+            f(t) = f_w \cdot (1-|\sin(\frac{\pi}{7}t-\frac{1}{2}\Phi_w)|)
+
+
+        Parameters
+        ----------
+        t_n : array 1-dim
+            time steps
+        new_cases_raw : array 1-dim
+            
+        Attributes
+        ----------
+        initials["weekend_factor"] : :math:`f_w`
+            Gets randomly generated on initialization of the class or can be passed via kwarg see :py:class:`DummyData`.
+        initials["offset_sunday"] : :math:`\Phi_w`
+            Gets generated on initialization of the class or can be passed manually via kwarg see :py:class:`DummyData`.
+        """        
+        def f(t):
+            sin = np.sin(np.pi/7*t-1/2*self.initials["offset_sunday"])
+            return self.initials["weekend_factor"] * (1-np.abs(sin))
+        new_cases = []
+        for i in range(len(t_n)):
+            new_cases.append(new_cases_raw[i]*(1-f(t_n[i])))
+
+        return new_cases
+
+    def _delay_cases(self, new_cases):
+        """
+        Shifts each column of a given pandas dataframe by 10 days. This is done to simulate delayed cases.
+        
+        Parameters
+        ----------
+        df : pandas.dataFrame
+
+
+        Attributes
+        ----------
+        initials["case_delay"] : 
+
+        Returns
+        -------
+        df : pandas.dataFrame
+            delayed cases
+
+        TODO
+        ----
+        Look into this a bit more and implement it the right way 
+        """
+        new_cases = new_cases.shift(periods=self.initials["case_delay"], fill_value=0)
+        return new_cases
+
+    def _random_noise(self, df):
+        r"""
+        Generates random noise on an observable by a Negative Binomial :math:`NB`.
+        References to the negative binomial can be found `here <https://ncss-wpengine.netdna-ssl.com/wp-content/themes/ncss/pdf/Procedures/NCSS/Negative_Binomial_Regression.pdf>`_
+        .
+
+        .. math::
+            O &\sim NB(\mu=datapoint,\alpha)
+        
+        We keep the alpha parameter low to obtain a small variance which should than always be approximately the size of the mean.
+
+        Parameters
+        ----------
+        df : new_cases , pandas.DataFrame
+            Observable on which we want to add the noise
+
+        Attributes
+        ----------
+        initials["noise_factor"] : :math:`\alpha`
+            Alpha factor for the random number generation
+
+        Returns
+        -------
+        array : 1-dim
+            observable with added noise
+        """
+
+        def convert(mu, alpha):
+            r = 1 / alpha
+            p = mu / (mu + r)
+            return r, 1 - p
+
+        nbinom.random_state = np.random.RandomState(self.seed)
+        array = df.values
+
+        for i in range(len(array)):
+            if array[i] == 0:
+                continue
+            log.debug(f"Data {array[i]}")
+            r, p = convert(array[i], self.initials["noise_factor"])
+            log.debug(f"n {r}, p {p}")
+            mean, var = nbinom.stats(r, p, moments="mv")
+            log.debug(f"mean {mean} var {var}")
+            array[i] = nbinom.rvs(r, p)
+            log.debug(f"Drawn {array[i]}")
+
+        return array
+
     def _create_cumulative(self, array):
         r"""
         Since we cant measure a negative number of new cases. All the negative values are cut from the I/R array
@@ -325,67 +505,3 @@ class DummyData(object):
                 diff.append(diff[i - 1])
 
         return diff
-
-    def _delay_cases(self, df):
-        """
-        Shifts each column of a given pandas dataframe by 10 days. This is done to simulate delayed cases.
-        
-        Parameters
-        ----------
-        df : pandas.dataFrame
-
-        Returns
-        -------
-        df : pandas.dataFrame
-            delayed cases
-
-        TODO
-        ----
-        Look into this a bit more
-        """
-        delta = datetime.timedelta(days=10)
-        df = df.shift(periods=10).dropna()
-        return df
-
-    def _random_noise(self, array, factor):
-        r"""
-        Generates random noise on an observable by a Negative Binomial :math:`NB`.
-        References to the negative binomial can be found `here <https://ncss-wpengine.netdna-ssl.com/wp-content/themes/ncss/pdf/Procedures/NCSS/Negative_Binomial_Regression.pdf>`_
-        .
-
-        .. math::
-            O &\sim NB(\mu=datapoint,\alpha=0.0001)
-        
-        We keep the alpha parameter low to obtain a small variance which should than always be approximatly the size of the mean.
-
-        Parameters
-        ----------
-        array : 1-dim
-            observable on which we want to add the noise
-
-        factor : number
-
-
-        Returns
-        -------
-        array : 1-dim
-            observable with added noise
-        """
-
-        def convert(mu, alpha):
-            r = 1 / alpha
-            p = mu / (mu + r)
-            return r, 1 - p
-
-        for i in range(len(array)):
-            if array[i] == 0:
-                continue
-            log.debug(f"Data {array[i]}")
-            r, p = convert(array[i], factor)
-            log.debug(f"n {r}, p {p}")
-            mean, var = nbinom.stats(r, p, moments="mv")
-            log.debug(f"mean {mean} var {var}")
-            array[i] = nbinom.rvs(r, p)
-            log.debug(f"Drawn {array[i]}")
-
-        return array
