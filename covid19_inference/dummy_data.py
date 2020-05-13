@@ -237,33 +237,63 @@ class DummyData(object):
 
     def _change_points_to_lambda_t(self):
         """
-        Generates a lambda_t array from the objects change points `self.initials["change_points"]`.
-        For now the lambda value jumps from one change point to the next i.e. a discontinuous function.
-
+        Generates a lambda_t array from the change points `self.initials["change_points"]`.
+        
         TODO
         ----
-        Implement continuous sigmoids/logistics function from one change point to the next one.
+        Documentation 
 
         """
 
         # We create an lambda_t array for each date in our time period
+
+        def helper_lambda_between(cp1,cp2):
+            """
+            Helper function to get lambda values between two change points
+            """
+            #Normalize cp1 to start at x=0
+            delta_days = np.abs((cp1[0]-cp2[0]).days)
+
+            #For the timerange between cp1 and cp2 construct each lambda value 
+            lambda_t_temp = []
+            for x in range(delta_days):
+                lambda_t_temp.append(logistics_from_cps(x,0,cp1[1],delta_days,cp2[1]))
+            return lambda_t_temp
+
+        def logistics_from_cps(x, cp1_x, cp1_y, cp2_x, cp2_y):
+            """
+                Calculates the lambda value at the point x
+                between cp1_x and cp2_x.
+
+                TODO
+                ----
+                implement k value 
+            """
+            L = cp2_y-cp1_y
+            C = cp1_y
+            x_0 = np.abs(cp1_x - cp2_x)/2 + cp1_x
+            #log.debug(f"{L} {C} {x_0} {x}")
+            #print(L/(1+np.exp(-4*(x-x_0)))+C)
+            return L/(1+np.exp(-0.8*(x-x_0)))+C
+
+        # ------------------------------------------------------------------------------ #
+        # Start
+        # ------------------------------------------------------------------------------ #
         change_points = self.initials["change_points"]
         change_points.sort(key=lambda x: x[0])
         change_points = np.array(change_points)
-        if self.data_begin == change_points[0, 0]:
-            lambda_t = [change_points[0, 1]]
-        else:
-            lambda_t = [self.initials["lambda_initial"]]
 
-        lambda_cp = self.initials["lambda_initial"]
-        j = 0
-        for i in range(self.data_len):
-            if (self.data_begin + datetime.timedelta(days=i)) in change_points[:, 0]:
-                lambda_cp = change_points[j][1]
-                j = j + 1
-            lambda_t.append(lambda_cp)
+        lambda_t = [ helper_lambda_between([self.data_begin,self.initials["lambda_initial"]],change_points[0])]
+        for i, value in enumerate(change_points):
+            if (i == len(change_points)-1):
+                continue
+            lambda_t = np.append(lambda_t, helper_lambda_between(change_points[i],change_points[i+1]))
 
-        return lambda_t
+        lambda_t = np.append(lambda_t,[change_points[-1][1]] * ((self.data_end - change_points[-1][0]).days + 1))
+
+        return lambda_t.flatten()
+
+
 
     def _generate_SIR(self):
         r"""        
