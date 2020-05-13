@@ -85,12 +85,12 @@ class JHU(Retrieval):
         """
         update_interval = datetime.timedelta(days=1)
 
+        # Init the retrieval base class
+        Retrieval.__init__(self, name, url_csv, fallbacks, update_interval, **kwargs)
+
         self.confirmed = None
         self.deaths = None
         self.recovered = None
-
-        # Init the retrieval base class
-        Retrieval.__init__(self, name, url_csv, fallbacks, update_interval, **kwargs)
 
         if auto_download:
             self.download_all_available_data()
@@ -286,7 +286,7 @@ class JHU(Retrieval):
         df = (
             df.diff().drop(df.index[0]).astype(int)
         )  # Neat oneliner to also drop the first row and set the type back to int
-        return df
+        return df[value]
 
     def get_total(
         self,
@@ -355,7 +355,7 @@ class JHU(Retrieval):
                 df[value] = getattr(self, value)[(country, state)]
         df.index.name = "date"
         df = self.filter_date(df, data_begin, data_end)
-        return df
+        return df[value]
 
     def filter_date(
         self,

@@ -84,6 +84,8 @@ class RKI(Retrieval):
         # Init the retrieval base class
         Retrieval.__init__(self, name, url_csv, fallbacks, update_interval, **kwargs)
 
+        self.data = None
+
         if auto_download:
             self.download_all_available_data()
 

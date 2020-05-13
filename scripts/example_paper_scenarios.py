@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-12 17:09:38
-# @Last Modified: 2020-05-13 11:41:05
+# @Last Modified: 2020-05-13 12:40:42
 # ------------------------------------------------------------------------------ #
 # Reproduce Dehning et al. arXiv:2004.01105 Figure 3
 # ------------------------------------------------------------------------------ #
@@ -13,18 +13,19 @@ import pymc3 as pm
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import covid19_inference as cov19
+
+try:
+    import covid19_inference as cov19
+except ModuleNotFoundError:
+    sys.path.append("..")
+    import covid19_inference as cov19
 
 bd = datetime.datetime(2020, 3, 2)
 ed = datetime.datetime(2020, 4, 21)
 
 jhu = cov19.data_retrieval.JHU(auto_download=True)
-cum_cases = jhu.get_confirmed(country="Germany", begin_date=bd, end_date=ed)
-new_cases = jhu.get_new_confirmed(country="Germany", begin_date=bd, end_date=ed)
-
-# make sure we pass a 1d array to have a non-hierarchical model
-new_cases = np.array(new_cases).reshape(-1)
-cum_cases = np.array(cum_cases).reshape(-1)
+cum_cases = jhu.get_total(country="Germany", data_begin=bd, data_end=ed)
+new_cases = jhu.get_new(country="Germany", data_begin=bd, data_end=ed)
 
 params_model = dict(
     new_cases_obs=new_cases,
