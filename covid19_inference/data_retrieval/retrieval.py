@@ -134,12 +134,13 @@ def iso_3166_country_in_iso_format(country: str) -> bool:
 
 
 class Retrieval:
-    """ 
-    Each source class should inherit this base retrieval class, it streamlines alot of base functions.
-    It manages downloads, multiple fallbacks and local backups via timestamp. At init of the parent class
-    the Retrieval init should be called with the following arguments, these get saved as attributes.
+    """
+        Each source class should inherit this base retrieval class, it streamlines alot
+        of base functions. It manages downloads, multiple fallbacks and local backups
+        via timestamp. At init of the parent class the Retrieval init should be called
+        with the following arguments, these get saved as attributes.
 
-    An example for the usage can be seen in the _Google, _RKI and _JHU source files. 
+        An example for the usage can be seen in the _Google, _RKI and _JHU source files.
     """
 
     url_csv = ""
@@ -162,7 +163,7 @@ class Retrieval:
             Fallbacks can be filepaths to local or online sources
             or even methods defined in the parent class.
         update_interval : datetime.timedelta
-            If the local file is older than the update_interval it gets updated once the 
+            If the local file is older than the update_interval it gets updated once the
             download all function is called.
         """
         self.name = name

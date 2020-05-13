@@ -35,6 +35,8 @@ class JHU(Retrieval):
 
     @property
     def data(self):
+        if self.confirmed is None or self.deaths is None or self.recovered is None:
+            return None
         return (self.confirmed, self.deaths, self.recovered)
 
     def __init__(self, auto_download=False):
@@ -82,6 +84,10 @@ class JHU(Retrieval):
         download all function is called. Can be diffent values depending on the parent class
         """
         update_interval = datetime.timedelta(days=1)
+
+        self.confirmed = None
+        self.deaths = None
+        self.recovered = None
 
         # Init the retrieval base class
         Retrieval.__init__(self, name, url_csv, fallbacks, update_interval, **kwargs)
@@ -245,6 +251,9 @@ class JHU(Retrieval):
                 'Invalid value. Valid options: "confirmed", "deaths", "recovered"'
             )
 
+        if self.data is None:
+            self.download_all_available_data()
+
         if country == "None":
             country = None
         if state == "None":
@@ -321,6 +330,9 @@ class JHU(Retrieval):
             raise ValueError(
                 'Invalid value. Valid options: "confirmed", "deaths", "recovered"'
             )
+
+        if self.data is None:
+            self.download_all_available_data()
 
         if country == "None":
             country = None

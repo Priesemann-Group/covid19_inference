@@ -279,6 +279,9 @@ class RKI(Retrieval):
                 'Invalid value. Valid options: "confirmed", "deaths", "recovered"'
             )
 
+        if self.data is None:
+            self.download_all_available_data()
+
         # Note: It should be fine to NOT check for the date since this is also done by the filter_date method
 
         # Set level for filter use bundesland if no landkreis is supplied else use landkreis
@@ -344,6 +347,9 @@ class RKI(Retrieval):
             raise ValueError(
                 'Invalid value. Valid options: "confirmed", "deaths", "recovered"'
             )
+
+        if self.data is None:
+            self.download_all_available_data()
 
         level = None
         filter_value = None
