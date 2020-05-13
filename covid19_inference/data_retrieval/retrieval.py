@@ -4,6 +4,7 @@ import logging
 import tempfile
 import platform
 import stat
+import pickle
 
 import numpy as np
 import pandas as pd
@@ -131,6 +132,34 @@ def iso_3166_country_in_iso_format(country: str) -> bool:
     if country in data:
         return True
     return False
+
+
+def backup_instances(
+    trace=None, model=None, fname="latest_",
+):
+    """
+        helper to save or load trace and model instances.
+        loads from `fname` if provided traces and model variables are None,
+        else saves them there.
+    """
+
+    try:
+        if trace is None and model is None:
+            with open(f"{get_data_dir()}{fname}_model.pickle", "rb") as handle:
+                model = pickle.load(handle)
+            with open(f"{get_data_dir()}{fname}_trace.pickle", "rb") as handle:
+                trace = pickle.load(handle)
+        else:
+            with open(f"{get_data_dir()}{fname}_model.pickle", "wb") as handle:
+                pickle.dump(model, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            with open(f"{get_data_dir()}{fname}_trace.pickle", "wb") as handle:
+                pickle.dump(trace, handle, protocol=pickle.HIGHEST_PROTOCOL)
+    except Exception as e:
+        log.info(f"Failed to backup instances of model and trace: {e}")
+        trace = None
+        model = None
+
+    return model, trace
 
 
 class Retrieval:
