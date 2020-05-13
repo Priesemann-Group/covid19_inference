@@ -4,7 +4,7 @@ import logging
 import numpy as np
 
 # Import base class
-from .data_retrieval import Retrieval, get_data_dir, _data_dir_fallback
+from .retrieval import Retrieval, get_data_dir, _data_dir_fallback
 
 import urllib, json
 
@@ -26,7 +26,7 @@ class RKI(Retrieval):
     Example
     -------
     .. code-block::
-    
+
         rki = cov19.data_retrieval.RKI()
         rki.download_all_available_data()
 
@@ -34,7 +34,7 @@ class RKI(Retrieval):
         rki.data
         #or
         rki.get_new("confirmed","Sachsen")
-        rki.get_total(filter)    
+        rki.get_total(filter)
     """
 
     def __init__(self, auto_download=False):
@@ -76,8 +76,8 @@ class RKI(Retrieval):
             _data_dir_fallback + "/" + name + "_fallback.csv.gz",
         ]
         """
-        If the local file is older than the update_interval it gets updated once the 
-        download all function is called. Can be diffent values depending on the parent class        
+        If the local file is older than the update_interval it gets updated once the
+        download all function is called. Can be diffent values depending on the parent class
         """
         update_interval = datetime.timedelta(days=1)
 
@@ -250,7 +250,7 @@ class RKI(Retrieval):
         Parameters
         ----------
         value: str
-            Which data to return, possible values are 
+            Which data to return, possible values are
             - "confirmed",
             - "recovered",
             - "deaths"
@@ -315,7 +315,7 @@ class RKI(Retrieval):
         Parameters
         ----------
         value: str
-            Which data to return, possible values are 
+            Which data to return, possible values are
             - "confirmed",
             - "recovered",
             - "deaths"

@@ -3,7 +3,7 @@ import pandas as pd
 import logging
 
 # Import base class
-from .data_retrieval import Retrieval, get_data_dir, _data_dir_fallback
+from .retrieval import Retrieval, get_data_dir, _data_dir_fallback
 
 log = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class JHU(Retrieval):
     Example
     -------
     .. code-block::
-    
+
         jhu = cov19.data_retrieval.JHU()
         jhu.download_all_available_data()
 
@@ -78,8 +78,8 @@ class JHU(Retrieval):
         fallbacks = [self._fallback_local_backup]
 
         """
-        If the local file is older than the update_interval it gets updated once the 
-        download all function is called. Can be diffent values depending on the parent class        
+        If the local file is older than the update_interval it gets updated once the
+        download all function is called. Can be diffent values depending on the parent class
         """
         update_interval = datetime.timedelta(days=1)
 
@@ -216,7 +216,7 @@ class JHU(Retrieval):
         Parameters
         ----------
         value: str
-            Which data to return, possible values are 
+            Which data to return, possible values are
             - "confirmed",
             - "recovered",
             - "deaths"
@@ -294,7 +294,7 @@ class JHU(Retrieval):
         Parameters
         ----------
         value: str
-            Which data to return, possible values are 
+            Which data to return, possible values are
             - "confirmed",
             - "recovered",
             - "deaths"

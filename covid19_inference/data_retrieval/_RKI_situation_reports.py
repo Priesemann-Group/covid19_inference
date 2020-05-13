@@ -3,7 +3,7 @@ import pandas as pd
 import logging
 
 # Import base class
-from .data_retrieval import Retrieval
+from .retrieval import Retrieval
 
 log = logging.getLogger(__name__)
 
@@ -60,8 +60,8 @@ class RKIsituationreports(Retrieval):
         kwargs = {"sep": ";"}
 
         """
-        If the local file is older than the update_interval it gets updated once the 
-        download all function is called. Can be diffent values depending on the parent class        
+        If the local file is older than the update_interval it gets updated once the
+        download all function is called. Can be diffent values depending on the parent class
         """
         update_interval = datetime.timedelta(days=1)
 

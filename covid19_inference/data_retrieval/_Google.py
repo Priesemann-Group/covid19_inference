@@ -3,20 +3,20 @@ import pandas as pd
 import logging
 
 # Import base class
-from .data_retrieval import Retrieval, _data_dir_fallback
+from .retrieval import Retrieval, _data_dir_fallback
 
 log = logging.getLogger(__name__)
 
 
 class GOOGLE(Retrieval):
     """
-    This class can be used to retrieve the mobility dataset from 
+    This class can be used to retrieve the mobility dataset from
     `Google <https://coronavirus.jhu.edu/>`_.
 
     Example
     -------
     .. code-block::
-    
+
         gl = cov19.data_retrieval.GOOGLE()
         gl.download_all_available_data()
 
@@ -58,8 +58,8 @@ class GOOGLE(Retrieval):
         kwargs = {"low_memory": False}  # Surpress warning
 
         """
-        If the local file is older than the update_interval it gets updated once the 
-        download all function is called. Can be diffent values depending on the parent class        
+        If the local file is older than the update_interval it gets updated once the
+        download all function is called. Can be diffent values depending on the parent class
         """
         update_interval = datetime.timedelta(days=1)
 
