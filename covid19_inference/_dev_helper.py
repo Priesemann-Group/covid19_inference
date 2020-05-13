@@ -14,8 +14,9 @@ import logging
 import numpy as np
 import pymc3 as pm
 
-from . import data_retrieval
+
 from .model import *
+from . import data_retrieval
 
 log = logging.getLogger(__name__)
 
@@ -38,8 +39,11 @@ def create_example_instance(num_change_points=3):
     date_begin_data = datetime.datetime(2020, 3, 10)
     date_end_data = datetime.datetime(2020, 3, 13)
 
-    new_cases_obs = jhu.get_new_confirmed(
-        country="Germany", begin_date=date_begin_data, end_date=date_end_data
+    new_cases_obs = jhu.get_new(
+        value="confirmed",
+        country="Germany",
+        data_begin=date_begin_data,
+        data_end=date_end_data,
     )
 
     diff_data_sim = 16  # should be significantly larger than the expected delay, in
