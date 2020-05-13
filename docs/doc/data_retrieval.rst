@@ -5,8 +5,8 @@ Data Retrieval
 
 Utility
 -------
-.. automodule:: covid19_inference.data_retrieval.data_retrieval
-	:members: set_data_dir
+.. automodule:: covid19_inference.data_retrieval.retrieval
+	:members: set_data_dir, backup_instances
 
 Johns Hops University
 ---------------------
@@ -40,6 +40,6 @@ Google
 Base Retrieval Class
 --------------------
 
-.. autoclass:: covid19_inference.data_retrieval.data_retrieval.Retrieval
+.. autoclass:: covid19_inference.data_retrieval.retrieval.Retrieval
 	:members:
 	:private-members:
