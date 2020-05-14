@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-20 18:50:13
-# @Last Modified: 2020-05-12 16:43:36
+# @Last Modified: 2020-05-14 12:25:16
 # ------------------------------------------------------------------------------ #
 # Callable in your scripts as e.g. `cov.plot.timeseries()`
 # Plot functions and helper classes
@@ -160,7 +160,7 @@ def timeseries_overview(
     mu = trace["mu"][:, None]
     lambda_t, x = _get_array_from_trace_via_date(model, trace, "lambda_t")
     y = lambda_t[:, :, region] - mu
-    _timeseries(x=x, y=y, ax=ax, what="model")
+    _timeseries(x=x, y=y, ax=ax, what="model", color=color_fcast)
     ax.set_ylabel(ylabel_lam)
     ax.set_ylim(ylim_lam)
 
@@ -229,7 +229,7 @@ def timeseries_overview(
         if add_more_later:
             # dummy element to separate forecasts
             ax.plot(
-                [], [], "-", linewidth=0, label="Forecasts:",
+                [], [], "-", linewidth=0, label=r"$\bf Forecasts\!:$",
             )
 
     # model fcast
@@ -291,7 +291,7 @@ def timeseries_overview(
         if add_more_later:
             # dummy element to separate forecasts
             ax.plot(
-                [], [], "-", linewidth=0, label="Forecasts:",
+                [], [], "-", linewidth=0, label=r"$\bf Forecasts\!:$",
             )
 
     # model fcast, needs to start one day later, too. use the end date we got before
@@ -355,10 +355,15 @@ def timeseries_overview(
     leg_loc = "upper left"
     if draw_insets == True:
         leg_loc = "upper right"
-    ax = axes[1]
+    ax = axes[2]
     ax.legend(loc=leg_loc)
     ax.get_legend().get_frame().set_linewidth(0.0)
     ax.get_legend().get_frame().set_facecolor("#F0F0F0")
+    # styling legend elements individually does not work. seems like an mpl bug,
+    # changes to fontproperties get applied to all legend elements.
+    # for tel in ax.get_legend().get_texts():
+    #     if tel.get_text() == "Forecasts:":
+    #         # tel.set_fontweight("bold")
 
     if annotate_watermark:
         _add_watermark(axes[1])
