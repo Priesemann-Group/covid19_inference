@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-20 18:50:13
-# @Last Modified: 2020-05-14 12:25:16
+# @Last Modified: 2020-05-15 09:43:38
 # ------------------------------------------------------------------------------ #
 # Callable in your scripts as e.g. `cov.plot.timeseries()`
 # Plot functions and helper classes
@@ -48,6 +48,7 @@ def timeseries_overview(
     annotate_watermark=True,
     axes=None,
     forecast_label="Forecast",
+    forecast_heading=r"$\bf Forecasts\!:$",
     add_more_later=False,
 ):
     """
@@ -84,6 +85,9 @@ def timeseries_overview(
             with `add_more_later=True`
         forecast_label : string
             legend label for the forecast, default: "Forecast"
+        forecast_heading : string
+            if `add_more_later`, how to label the forecast section.
+            default: "$\bf Forecasts\!:$",
         add_more_later : bool
             set this to true if you plan to add multiple models to the plot. changes the layout (and the color of the fit to past data)
 
@@ -99,17 +103,20 @@ def timeseries_overview(
     """
 
     figsize = (6, 6)
-    country = "Germany"
-    ylabel_new = f"Daily new reported\ncases in {country}"
     # ylim_new = [0, 2_000]
     # ylim_new_inset = [50, 17_000]
-
-    ylabel_cum = f"Total reported\ncases in {country}"
     # ylim_cum = [0, 20_000]
     # ylim_cum_inset = [50, 300_000]
-
-    ylabel_lam = f"Effective\ngrowth rate $\lambda^\\ast (t)$"
     ylim_lam = [-0.15, 0.45]
+
+    ylabel_new = f"Daily new\nreported cases"
+    ylabel_cum = f"Total\nreported cases"
+    ylabel_lam = f"Effective\ngrowth rate $\lambda^\\ast (t)$"
+
+    if rcParams["locale"].lower() == "de_de":
+        ylabel_new = f"Täglich neu\ngemeldete Fälle"
+        ylabel_cum = f"Gesamtzahl\ngemeldete Fälle"
+        ylabel_lam = f"Effektive\nWachstumsrate"
 
     letter_kwargs = dict(x=-0.25, y=1, size="x-large")
 
@@ -229,7 +236,7 @@ def timeseries_overview(
         if add_more_later:
             # dummy element to separate forecasts
             ax.plot(
-                [], [], "-", linewidth=0, label=r"$\bf Forecasts\!:$",
+                [], [], "-", linewidth=0, label=forecast_heading,
             )
 
     # model fcast
@@ -291,7 +298,7 @@ def timeseries_overview(
         if add_more_later:
             # dummy element to separate forecasts
             ax.plot(
-                [], [], "-", linewidth=0, label=r"$\bf Forecasts\!:$",
+                [], [], "-", linewidth=0, label=forecast_heading,
             )
 
     # model fcast, needs to start one day later, too. use the end date we got before
@@ -395,7 +402,16 @@ def timeseries_overview(
     return fig, axes
 
 
-def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **kwargs):
+def _timeseries(
+    x,
+    y,
+    ax=None,
+    what="data",
+    draw_ci_95=None,
+    draw_ci_75=None,
+    draw_ci_50=None,
+    **kwargs,
+):
     """
         low-level function to plot anything that has a date on the x-axis.
 
@@ -436,6 +452,9 @@ def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **
 
     if draw_ci_75 is None:
         draw_ci_75 = rcParams["draw_ci_75"]
+
+    if draw_ci_50 is None:
+        draw_ci_50 = rcParams["draw_ci_50"]
 
     if ax is None:
         figure, ax = plt.subplots(figsize=(6, 3))
@@ -505,6 +524,17 @@ def _timeseries(x, y, ax=None, what="data", draw_ci_95=None, draw_ci_75=None, **
             x,
             np.percentile(y, q=12.5, axis=0),
             np.percentile(y, q=87.5, axis=0),
+            **kwargs,
+        )
+
+    del kwargs["alpha"]
+    kwargs["alpha"] = 0.2
+
+    if draw_ci_50 and y.ndim == 2:
+        ax.fill_between(
+            x,
+            np.percentile(y, q=25.0, axis=0),
+            np.percentile(y, q=75.0, axis=0),
             **kwargs,
         )
 
@@ -1062,6 +1092,7 @@ def get_rcparams_default():
         rasterization_zorder=-1,
         draw_ci_95=True,
         draw_ci_75=False,
+        draw_ci_50=False,
         color_model="tab:green",
         color_data="tab:blue",
         color_prior="#708090",
@@ -1100,6 +1131,10 @@ def set_rcparams(par):
 
         draw_ci_75 : bool,
             For timeseries plots, indicate 75% Confidence interval via fill between.
+            Default: False
+
+        draw_ci_50 : bool,
+            For timeseries plots, indicate 50% Confidence interval via fill between.
             Default: False
 
         color_model : str,
