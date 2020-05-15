@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-20 18:50:13
-# @Last Modified: 2020-05-15 09:43:38
+# @Last Modified: 2020-05-15 09:52:26
 # ------------------------------------------------------------------------------ #
 # Callable in your scripts as e.g. `cov.plot.timeseries()`
 # Plot functions and helper classes
@@ -112,11 +112,13 @@ def timeseries_overview(
     ylabel_new = f"Daily new\nreported cases"
     ylabel_cum = f"Total\nreported cases"
     ylabel_lam = f"Effective\ngrowth rate $\lambda^\\ast (t)$"
+    dlabel = "Data"
 
     if rcParams["locale"].lower() == "de_de":
         ylabel_new = f"Täglich neu\ngemeldete Fälle"
         ylabel_cum = f"Gesamtzahl\ngemeldete Fälle"
         ylabel_lam = f"Effektive\nWachstumsrate"
+        dlabel = "Daten"
 
     letter_kwargs = dict(x=-0.25, y=1, size="x-large")
 
@@ -227,7 +229,7 @@ def timeseries_overview(
             what="data",
             color=color_data,
             zorder=5,
-            label="Data",
+            label=dlabel,
         )
         # model fit
         _timeseries(
@@ -289,7 +291,7 @@ def timeseries_overview(
             what="data",
             color=color_data,
             zorder=5,
-            label="Data",
+            label=dlabel,
         )
         # model fit
         _timeseries(
