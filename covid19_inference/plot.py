@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-20 18:50:13
-# @Last Modified: 2020-05-15 09:52:26
+# @Last Modified: 2020-05-15 10:12:55
 # ------------------------------------------------------------------------------ #
 # Callable in your scripts as e.g. `cov.plot.timeseries()`
 # Plot functions and helper classes
@@ -109,16 +109,18 @@ def timeseries_overview(
     # ylim_cum_inset = [50, 300_000]
     ylim_lam = [-0.15, 0.45]
 
-    ylabel_new = f"Daily new\nreported cases"
-    ylabel_cum = f"Total\nreported cases"
-    ylabel_lam = f"Effective\ngrowth rate $\lambda^\\ast (t)$"
-    dlabel = "Data"
+    label_y_new = f"Daily new\nreported cases"
+    label_y_cum = f"Total\nreported cases"
+    label_y_lam = f"Effective\ngrowth rate $\lambda^\\ast (t)$"
+    label_leg_data = "Data"
+    label_leg_dlim = f"Data until\n{model.data_end.strftime('%Y/%m/%d')}"
 
     if rcParams["locale"].lower() == "de_de":
-        ylabel_new = f"Täglich neu\ngemeldete Fälle"
-        ylabel_cum = f"Gesamtzahl\ngemeldete Fälle"
-        ylabel_lam = f"Effektive\nWachstumsrate"
-        dlabel = "Daten"
+        label_y_new = f"Täglich neu\ngemeldete Fälle"
+        label_y_cum = f"Gesamtzahl\ngemeldete Fälle"
+        label_y_lam = f"Effektive\nWachstumsrate"
+        label_leg_data = "Daten"
+        label_leg_dlim = f"Daten bis\n{model.data_end.strftime('%-d. %B %Y')}"
 
     letter_kwargs = dict(x=-0.25, y=1, size="x-large")
 
@@ -170,7 +172,7 @@ def timeseries_overview(
     lambda_t, x = _get_array_from_trace_via_date(model, trace, "lambda_t")
     y = lambda_t[:, :, region] - mu
     _timeseries(x=x, y=y, ax=ax, what="model", color=color_fcast)
-    ax.set_ylabel(ylabel_lam)
+    ax.set_ylabel(label_y_lam)
     ax.set_ylim(ylim_lam)
 
     if not axes_provided:
@@ -229,7 +231,7 @@ def timeseries_overview(
             what="data",
             color=color_data,
             zorder=5,
-            label=dlabel,
+            label=label_leg_data,
         )
         # model fit
         _timeseries(
@@ -254,7 +256,7 @@ def timeseries_overview(
         color=color_fcast,
         label=f"{forecast_label}",
     )
-    ax.set_ylabel(ylabel_new)
+    ax.set_ylabel(label_y_new)
     # ax.set_ylim(ylim_new)
     prec = 1.0 / (np.log10(ax.get_ylim()[1]) - 2.5)
     if prec < 2.0 and prec >= 0:
@@ -291,7 +293,7 @@ def timeseries_overview(
             what="data",
             color=color_data,
             zorder=5,
-            label=dlabel,
+            label=label_leg_data,
         )
         # model fit
         _timeseries(
@@ -322,7 +324,7 @@ def timeseries_overview(
         color=color_fcast,
         label=f"{forecast_label}",
     )
-    ax.set_ylabel(ylabel_cum)
+    ax.set_ylabel(label_y_cum)
     # ax.ylim(ylim_cum)
     prec = 1.0 / (np.log10(ax.get_ylim()[1]) - 2.5)
     if prec < 2.0 and prec >= 0:
@@ -379,7 +381,7 @@ def timeseries_overview(
 
     fig.suptitle(
         # using script run time. could use last data point though.
-        f"Data until\n({model.data_end.strftime('%Y/%m/%d')})",
+        label_leg_dlim,
         x=0.15,
         y=1.075,
         verticalalignment="top",
