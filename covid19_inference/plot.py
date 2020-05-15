@@ -117,7 +117,7 @@ def timeseries_overview(
 
     if rcParams["locale"].lower() == "de_de":
         label_y_new = f"Täglich neu\ngemeldete Fälle"
-        label_y_cum = f"Gesamtzahl\ngemeldete Fälle"
+        label_y_cum = f"Gesamtzahl\ngemeldeter Fälle"
         label_y_lam = f"Effektive\nWachstumsrate"
         label_leg_data = "Daten"
         label_leg_dlim = f"Daten bis\n{model.data_end.strftime('%-d. %B %Y')}"
