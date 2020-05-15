@@ -608,8 +608,8 @@ def SEIR(
             + beta[9] * nE10
         )
         I_t = I_t + new_I_t - mu * I_t
-        I_t = tt.clip(I_t, 0, N)  # for stability
-        S_t = tt.clip(S_t, 0, N)
+        I_t = tt.clip(I_t, -1, N - 1)  # for stability
+        S_t = tt.clip(S_t, -1, N)
         return S_t, new_E_t, I_t, new_I_t
 
     # theano scan returns two tuples, first one containing a time series of
@@ -673,11 +673,17 @@ def delay_cases(
             The input, typically the number newly infected cases :math:`I_{new}(t)` of from the output of
             :func:`SIR` or :func:`SEIR`.
         pr_median_delay : float
-            The prior of the median delay
-        scale_delay : float
-            The scale of the delay, that is how wide the distribution is.
+            The mean of the :class:`~pymc3.distributions.continuous.normal` distribution which
+            models the prior median of the :class:`~pymc3.distributions.continuous.LogNormal` delay kernel.
         pr_sigma_median_delay : float
-            The prior for the sigma of the median delay distribution.
+            The standart devaiation of :class:`~pymc3.distributions.continuous.normal` distribution which
+            models the prior median of the :class:`~pymc3.distributions.continuous.LogNormal` delay kernel.
+        pr_median_scale_delay : float
+            The scale (width) of the :class:`~pymc3.distributions.continuous.LogNormal` delay kernel.
+        pr_sigma_scale_delay : float
+            If it is not None, the scale is of the delay is kernel follows a prior
+            :class:`~pymc3.distributions.continuous.LogNormal` distribution, with median ``pr_median_scale_delay`` and
+            scale ``pr_sigma_scale_delay``.
         model : :class:`Cov19Model`
             if none, it is retrieved from the context
         save_in_trace : bool
@@ -882,6 +888,8 @@ def make_change_point_RVs(
         pr_median_transient_len=4,
         pr_sigma_transient_len=0.5,
         pr_mean_date_transient=None,
+        relative_to_previous=False,
+        pr_factor_to_previous=1,
     )
 
     for cp_priors in change_points_list:
@@ -912,8 +920,8 @@ def make_change_point_RVs(
 
     lambda_log_list.append(lambda_0_L2_log)
     for i, cp in enumerate(change_points_list):
-        if cp["pr_median_lambda"] == "previous":
-            pr_sigma_lambda = lambda_log_list[-1]
+        if cp["relative_to_previous"]:
+            pr_sigma_lambda = lambda_log_list[-1] + tt.log(cp["pr_factor_to_previous"])
         else:
             pr_sigma_lambda = np.log(cp["pr_median_lambda"])
         lambda_cp_L2_log, lambda_cp_L1_log = hierarchical_normal(
