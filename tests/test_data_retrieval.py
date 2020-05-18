@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-03 14:40:00
-# @Last Modified: 2020-05-13 12:42:18
+# @Last Modified: 2020-05-14 18:18:11
 # ------------------------------------------------------------------------------ #
 # failry rudimentary. todo:
 #   * go offline and check retrieval of local stuff
@@ -69,6 +69,29 @@ def test_jhu():
     jhu.get_new(
         "confirmed",
         country="Italy",
+        data_begin=datetime.datetime(2020, 3, 15),
+        data_end=datetime.datetime(2020, 3, 25),
+    )
+
+def test_owd():
+    import covid19_inference as cov
+
+    owd = cov.data_retrieval.OWD(False)
+    owd.download_all_available_data(force_download=True)
+
+    # Force load offline data
+    owd.download_all_available_data(force_local=True)
+    owd.download_all_available_data()
+
+    owd.get_total(
+        "confirmed",
+        country="Italy",
+        data_begin=datetime.datetime(2020, 3, 15),
+        data_end=datetime.datetime(2020, 3, 25),
+    )
+    owd.get_new(
+        "tests",
+        country="Belgium",
         data_begin=datetime.datetime(2020, 3, 15),
         data_end=datetime.datetime(2020, 3, 25),
     )
