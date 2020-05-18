@@ -130,7 +130,7 @@ class OWD(Retrieval):
             raise e
         return False
 
-    def get_possible_counties(self):
+    def get_possible_countries(self):
         """
             Can be used to obtain all different possible countries in the dataset.
 
@@ -140,7 +140,7 @@ class OWD(Retrieval):
         """
         return self.data["country"].unique()
 
-    def get_total(self, value="confirmed", country = None, data_begin = None , data_end = None):
+    def get_total(self, value="tests", country = None, data_begin = None , data_end = None):
         """
             Retrieves all new cases from the Our World in Data dataset as a DataFrame with datetime index.
             Can be filtered by value, country and state, if only a country is given all available states get summed up.
@@ -176,7 +176,7 @@ class OWD(Retrieval):
             filter_value = "total_tests"
         return self._filter(value=filter_value, country=country,data_begin=data_begin,data_end=data_end).dropna()
 
-    def get_new(self, value="confirmed", country = None, data_begin = None , data_end = None):
+    def get_new(self, value="tests", country = None, data_begin = None , data_end = None):
         """
             Retrieves all new cases from the Our World in Data dataset as a DataFrame with datetime index.
             casesn be filtered by value, country and state, if only a country is given all available states get summed up.
