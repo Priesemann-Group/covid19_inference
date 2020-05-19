@@ -242,7 +242,7 @@ def lambda_t_with_sigmoids(
         lambda_t_list.append(lambda_t)
 
     # Sum up all lambda values from the list
-    l ambda_t_log = sum(lambda_t_list)
+    lambda_t_log = sum(lambda_t_list)
 
     # Create responding lambda_t pymc3 variable with given name (from parameters)
     pm.Deterministic(name_lambda_t, tt.exp(lambda_t_log))
