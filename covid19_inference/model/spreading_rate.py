@@ -18,6 +18,11 @@ def _make_change_point_RVs(
     Returns
     -------
 
+    TODO
+    ----
+        Documentation on this
+
+        Add a way to name the changepoints
     """
 
     def hierarchical():
@@ -171,12 +176,13 @@ def _make_change_point_RVs(
 
     return lambda_log_list, tr_time_list, tr_len_list
 
-    """
-        TODO
-        ----
-        def lambda_t_with_transient
-    """
 
+
+"""
+    TODO
+    ----
+    def lambda_t_with_transient
+"""
 
 def lambda_t_with_sigmoids(
     change_points_list,
@@ -197,38 +203,48 @@ def lambda_t_with_sigmoids(
         Returns
         -------
         lambda_t_log 
+
+        TODO
+        ----
+        Documentation on this
     """
 
     # Get our default mode context
     model = modelcontext(model)
 
+    # ?Get change points random variable?
     lambda_list, tr_time_list, tr_len_list = _make_change_point_RVs(
         change_points_list, pr_median_lambda_0, pr_sigma_lambda_0, model=model
     )
 
-    # model.sim_shape = (time, state)
-    # build the time-dependent spreading rate
-    lambda_t_list = [lambda_list[0] * tt.ones(model.sim_shape)]
+    # Build the time-dependent spreading rate
+    lambda_t_list = [lambda_list[0] * tt.ones(model.sim_shape)] # model.sim_shape = (time, state)
     lambda_before = lambda_list[0]
 
+    # Loop over all lambda values and there corresponding transient values 
     for tr_time, tr_len, lambda_after in zip(
         tr_time_list, tr_len_list, lambda_list[1:]
     ):
+        # Create the right shape for the time array 
         t = np.arange(model.sim_shape[0])
-        tr_len = tr_len + 1e-5
+        tr_len = tr_len + 1e-5 #?Reason
 
+        # If the model is hirarchical repeatly add the t array to itself to match the shape
         if model.is_hierarchical:
             t = np.repeat(t[:, None], model.sim_shape[1], axis=-1)
 
+        # Applies standart sigmoid nonlinearity
         lambda_t = tt.nnet.sigmoid((t - tr_time) / tr_len * 4) * (
             lambda_after - lambda_before
-        )
+        ) # tr_len*4 because the derivative of the sigmoid at zero is 1/4, we want to set it to 1/tr_len
 
-        # tr_len*4 because the derivative of the sigmoid at zero is 1/4, we want to set it to 1/tr_len
         lambda_before = lambda_after
         lambda_t_list.append(lambda_t)
-    lambda_t_log = sum(lambda_t_list)
 
+    # Sum up all lambda values from the list
+    l ambda_t_log = sum(lambda_t_list)
+
+    # Create responding lambda_t pymc3 variable with given name (from parameters)
     pm.Deterministic(name_lambda_t, tt.exp(lambda_t_log))
 
     return lambda_t_log
