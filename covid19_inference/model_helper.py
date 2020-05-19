@@ -6,12 +6,15 @@ import numpy as np
 
 log = logging.getLogger(__name__)
 
+# utility.py
 def tt_lognormal(x, mu, sigma):
-    distr = 1/x * tt.exp(-((tt.log(x) - mu) ** 2) / (2 * sigma ** 2))
+    distr = 1 / x * tt.exp(-((tt.log(x) - mu) ** 2) / (2 * sigma ** 2))
     return distr / (tt.sum(distr, axis=0) + 1e-5)
 
 
-def delay_cases(new_I_t, len_new_I_t, len_out, delay, delay_diff):
+# underscore
+# delay.py
+def delay_timeshift(new_I_t, len_new_I_t, len_out, delay, delay_diff):
     """
         Delays (time shifts) the input new_I_t by delay.
 
@@ -50,6 +53,8 @@ def delay_cases(new_I_t, len_new_I_t, len_out, delay, delay_diff):
     return inferred_cases
 
 
+# underscore
+# delay.py
 def make_delay_matrix(n_rows, n_columns, initial_delay=0):
     """
         Has in each entry the delay between the input with size n_rows and the output
@@ -68,20 +73,27 @@ def make_delay_matrix(n_rows, n_columns, initial_delay=0):
     return mat[:n_rows, :n_columns]
 
 
+# underscore
+# delay.py
 def apply_delay(array, delay, sigma_delay, delay_mat):
     mat = tt_lognormal(delay_mat, mu=np.log(delay), sigma=sigma_delay)
     if array.ndim == 2 and mat.ndim == 3:
         array_shuf = array.dimshuffle((1, 0))
         mat_shuf = mat.dimshuffle((2, 0, 1))
         delayed_arr = tt.batched_dot(array_shuf, mat_shuf)
-        delayed_arr = delayed_arr.dimshuffle((1,0))
+        delayed_arr = delayed_arr.dimshuffle((1, 0))
     elif array.ndim == 1 and mat.ndim == 2:
         delayed_arr = tt.dot(array, mat)
     else:
-        raise RuntimeError("For some reason, wrong number of dimensions, shouldn't happen")
+        raise RuntimeError(
+            "For some reason, wrong number of dimensions, shouldn't happen"
+        )
     return delayed_arr
 
-def delay_cases_lognormal(
+
+# underscore
+# delay.py
+def delay_lognormal(
     input_arr,
     len_input_arr,
     len_output_arr,
@@ -98,10 +110,13 @@ def delay_cases_lognormal(
         delay_mat < 0.01
     ] = 0.01  # needed because negative values lead to nans in the lognormal distribution.
     if input_arr.ndim == 2:
-        delay_mat = delay_mat[:,:, None]
+        delay_mat = delay_mat[:, :, None]
     delayed_arr = apply_delay(input_arr, median_delay, scale_delay, delay_mat)
     return delayed_arr
 
+
+# delay.py
+# underscore this
 def interpolate(array, delay, delay_matrix):
     """
         smooth the array (if delay is no integer)
@@ -111,6 +126,8 @@ def interpolate(array, delay, delay_matrix):
     return interpolation
 
 
+# underscore
+# spreading_rate.py
 def smooth_step_function(start_val, end_val, t_begin, t_end, t_total):
     """
         Instead of going from start_val to end_val in one step, make the change a
@@ -146,7 +163,7 @@ def smooth_step_function(start_val, end_val, t_begin, t_end, t_total):
     )
 
 
-
+# model.py
 def set_missing_with_default(priors_dict, default_priors):
     for prior_name in priors_dict.keys():
         if prior_name not in default_priors:

@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 if platform.system() == "Darwin":
     theano.config.gcc.cxxflags = "-Wno-c++11-narrowing"  # workaround for macos
 
-
+# model.py
 class Cov19Model(Model):
     """
         Model class used to create a covid-19 propagation dynamics model.
@@ -162,7 +162,7 @@ class Cov19Model(Model):
     """
 
     @property
-    def shape_num_regions(self):
+    def shape_of_regions(self):
         # Number of regions as tuple of int
         return () if self.sim_ndim == 1 else self.sim_shape[1]
 
@@ -230,6 +230,7 @@ class Cov19Model(Model):
         return (self.data_begin - self.sim_begin).days
 
 
+# model.py
 def modelcontext(model):
     """
         return the given model or try to find it in the context if there was
@@ -240,15 +241,16 @@ def modelcontext(model):
     return model
 
 
+# good, likelihood.py
 def student_t_likelihood(
     new_cases_inferred,
+    name_student_t="_new_cases_studentT",
+    name_sigma_obs="sigma_obs",
     pr_beta_sigma_obs=30,
     nu=4,
     offset_sigma=1,
     model=None,
     data_obs=None,
-    name_student_t="_new_cases_studentT",
-    name_sigma_obs="sigma_obs",
 ):
     r"""
         Set the likelihood to apply to the model observations (`model.new_cases_obs`)
@@ -271,6 +273,12 @@ def student_t_likelihood(
             One or two dimensonal array. If 2 dimensional, the first dimension is time and the second are the
             regions/countries
 
+        name_student_t :
+            The name under which the studentT distribution is saved in the trace.
+
+        name_sigma_obs :
+            The name under which the distribution of the observable error is saved in the trace
+
         pr_beta_sigma_obs : float
             The beta of the :class:`~pymc3.distributions.continuous.HalfCauchy` prior distribution of :math:`\sigma_r`.
 
@@ -288,11 +296,6 @@ def student_t_likelihood(
         data_obs : array
             The data that is observed. By default it is ``model.new_cases_ob``
 
-        name_student_t :
-            The name under which the studentT distribution is saved in the trace.
-
-        name_sigma_obs :
-            The name under which the distribution of the observable error is saved in the trace
 
         Returns
         -------
@@ -310,13 +313,12 @@ def student_t_likelihood(
 
     model = modelcontext(model)
 
-    len_sigma_obs = () if model.sim_ndim == 1 else model.sim_shape[1]
-    sigma_obs = pm.HalfCauchy(
-        name_sigma_obs, beta=pr_beta_sigma_obs, shape=len_sigma_obs
-    )
-
     if data_obs is None:
         data_obs = model.new_cases_obs
+
+    sigma_obs = pm.HalfCauchy(
+        name_sigma_obs, beta=pr_beta_sigma_obs, shape=model.shape_of_regions
+    )
 
     pm.StudentT(
         name=name_student_t,
@@ -328,6 +330,8 @@ def student_t_likelihood(
     )
 
 
+# compartmental_models.py
+# name 4 trace arguments, if I_t and S_t are none do not save
 def SIR(
     lambda_t_log, mu, pr_I_begin=100, model=None, return_all=False, save_all=False,
 ):
@@ -387,14 +391,13 @@ def SIR(
     # Total number of people in population
     N = model.N_population
 
-    # Number of regions as tuple of int
-    num_regions = () if model.sim_ndim == 1 else model.sim_shape[1]
-
     # Prior distributions of starting populations (infectious, susceptibles)
     if isinstance(pr_I_begin, tt.TensorVariable):
         I_begin = pr_I_begin
     else:
-        I_begin = pm.HalfCauchy(name="I_begin", beta=pr_I_begin, shape=num_regions)
+        I_begin = pm.HalfCauchy(
+            name="I_begin", beta=pr_I_begin, shape=model.shape_of_regions
+        )
 
     S_begin = N - I_begin
 
@@ -430,6 +433,8 @@ def SIR(
         return new_I_t
 
 
+# compartmental_models.py
+# names as SIR, hc_fix regions, pass mu distribution as argument.
 def SEIR(
     lambda_t_log,
     pr_beta_I_begin=100,
@@ -638,16 +643,18 @@ def SEIR(
         return new_I_t
 
 
+# delay.py
+# fix names, hc_fix
 def delay_cases(
     new_I_t,
+    name_delay="delay",
+    name_delayed_cases="new_cases_raw",
     pr_median_delay=10,
     pr_sigma_median_delay=0.2,
     pr_median_scale_delay=0.3,
     pr_sigma_scale_delay=None,
     model=None,
     save_in_trace=True,
-    name_delay="delay",
-    name_delayed_cases="new_cases_raw",
     len_input_arr=None,
     len_output_arr=None,
     diff_input_output=None,
@@ -672,6 +679,12 @@ def delay_cases(
         new_I_t : :class:`~theano.tensor.TensorVariable`
             The input, typically the number newly infected cases :math:`I_{new}(t)` of from the output of
             :func:`SIR` or :func:`SEIR`.
+        name_delay : str
+            The name under which the delay is saved in the trace, suffixes and prefixes are added depending on which
+            variable is saved.
+        name_delayed_cases : str
+            The name under which the delay is saved in the trace, suffixes and prefixes are added depending on which
+            variable is saved.
         pr_median_delay : float
             The mean of the :class:`~pymc3.distributions.continuous.normal` distribution which
             models the prior median of the :class:`~pymc3.distributions.continuous.LogNormal` delay kernel.
@@ -688,12 +701,6 @@ def delay_cases(
             if none, it is retrieved from the context
         save_in_trace : bool
             whether to save :math:`y_\text{delayed}` in the trace
-        name_delay : str
-            The name under which the delay is saved in the trace, suffixes and prefixes are added depending on which
-            variable is saved.
-        name_delayed_cases : str
-            The name under which the delay is saved in the trace, suffixes and prefixes are added depending on which
-            variable is saved.
         len_input_arr :
             Length of ``new_I_t``. By default equal to ``model.sim_len``. Necessary because the shape of theano
             tensors are not defined at when the graph is built.
@@ -768,6 +775,7 @@ def delay_cases(
     return new_cases_inferred
 
 
+# week_modulation.py
 def week_modulation(
     new_cases_raw,
     week_modulation_type="abs_sine",
@@ -865,6 +873,7 @@ def week_modulation(
     return new_cases_inferred_eff
 
 
+# spreading_rate.py
 def make_change_point_RVs(
     change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=1, model=None
 ):
@@ -982,6 +991,9 @@ def make_change_point_RVs(
     return lambda_log_list, tr_time_list, tr_len_list
 
 
+# spreading_rate.py
+# add lambda_t_with_transient
+# names
 def lambda_t_with_sigmoids(
     change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=0.5, model=None
 ):
@@ -1035,6 +1047,11 @@ def lambda_t_with_sigmoids(
     return lambda_t_log
 
 
+# utility.py
+# add model argument
+# var names argument and defaults
+# if model.is_hierc.: ... make this apply only to the hierarchical case and check before
+# remove w parameter
 def hierarchical_normal(
     name,
     name_sigma,
@@ -1046,47 +1063,47 @@ def hierarchical_normal(
     error_cauchy=True,
 ):
     r"""
-    Implements an hierarchical normal model:
+        Implements an hierarchical normal model:
 
-    .. math::
+        .. math::
 
-        x_\text{L1} &= Normal(\text{pr\_mean}, \text{pr\_sigma})\\
-        y_{i, \text{L2}} &= Normal(x_\text{L1}, \sigma_\text{L2})\\
-        \sigma_\text{L2} &= HalfCauchy(\text{error\_fact} \cdot \text{pr\_sigma})
+            x_\text{L1} &= Normal(\text{pr\_mean}, \text{pr\_sigma})\\
+            y_{i, \text{L2}} &= Normal(x_\text{L1}, \sigma_\text{L2})\\
+            \sigma_\text{L2} &= HalfCauchy(\text{error\_fact} \cdot \text{pr\_sigma})
 
-    It is however implemented in a non-centered way, that the second line is changed to:
+        It is however implemented in a non-centered way, that the second line is changed to:
 
-     .. math::
+         .. math::
 
-        y_{i, \text{L2}} &= x_\text{L1} +  Normal(0,1) \cdot \sigma_\text{L2}
+            y_{i, \text{L2}} &= x_\text{L1} +  Normal(0,1) \cdot \sigma_\text{L2}
 
-    See for example https://arxiv.org/pdf/1312.0906.pdf
+        See for example https://arxiv.org/pdf/1312.0906.pdf
 
 
-    Parameters
-    ----------
-    name : str
-        Name under which :math:`x_\text{L1}` and :math:`y_\text{L2}` saved in the trace. ``'_L1'`` and ``'_L2'``
-        is appended
-    name_sigma : str
-        Name under which :math:`\sigma_\text{L2}` saved in the trace. ``'_L2'`` is appended.
-    pr_mean : float
-        Prior mean of :math:`x_\text{L1}`
-    pr_sigma : float
-        Prior sigma for :math:`x_\text{L1}` and (muliplied by ``error_fact``) for :math:`\sigma_\text{L2}`
-    len_L2 : int
-        length of :math:`y_\text{L2}`
-    error_fact : float
-        Factor by which ``pr_sigma`` is multiplied as prior for `\sigma_\text{L2}`
-    error_cauchy : bool
-        if False, a :math:`HalfNormal` distribution is used for :math:`\sigma_\text{L2}` instead of :math:`HalfCauchy`
+        Parameters
+        ----------
+        name : str
+            Name under which :math:`x_\text{L1}` and :math:`y_\text{L2}` saved in the trace. ``'_L1'`` and ``'_L2'``
+            is appended
+        name_sigma : str
+            Name under which :math:`\sigma_\text{L2}` saved in the trace. ``'_L2'`` is appended.
+        pr_mean : float
+            Prior mean of :math:`x_\text{L1}`
+        pr_sigma : float
+            Prior sigma for :math:`x_\text{L1}` and (muliplied by ``error_fact``) for :math:`\sigma_\text{L2}`
+        len_L2 : int
+            length of :math:`y_\text{L2}`
+        error_fact : float
+            Factor by which ``pr_sigma`` is multiplied as prior for `\sigma_\text{L2}`
+        error_cauchy : bool
+            if False, a :math:`HalfNormal` distribution is used for :math:`\sigma_\text{L2}` instead of :math:`HalfCauchy`
 
-    Returns
-    -------
-    y : :class:`~theano.tensor.TensorVariable`
-        the random variable :math:`y_\text{L2}`
-    x : :class:`~theano.tensor.TensorVariable`
-        the random variable :math:`x_\text{L1}`
+        Returns
+        -------
+        y : :class:`~theano.tensor.TensorVariable`
+            the random variable :math:`y_\text{L2}`
+        x : :class:`~theano.tensor.TensorVariable`
+            the random variable :math:`x_\text{L1}`
 
     """
     if not len_L2:  # not hierarchical
@@ -1110,6 +1127,9 @@ def hierarchical_normal(
     return Y, X
 
 
+# names arg
+# compartmental.py
+# rename to uncorrelated_prior_I()
 def make_prior_I(
     lambda_t_log,
     mu,
@@ -1158,6 +1178,9 @@ def make_prior_I(
     return I_begin
 
 
+# utility.py
+# names
+# still do decide
 def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2):
 
     if not len_L2:  # not hierarchical
