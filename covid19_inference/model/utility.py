@@ -1,86 +1,80 @@
-# ------------------------------------------------------------------------------ #
-# @Author:        F. Paul Spitzner
-# @Email:         paul.spitzner@ds.mpg.de
-# @Created:       2020-05-19 12:00:32
-# @Last Modified: 2020-05-19 12:01:20
-# ------------------------------------------------------------------------------ #
+import pymc3 as pm
 
 # utility.py
 # add model argument
 # var names argument and defaults
 # if model.is_hierc.: ... make this apply only to the hierarchical case and check before
 # remove w parameter
+
+
 def hierarchical_normal(
-    name,
+    name_L1,
+    name_L2,
     name_sigma,
     pr_mean,
     pr_sigma,
     len_L2,
-    w=1.0,
     error_fact=2.0,
     error_cauchy=True,
 ):
     r"""
-        Implements an hierarchical normal model:
+    Implements an hierarchical normal model:
 
-        .. math::
+    .. math::
 
-            x_\text{L1} &= Normal(\text{pr\_mean}, \text{pr\_sigma})\\
-            y_{i, \text{L2}} &= Normal(x_\text{L1}, \sigma_\text{L2})\\
-            \sigma_\text{L2} &= HalfCauchy(\text{error\_fact} \cdot \text{pr\_sigma})
+        x_\text{L1} &= Normal(\text{pr\_mean}, \text{pr\_sigma})\\
+        y_{i, \text{L2}} &= Normal(x_\text{L1}, \sigma_\text{L2})\\
+        \sigma_\text{L2} &= HalfCauchy(\text{error\_fact} \cdot \text{pr\_sigma})
 
-        It is however implemented in a non-centered way, that the second line is changed to:
+    It is however implemented in a non-centered way, that the second line is changed to:
 
-         .. math::
+     .. math::
 
-            y_{i, \text{L2}} &= x_\text{L1} +  Normal(0,1) \cdot \sigma_\text{L2}
+        y_{i, \text{L2}} &= x_\text{L1} +  Normal(0,1) \cdot \sigma_\text{L2}
 
-        See for example https://arxiv.org/pdf/1312.0906.pdf
+    See for example https://arxiv.org/pdf/1312.0906.pdf
 
 
-        Parameters
-        ----------
-        name : str
-            Name under which :math:`x_\text{L1}` and :math:`y_\text{L2}` saved in the trace. ``'_L1'`` and ``'_L2'``
-            is appended
-        name_sigma : str
-            Name under which :math:`\sigma_\text{L2}` saved in the trace. ``'_L2'`` is appended.
-        pr_mean : float
-            Prior mean of :math:`x_\text{L1}`
-        pr_sigma : float
-            Prior sigma for :math:`x_\text{L1}` and (muliplied by ``error_fact``) for :math:`\sigma_\text{L2}`
-        len_L2 : int
-            length of :math:`y_\text{L2}`
-        error_fact : float
-            Factor by which ``pr_sigma`` is multiplied as prior for `\sigma_\text{L2}`
-        error_cauchy : bool
-            if False, a :math:`HalfNormal` distribution is used for :math:`\sigma_\text{L2}` instead of :math:`HalfCauchy`
+    Parameters
+    ----------
+    name_L1 : str
+        Name under which :math:`x_\text{L1}` is saved in the trace.
+    name_L2 : str
+        Name under which :math:`x_\text{L2}` is saved in the trace. The non-centered distribution in addition
+        saved with a suffix _raw added.
+    name_sigma : str
+        Name under which :math:`\sigma_\text{L2}` is saved in the trace.
+    pr_mean : float
+        Prior mean of :math:`x_\text{L1}`
+    pr_sigma : float
+        Prior sigma for :math:`x_\text{L1}` and (muliplied by ``error_fact``) for :math:`\sigma_\text{L2}`
+    len_L2 : int
+        length of :math:`y_\text{L2}`
+    error_fact : float
+        Factor by which ``pr_sigma`` is multiplied as prior for `\sigma_\text{L2}`
+    error_cauchy : bool
+        if False, a :math:`HalfNormal` distribution is used for :math:`\sigma_\text{L2}` instead of :math:`HalfCauchy`
 
-        Returns
-        -------
-        y : :class:`~theano.tensor.TensorVariable`
-            the random variable :math:`y_\text{L2}`
-        x : :class:`~theano.tensor.TensorVariable`
-            the random variable :math:`x_\text{L1}`
+    Returns
+    -------
+    y : :class:`~theano.tensor.TensorVariable`
+        the random variable :math:`y_\text{L2}`
+    x : :class:`~theano.tensor.TensorVariable`
+        the random variable :math:`x_\text{L1}`
 
     """
-    if not len_L2:  # not hierarchical
-        Y = pm.Normal(name, mu=pr_mean, sigma=pr_sigma)
-        X = None
 
+    if error_cauchy:
+        sigma_Y = pm.HalfCauchy(name_sigma, beta=error_fact * pr_sigma)
     else:
-        w = 1.0
-        if error_cauchy:
-            sigma_Y = pm.HalfCauchy(name_sigma + "_L2", beta=error_fact * pr_sigma)
-        else:
-            sigma_Y = pm.HalfNormal(name_sigma + "_L2", sigma=error_fact * pr_sigma)
+        sigma_Y = pm.HalfNormal(name_sigma, sigma=error_fact * pr_sigma)
 
-        X = pm.Normal(name + "_L1", mu=pr_mean, sigma=pr_sigma)
-        phi = pm.Normal(
-            name + "_L2_raw", mu=0, sigma=1, shape=len_L2
-        )  # (1-w**2)*sigma_X+1*w**2, shape=len_Y)
-        Y = w * X + phi * sigma_Y
-        pm.Deterministic(name + "_L2", Y)
+    X = pm.Normal(name_L1, mu=pr_mean, sigma=pr_sigma)
+    phi = pm.Normal(
+        name_L2 + "_raw", mu=0, sigma=1, shape=len_L2
+    )  # (1-w**2)*sigma_X+1*w**2, shape=len_Y)
+    Y = X + phi * sigma_Y
+    pm.Deterministic(name_L2, Y)
 
     return Y, X
 
