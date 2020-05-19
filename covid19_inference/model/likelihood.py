@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-19 11:58:38
-# @Last Modified: 2020-05-19 12:02:44
+# @Last Modified: 2020-05-19 14:13:36
 # ------------------------------------------------------------------------------ #
 
 import logging
@@ -13,7 +13,8 @@ import numpy as np
 
 log = logging.getLogger(__name__)
 
-# good, likelihood.py
+from .model import *
+
 def student_t_likelihood(
     new_cases_inferred,
     name_student_t="_new_cases_studentT",

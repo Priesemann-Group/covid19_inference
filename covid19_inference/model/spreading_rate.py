@@ -1,6 +1,8 @@
-from .model import *
-from .utility import hierarchical_normal
+import pymc3 as pm
+import theano
+import theano.tensor as tt
 
+from .model import *
 
 def _make_change_point_RVs(
     change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=1, model=None
@@ -96,7 +98,7 @@ def _make_change_point_RVs(
             name="lambda_0_log_", mu=np.log(pr_median_lambda_0), sigma=pr_sigma_lambda_0
         )
         pm.Deterministic("lambda_0", tt.exp(lambda_0_log))
-        lambda_log_list.append(lambda_0_hc_L2_log)
+        lambda_log_list.append(lambda_0_log)
 
         # Create lambda_log list
         for i, cp in enumerate(change_points_list):
@@ -132,12 +134,12 @@ def _make_change_point_RVs(
 
         # Create transient length list
         for i, cp in enumerate(change_points_list):
-            tr_len = pm.Normal(
+            tr_len_log = pm.Normal(
                 name=f"transient_len_{i + 1}_log_",
                 mu=np.log(cp["pr_median_transient_len"]),
                 sigma=cp["pr_sigma_transient_len"],
             )
-            pm.Deterministic(f"transient_len_{i + 1}", tt.exp(tr_len_L2_log))
+            pm.Deterministic(f"transient_len_{i + 1}", tt.exp(tr_len_log))
 
     # ------------------------------------------------------------------------------ #
     # Start of function body
@@ -155,7 +157,7 @@ def _make_change_point_RVs(
     )
 
     for cp_priors in change_points_list:
-        mh.set_missing_with_default(cp_priors, default_priors_change_points)
+        set_missing_priors_with_default(cp_priors, default_priors_change_points)
 
     model = modelcontext(model)
     lambda_log_list = []

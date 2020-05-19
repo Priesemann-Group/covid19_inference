@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-21 08:57:53
-# @Last Modified: 2020-04-30 17:02:00
+# @Last Modified: 2020-05-19 14:22:54
 # ------------------------------------------------------------------------------ #
 # Let's have a dummy instance of model and trace so we can play around with the
 # interface and plotting.
@@ -13,7 +13,7 @@ import logging
 
 import numpy as np
 import pymc3 as pm
-
+import datetime
 
 from .model import *
 from . import data_retrieval
