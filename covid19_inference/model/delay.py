@@ -1,36 +1,55 @@
 # ------------------------------------------------------------------------------ #
-# @Author:        F. Paul Spitzner
-# @Email:         paul.spitzner@ds.mpg.de
-# @Created:       2020-05-19 11:57:38
-# @Last Modified: 2020-05-19 12:02:48
+# This file provides `delay_cases()` and required helpers:
+# Applies delays to time-like arrays (such as a timeseries of observed new cases)
+# and adds the required priors and corresponding variables to be traced.
 # ------------------------------------------------------------------------------ #
 
+import platform
 import logging
 
 import theano
 import theano.tensor as tt
 import numpy as np
+import pymc3 as pm
+from . import utility as ut
+from .model import Cov19Model, modelcontext, set_missing_priors_with_default
 
 log = logging.getLogger(__name__)
 
-# delay.py
-# fix names, hc_fix
+if platform.system() == "Darwin":
+    theano.config.gcc.cxxflags = "-Wno-c++11-narrowing"  # workaround for macos
+
+
 def delay_cases(
-    new_I_t,
+    cases,
     name_delay="delay",
-    name_delayed_cases="new_cases_raw",
-    pr_median_delay=10,
-    pr_sigma_median_delay=0.2,
-    pr_median_scale_delay=0.3,
-    pr_sigma_scale_delay=None,
+    name_delayed_cases="delayed_cases",
+    name_width="delay-width",
+    pr_mean_of_median=10,
+    pr_sigma_of_median=0.2,
+    pr_median_of_width=0.3,
+    pr_sigma_of_width=None,
     model=None,
-    save_in_trace=True,
     len_input_arr=None,
     len_output_arr=None,
     diff_input_output=None,
 ):
     r"""
         Convolves the input by a lognormal distribution, in order to model a delay:
+
+        * We have a kernel (a distribution) of delays, one realization of this kernel
+        is applied to each pymc3 sample.
+
+        * The kernel has a median delay D and a width that correspond to this one
+        sample. Doing the ensemble average over all samples and the respective kernels,
+        we get two distributions: one of the median delay D and one of the width.
+
+        * The (normal) distribution of the median of D is specified using
+        `pr_mean_of_median` and `pr_sigma_of_median`.
+
+        * The (lognormal) distribution of the width of the kernel of D is specified
+          using `pr_median_of_width` and `pr_sigma_of_width`. If `pr_sigma_of_width` is
+          None, the width is fixed (skipping the second distribution).
 
         .. math::
 
@@ -46,16 +65,17 @@ def delay_cases(
 
         Parameters
         ----------
-        new_I_t : :class:`~theano.tensor.TensorVariable`
+        cases : :class:`~theano.tensor.TensorVariable`
             The input, typically the number newly infected cases :math:`I_{new}(t)` of from the output of
             :func:`SIR` or :func:`SEIR`.
         name_delay : str
             The name under which the delay is saved in the trace, suffixes and prefixes are added depending on which
             variable is saved.
-        name_delayed_cases : str
-            The name under which the delay is saved in the trace, suffixes and prefixes are added depending on which
-            variable is saved.
-        pr_median_delay : float
+        name_delayed_cases : str or None
+            The name under which the delayed cases are saved in the trace.
+            If None, will not add to trace.
+            Default: "delayed_cases"
+        pr_mean_median_delay : float
             The mean of the :class:`~pymc3.distributions.continuous.normal` distribution which
             models the prior median of the :class:`~pymc3.distributions.continuous.LogNormal` delay kernel.
         pr_sigma_median_delay : float
@@ -64,9 +84,11 @@ def delay_cases(
         pr_median_scale_delay : float
             The scale (width) of the :class:`~pymc3.distributions.continuous.LogNormal` delay kernel.
         pr_sigma_scale_delay : float
-            If it is not None, the scale is of the delay is kernel follows a prior
-            :class:`~pymc3.distributions.continuous.LogNormal` distribution, with median ``pr_median_scale_delay`` and
-            scale ``pr_sigma_scale_delay``.
+            Whether to put a prior distribution on the scale (width) of the distribution
+            of the delays, too.
+            Default: None, and no distribution is applied.
+            If a number is provided, the scale of the delay kernel follows a prior
+            :class:`~pymc3.distributions.continuous.LogNormal` distribution, with median ``pr_median_scale_delay`` and scale ``pr_sigma_scale_delay``.
         model : :class:`Cov19Model`
             if none, it is retrieved from the context
         save_in_trace : bool
@@ -83,12 +105,69 @@ def delay_cases(
 
         Returns
         -------
-        new_cases_inferred : :class:`~theano.tensor.TensorVariable`
+        delayed_cases : :class:`~theano.tensor.TensorVariable`
             The delayed input :math:`y_\text{delayed}(t)`, typically the daily number new cases that one expects to measure.
+
+        Example
+        -------
+        ```
+
+        ```
     """
 
     model = modelcontext(model)
 
+    # log normal distributed delays (the median values)
+    if not model.is_hierarchical:
+        delay_log = pm.Normal(
+            name=f"{name_delay}_log",
+            mu=np.log(pr_mean_of_median),
+            sigma=pr_sigma_of_median,
+        )
+        pm.Deterministic(f"{name_delay}", np.exp(delay_log))
+    else:
+        delay_L2_log, delay_L1_log = ut.hierarchical_normal(
+            name_L1=f"{name_delay}_hc_L1_log",
+            name_L2=f"{name_delay}_hc_L2_log",
+            name_sigma=f"{name_delay}_hc_sigma",
+            pr_mean=np.log(pr_mean_of_median),
+            pr_sigma=pr_sigma_of_median,
+            model=model,
+            error_cauchy=False,
+        )
+        pm.Deterministic(f"{name_delay}_hc_L2", np.exp(delay_L2_log))
+        pm.Deterministic(f"{name_delay}_hc_L1", np.exp(delay_L1_log))
+        delay_log = delay_L2_log
+
+    # We may also have a distribution of the width (of the kernel of delays) within
+    # each sample/trace.
+    if pr_sigma_of_width is None:
+        # Default: width of kernel has no distribution
+        width_log = np.log(pr_median_of_width)
+    else:
+        # Alternatively, put a prior distribution on the witdh, too
+        if not model.is_hierarchical:
+            width_log = pm.Normal(
+                name=f"{name_width}_log",
+                mu=np.log(pr_median_of_width),
+                sigma=pr_sigma_of_width,
+            )
+            pm.Deterministic(f"{name_width}", tt.exp(width_log))
+        else:
+            width_L2_log, width_L1_log = hierarchical_normal(
+                name_L1=f"{name_width}_hc_L1_log",
+                name_L2=f"{name_width}_hc_L2_log",
+                name_sigma=f"{name_width}_hc_sigma",
+                pr_mean=np.log(pr_median_of_width),
+                pr_sigma=pr_sigma_of_width,
+                model=model,
+                error_cauchy=False,
+            )
+            pm.Deterministic(f"{name_width}_hc_L2", tt.exp(width_L2_log))
+            pm.Deterministic(f"{name_width}_hc_L1", tt.exp(width_L1_log))
+            width_log = width_L2_log
+
+    # enable this function for custom data and data ranges
     if len_output_arr is None:
         len_output_arr = model.data_len + model.fcast_len
     if diff_input_output is None:
@@ -96,58 +175,47 @@ def delay_cases(
     if len_input_arr is None:
         len_input_arr = model.sim_len
 
-    len_delay = () if model.sim_ndim == 1 else model.sim_shape[1]
-    delay_L2_log, delay_L1_log = hierarchical_normal(
-        name_delay + "_log",
-        "sigma_" + name_delay,
-        np.log(pr_median_delay),
-        pr_sigma_median_delay,
-        len_delay,
-        w=0.9,
-        error_cauchy=False,
-    )
-    if delay_L1_log is not None:
-        pm.Deterministic(f"{name_delay}_L2", np.exp(delay_L2_log))
-        pm.Deterministic(f"{name_delay}_L1", np.exp(delay_L1_log))
-    else:
-        pm.Deterministic(f"{name_delay}", np.exp(delay_L2_log))
-
-    if pr_sigma_scale_delay is not None:
-        scale_delay_L2_log, scale_delay_L1_log = hierarchical_normal(
-            "scale_" + name_delay,
-            "sigma_scale_" + name_delay,
-            np.log(pr_median_scale_delay),
-            pr_sigma_scale_delay,
-            len_delay,
-            w=0.9,
-            error_cauchy=False,
-        )
-        if scale_delay_L1_log is not None:
-            pm.Deterministic(f"scale_{name_delay}_L2", tt.exp(scale_delay_L2_log))
-            pm.Deterministic(f"scale_{name_delay}_L1", tt.exp(scale_delay_L1_log))
-
-        else:
-            pm.Deterministic(f"scale_{name_delay}", tt.exp(scale_delay_L2_log))
-    else:
-        scale_delay_L2_log = np.log(pr_median_scale_delay)
-
-    new_cases_inferred = mh.delay_cases_lognormal(
-        input_arr=new_I_t,
+    # delay the input cases
+    delayed_cases = _delay_lognormal(
+        input_arr=cases,
         len_input_arr=len_input_arr,
         len_output_arr=len_output_arr,
-        median_delay=tt.exp(delay_L2_log),
-        scale_delay=tt.exp(scale_delay_L2_log),
+        median_delay=tt.exp(delay_log),
+        scale_delay=tt.exp(width_log),
         delay_betw_input_output=diff_input_output,
     )
-    if save_in_trace:
-        pm.Deterministic(name_delayed_cases, new_cases_inferred)
 
-    return new_cases_inferred
+    # optionally, add the cases to the trace. maybe let the user do this in the future.
+    if name_delayed_cases is not None:
+        pm.Deterministic(f"{name_delayed_cases}", delayed_cases)
+
+    return delayed_cases
 
 
-# underscore
-# delay.py
-def delay_timeshift(new_I_t, len_new_I_t, len_out, delay, delay_diff):
+def _delay_lognormal(
+    input_arr,
+    len_input_arr,
+    len_output_arr,
+    median_delay,
+    scale_delay,
+    delay_betw_input_output,
+):
+    delay_mat = _make_delay_matrix(
+        n_rows=len_input_arr,
+        n_columns=len_output_arr,
+        initial_delay=delay_betw_input_output,
+    )
+    # avoid negative values that lead to nans in the lognormal distribution
+    delay_mat[delay_mat < 0.01] = 0.01
+
+    # add a dim if hierarchical
+    if input_arr.ndim == 2:
+        delay_mat = delay_mat[:, :, None]
+    delayed_arr = _apply_delay(input_arr, median_delay, scale_delay, delay_mat)
+    return delayed_arr
+
+
+def _delay_timeshift(new_I_t, len_new_I_t, len_out, delay, delay_diff):
     """
         Delays (time shifts) the input new_I_t by delay.
 
@@ -179,16 +247,14 @@ def delay_timeshift(new_I_t, len_new_I_t, len_out, delay, delay_diff):
     """
 
     # elementwise delay of input to output
-    delay_mat = make_delay_matrix(
+    delay_mat = _make_delay_matrix(
         n_rows=len_new_I_t, n_columns=len_out, initial_delay=delay_diff
     )
-    inferred_cases = interpolate(new_I_t, delay, delay_mat)
+    inferred_cases = _interpolate(new_I_t, delay, delay_mat)
     return inferred_cases
 
 
-# underscore
-# delay.py
-def make_delay_matrix(n_rows, n_columns, initial_delay=0):
+def _make_delay_matrix(n_rows, n_columns, initial_delay=0):
     """
         Has in each entry the delay between the input with size n_rows and the output
         with size n_columns
@@ -206,10 +272,8 @@ def make_delay_matrix(n_rows, n_columns, initial_delay=0):
     return mat[:n_rows, :n_columns]
 
 
-# underscore
-# delay.py
-def apply_delay(array, delay, sigma_delay, delay_mat):
-    mat = tt_lognormal(delay_mat, mu=np.log(delay), sigma=sigma_delay)
+def _apply_delay(array, delay, sigma_delay, delay_mat):
+    mat = ut.tt_lognormal(delay_mat, mu=np.log(delay), sigma=sigma_delay)
     if array.ndim == 2 and mat.ndim == 3:
         array_shuf = array.dimshuffle((1, 0))
         mat_shuf = mat.dimshuffle((2, 0, 1))
@@ -224,33 +288,7 @@ def apply_delay(array, delay, sigma_delay, delay_mat):
     return delayed_arr
 
 
-# underscore
-# delay.py
-def delay_lognormal(
-    input_arr,
-    len_input_arr,
-    len_output_arr,
-    median_delay,
-    scale_delay,
-    delay_betw_input_output,
-):
-    delay_mat = make_delay_matrix(
-        n_rows=len_input_arr,
-        n_columns=len_output_arr,
-        initial_delay=delay_betw_input_output,
-    )
-    delay_mat[
-        delay_mat < 0.01
-    ] = 0.01  # needed because negative values lead to nans in the lognormal distribution.
-    if input_arr.ndim == 2:
-        delay_mat = delay_mat[:, :, None]
-    delayed_arr = apply_delay(input_arr, median_delay, scale_delay, delay_mat)
-    return delayed_arr
-
-
-# delay.py
-# underscore this
-def interpolate(array, delay, delay_matrix):
+def _interpolate(array, delay, delay_matrix):
     """
         smooth the array (if delay is no integer)
     """
