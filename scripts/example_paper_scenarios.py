@@ -2,9 +2,14 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-12 17:09:38
-# @Last Modified: 2020-05-13 12:40:42
+# @Last Modified: 2020-05-19 09:56:36
 # ------------------------------------------------------------------------------ #
 # Reproduce Dehning et al. arXiv:2004.01105 Figure 3
+# In the new code we have implemented smoother transitions at the change points
+# via sigmoids instead of the linear transient.
+# This slightly changes the interpretation of the change-point onset time. In the
+# paper, it was the beginning of the change, now it is at the center (of the
+# sigmoid)
 # ------------------------------------------------------------------------------ #
 
 import datetime
