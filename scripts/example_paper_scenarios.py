@@ -13,6 +13,7 @@
 # ------------------------------------------------------------------------------ #
 
 import datetime
+import sys
 
 import pymc3 as pm
 import numpy as np
@@ -147,7 +148,7 @@ for i, key in enumerate(
 
 # right column
 for i, key in enumerate(
-    ["delay", "transient_len_1", "transient_len_2", "transient_len_3",]
+    ["delay", "transient_len_1", "transient_len_2", "transient_len_3"]
 ):
     cov19.plot._distribution(model, trace, key, ax=axes[i + 2, 2])
 
