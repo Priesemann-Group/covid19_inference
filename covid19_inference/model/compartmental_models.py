@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-19 11:58:07
-# @Last Modified: 2020-05-19 15:42:41
+# @Last Modified: 2020-05-19 15:52:14
 # ------------------------------------------------------------------------------ #
 
 import logging
@@ -35,8 +35,8 @@ def SIR(
     
     .. math::
     
-        I_{new}(t) &= \lambda_t I(t-1)  \frac{S(t-1)}{N}   \
-        S(t) &= S(t-1) - I_{new}(t)  \
+        I_{new}(t) &= \lambda_t I(t-1)  \frac{S(t-1)}{N}   \\
+        S(t) &= S(t-1) - I_{new}(t)  \\
         I(t) &= I(t-1) + I_{new}(t) - \mu  I(t)
     
     The prior distribution of the recovery rate :math:`\mu` is set to
@@ -150,17 +150,17 @@ def SEIR(
     
      .. math::
     
-        E_{\text{new}}(t) &= \lambda_t I(t-1) \frac{S(t)}{N}   \
-        S(t) &= S(t-1) - E_{\text{new}}(t)  \
-        I_\text{new}(t) &= \sum_{k=1}^{10} \beta(k) E_{\text{new}}(t-k)   \
-        I(t) &= I(t-1) + I_{\text{new}}(t) - \mu  I(t) \
+        E_{\text{new}}(t) &= \lambda_t I(t-1) \frac{S(t)}{N}   \\
+        S(t) &= S(t-1) - E_{\text{new}}(t)  \\
+        I_\text{new}(t) &= \sum_{k=1}^{10} \beta(k) E_{\text{new}}(t-k)   \\
+        I(t) &= I(t-1) + I_{\text{new}}(t) - \mu  I(t) \\
         \beta(k) & = P(k) \sim LogNormal(\text{log}(d_{\text{incubation}})), \text{sigma\_incubation})
     
     The recovery rate :math:`\mu` and the incubation period is the same for all regions and follow respectively:
     
     .. math::
     
-         P(\mu) &\sim LogNormal(\text{log(pr\_median\_mu)), pr\_sigma\_mu}) \
+         P(\mu) &\sim LogNormal(\text{log(pr\_median\_mu)), pr\_sigma\_mu}) \\
          P(d_{\text{incubation}}) &\sim Normal(\text{pr\_mean\_median\_incubation, pr\_sigma\_median\_incubation})
     
     The initial number of infected and newly exposed differ for each region and follow prior
@@ -168,7 +168,7 @@ def SEIR(
     
     .. math::
     
-         E(t)  &\sim HalfCauchy(\text{pr\_beta\_E\_begin}) \:\: \text{ for} \: t \in {-9, -8, ..., 0}\
+         E(t)  &\sim HalfCauchy(\text{pr\_beta\_E\_begin}) \:\: \text{ for} \: t \in {-9, -8, ..., 0}\\
          I(0)  &\sim HalfCauchy(\text{pr\_beta\_I\_begin}).
     
     
