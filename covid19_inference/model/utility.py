@@ -6,6 +6,7 @@ import pymc3 as pm
 # if model.is_hierc.: ... make this apply only to the hierarchical case and check before
 # remove w parameter
 
+from .model import *
 
 def hierarchical_normal(
     name_L1,
@@ -13,7 +14,7 @@ def hierarchical_normal(
     name_sigma,
     pr_mean,
     pr_sigma,
-    len_L2,
+    model=None,
     error_fact=2.0,
     error_cauchy=True,
 ):
@@ -61,8 +62,9 @@ def hierarchical_normal(
         the random variable :math:`y_\text{L2}`
     x : :class:`~theano.tensor.TensorVariable`
         the random variable :math:`x_\text{L1}`
-
     """
+
+    model = modelcontext(model)
 
     if error_cauchy:
         sigma_Y = pm.HalfCauchy(name_sigma, beta=error_fact * pr_sigma)
@@ -71,12 +73,13 @@ def hierarchical_normal(
 
     X = pm.Normal(name_L1, mu=pr_mean, sigma=pr_sigma)
     phi = pm.Normal(
-        name_L2 + "_raw", mu=0, sigma=1, shape=len_L2
+        name_L2 + "_raw", mu=0, sigma=1, shape=model.shape_of_regions
     )  # (1-w**2)*sigma_X+1*w**2, shape=len_Y)
     Y = X + phi * sigma_Y
     pm.Deterministic(name_L2, Y)
 
     return Y, X
+
 
 
 # utility.py
