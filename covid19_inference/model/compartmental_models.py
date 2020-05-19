@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-19 11:58:07
-# @Last Modified: 2020-05-19 12:02:54
+# @Last Modified: 2020-05-19 15:42:41
 # ------------------------------------------------------------------------------ #
 
 import logging
@@ -10,8 +10,12 @@ import logging
 import theano
 import theano.tensor as tt
 import numpy as np
+import pymc3 as pm
+from .model import *
+
 
 log = logging.getLogger(__name__)
+
 
 # compartmental_models.py
 # name 4 trace arguments, if I_t and S_t are none do not save
