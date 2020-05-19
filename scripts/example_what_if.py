@@ -12,6 +12,7 @@
 
 import datetime
 import copy
+import sys
 
 import pymc3 as pm
 import numpy as np
@@ -88,7 +89,7 @@ cp_a.append(
         pr_sigma_date_transient=1,
         pr_median_lambda=ref * 2,
         pr_sigma_lambda=0.3,
-    ),
+    )
 )
 
 # b: back to pre-lockdown value
@@ -99,7 +100,7 @@ cp_b.append(
         pr_sigma_date_transient=1,
         pr_median_lambda=0.15,
         pr_sigma_lambda=0.3,
-    ),
+    )
 )
 
 # c: 20% decrease, ideal case, for instance if contact tracing is very effective
@@ -110,7 +111,7 @@ cp_c.append(
         pr_sigma_date_transient=1,
         pr_median_lambda=ref - ref * 0.2,
         pr_sigma_lambda=0.3,
-    ),
+    )
 )
 
 
