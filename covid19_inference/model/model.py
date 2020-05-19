@@ -1,21 +1,14 @@
 import datetime
-import platform
 import logging
 
-import theano
-import theano.tensor as tt
 import numpy as np
-import pymc3 as pm
 from pymc3 import Model  # this import is needed to get pymc3-style "with ... as model:"
 
-from . import model_helper as mh
+from . import utility as ut
 
 log = logging.getLogger(__name__)
 
-if platform.system() == "Darwin":
-    theano.config.gcc.cxxflags = "-Wno-c++11-narrowing"  # workaround for macos
 
-# model.py
 class Cov19Model(Model):
     """
         Model class used to create a covid-19 propagation dynamics model.
@@ -230,7 +223,6 @@ class Cov19Model(Model):
         return (self.data_begin - self.sim_begin).days
 
 
-# model.py
 def modelcontext(model):
     """
         return the given model or try to find it in the context if there was
@@ -241,8 +233,11 @@ def modelcontext(model):
     return model
 
 
-# model.py
-def set_missing_with_default(priors_dict, default_priors):
+def set_missing_priors_with_default(priors_dict, default_priors):
+    """
+        Takes a dict with custom priors and a dict with defaults and sets keys that
+        are not given
+    """
     for prior_name in priors_dict.keys():
         if prior_name not in default_priors:
             log.warning(f"Prior with name {prior_name} not known")
