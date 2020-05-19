@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-19 11:57:28
-# @Last Modified: 2020-05-19 12:09:42
+# @Last Modified: 2020-05-19 12:12:26
 # ------------------------------------------------------------------------------ #
 
 """
@@ -22,6 +22,7 @@
     * _hc_L1 to indicate hierarchical variables
         + if hc, then we append suffixes to provided argument names
     * last suffix `_log_` vs `_log__` from pymc3
+    * last suffix `_raw_` to indicate things that need more cleanup
 * model as optional argument
 * _try_ to separate hc from non hc
 * comments within functions what;s happening
@@ -43,4 +44,6 @@
 * [ ] fix examples
 * [ ] ipynb automation
 * [ ] figure automation
+* [ ] fix documentation
+* [ ] add details on the naming convention to the doc.
 """
