@@ -34,87 +34,119 @@ def delay_cases(
     len_output_arr=None,
     diff_input_output=None,
 ):
-    r"""
+    """
         Convolves the input by a lognormal distribution, in order to model a delay:
 
-        * We have a kernel (a distribution) of delays, one realization of this kernel
-        is applied to each pymc3 sample.
+        * We have a kernel (a distribution) of delays, one realization of this kernel is
+          applied to each pymc3 sample.
 
         * The kernel has a median delay D and a width that correspond to this one
-        sample. Doing the ensemble average over all samples and the respective kernels,
-        we get two distributions: one of the median delay D and one of the width.
+          sample. Doing the ensemble average over all samples and the respective
+          kernels, we get two distributions: one of the median delay D and one of the
+          width.
 
         * The (normal) distribution of the median of D is specified using
-        `pr_mean_of_median` and `pr_sigma_of_median`.
+          `pr_mean_of_median` and `pr_sigma_of_median`.
 
         * The (lognormal) distribution of the width of the kernel of D is specified
-          using `pr_median_of_width` and `pr_sigma_of_width`. If `pr_sigma_of_width` is
-          None, the width is fixed (skipping the second distribution).
-
-        .. math::
-
-            y_\text{delayed}(t) &= \sum_{\tau=0}^T y_\text{input}(\tau) LogNormal[log(\text{delay}), \text{pr\_median\_scale\_delay}](t - \tau)\\
-            log(\text{delay}) &= Normal(log(\text{pr\_sigma\_delay}), \text{pr\_sigma\_delay})
-
-        For clarification: the :math:`LogNormal` distribution is a function evaluated at :math:`t - \tau`.
-
-        If the model is 2-dimensional, the :math:`log(\text{delay})` is hierarchically modelled with the
-        :func:`hierarchical_normal` function using the default parameters except that the
-        prior :math:`\sigma` of :math:`\text{delay}_\text{L2}` is HalfNormal distributed (``error_cauchy=False``).
-
+          using `pr_median_of_width` and `pr_sigma_of_width`. If
+          `pr_sigma_of_width` is None, the width is fixed (skipping the second
+          distribution).
 
         Parameters
         ----------
         cases : :class:`~theano.tensor.TensorVariable`
-            The input, typically the number newly infected cases :math:`I_{new}(t)` of from the output of
+            The input, typically the number of newly infected cases from the output of
             :func:`SIR` or :func:`SEIR`.
+
         name_delay : str
-            The name under which the delay is saved in the trace, suffixes and prefixes are added depending on which
-            variable is saved.
+            The name under which the delay is saved in the trace, suffixes and prefixes
+            are added depending on which variable is saved.
+            Default : "delay"
+
         name_delayed_cases : str or None
             The name under which the delayed cases are saved in the trace.
-            If None, will not add to trace.
+            If None, no variable will be added to the trace.
             Default: "delayed_cases"
-        pr_mean_median_delay : float
-            The mean of the :class:`~pymc3.distributions.continuous.normal` distribution which
-            models the prior median of the :class:`~pymc3.distributions.continuous.LogNormal` delay kernel.
-        pr_sigma_median_delay : float
-            The standart devaiation of :class:`~pymc3.distributions.continuous.normal` distribution which
-            models the prior median of the :class:`~pymc3.distributions.continuous.LogNormal` delay kernel.
-        pr_median_scale_delay : float
-            The scale (width) of the :class:`~pymc3.distributions.continuous.LogNormal` delay kernel.
-        pr_sigma_scale_delay : float
-            Whether to put a prior distribution on the scale (width) of the distribution
-            of the delays, too.
+
+        pr_mean_of_median : float
+            The mean of the :class:`~pymc3.normal` distribution
+            which models the prior median of the
+            :class:`~pymc3.LogNormal` delay kernel.
+            Default: 10.0 (days)
+
+        pr_sigma_of_median : float
+            The standart devaiation of :class:`~pymc3.normal`
+            distribution which models the prior median of the
+            :class:`~pymc3.LogNormal` delay kernel.
+            Default: 0.2
+
+        pr_median_of_width : float
+            The scale (width) of the :class:`~pymc3.LogNormal`
+            delay kernel.
+            Default: 0.3
+
+        pr_sigma_of_width : float or None
+            Whether to put a prior distribution on the scale (width)
+            of the distribution of the delays, too.
+            If a number is provided, the scale of the delay kernel follows
+            a prior :class:`~pymc3.LogNormal` distribution, with median
+            `pr_median_scale_delay` and scale `pr_sigma_scale_delay`.
             Default: None, and no distribution is applied.
-            If a number is provided, the scale of the delay kernel follows a prior
-            :class:`~pymc3.distributions.continuous.LogNormal` distribution, with median ``pr_median_scale_delay`` and scale ``pr_sigma_scale_delay``.
-        model : :class:`Cov19Model`
-            if none, it is retrieved from the context
-        save_in_trace : bool
-            whether to save :math:`y_\text{delayed}` in the trace
+
+        model : :class:`Cov19Model` or None
+            The model to use.
+            Default: None, model is retrieved automatically from the context
+
+        Other Parameters
+        ----------------
         len_input_arr :
-            Length of ``new_I_t``. By default equal to ``model.sim_len``. Necessary because the shape of theano
-            tensors are not defined at when the graph is built.
+            Length of ``new_I_t``. By default equal to ``model.sim_len``. Necessary
+            because the shape of theano tensors are not defined at when the graph is
+            built.
+
         len_output_arr : int
-            Length of the array returned. By default it set to the length of the cases_obs saved in the model plus
-            the number of days of the forecast.
+            Length of the array returned. By default it set to the length of the
+            cases_obs saved in the model plus the number of days of the forecast.
+
         diff_input_output : int
-            Number of days the returned array begins later then the input. Should be significantly larger than
-            the median delay. By default it is set to the ``model.diff_data_sim``.
+            Number of days the returned array begins later then the input. Should be
+            significantly larger than the median delay. By default it is set to the
+            ``model.diff_data_sim``.
 
         Returns
         -------
         delayed_cases : :class:`~theano.tensor.TensorVariable`
-            The delayed input :math:`y_\text{delayed}(t)`, typically the daily number new cases that one expects to measure.
+            The delayed input :math:`y_\\text{delayed}(t)`,
+            typically the daily number new cases that one expects to measure.
 
         Example
         -------
-        ```
+        .. code-block:: python
 
-        ```
+            with cov19.model.Cov19Model(**params_model) as model:
+                lambda_t_log = cov19.model.lambda_t_with_sigmoids(
+                    pr_median_lambda_0=0.4,
+                    pr_sigma_lambda_0=0.5,
+                    change_points_list=cp_base,
+                )
+
+                mu = pm.Lognormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
+                pr_median_delay = 10
+
+                new_I_t = cov19.model.SIR(lambda_t_log, mu)
+
+                new_cases_inferred_raw = cov19.model.delay_cases(
+                    cases=new_I_t,
+                    pr_mean_of_median=pr_median_delay, pr_median_of_width=0.3
+                )
+
+                new_cases_inferred = cov19.model.week_modulation(new_cases_inferred_raw)
+
+                cov19.model.student_t_likelihood(new_cases_inferred)
+        ..
     """
-
+    log.debug("delay_cases()")
     model = modelcontext(model)
 
     # log normal distributed delays (the median values)

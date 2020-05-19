@@ -9,10 +9,14 @@ from . import utility as ut
 log = logging.getLogger(__name__)
 
 
+# can we rename this guy to model base or something?
 class Cov19Model(Model):
     """
-        Model class used to create a covid-19 propagation dynamics model.
+        Abstract base class for the dynamic model of covid-19 propagation.
+        Derived from :class:`pymc3.Model`.
+
         Parameters below are passed to the constructor.
+
         Attributes (Variables) are available after creation and can be accessed from
         every instance. Some background:
 
