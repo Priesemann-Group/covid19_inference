@@ -1,15 +1,3 @@
-# ------------------------------------------------------------------------------ #
-# @Author:        F. Paul Spitzner
-# @Email:         paul.spitzner@ds.mpg.de
-# @Created:       2020-05-14 11:14:19
-# @Last Modified: 2020-05-20 11:39:51
-# ------------------------------------------------------------------------------ #
-# What if scenarios for relaxations around May 11.
-# This is a simple example how to construct incorporate expected change points
-# (that are not constrained by data yet) to create different szenarios.
-# The script also shows a bit how to set the rcParameters for the plots.
-# ------------------------------------------------------------------------------ #
-
 import datetime
 import copy
 
@@ -154,11 +142,8 @@ tr_b = tr_a
 tr_c = tr_a
 
 
-# ------------------------------------------------------------------------------ #
-# plotting
-# ------------------------------------------------------------------------------ #
-
-# english
+# ## Plotting
+# ### english
 cov19.plot.set_rcparams(cov19.plot.get_rcparams_default())
 cov19.plot.rcParams.draw_ci_50 = True
 
@@ -191,7 +176,7 @@ fig, axes = cov19.plot.timeseries_overview(
     color="tab:green",
 )
 
-# german
+# ### german
 cov19.plot.set_rcparams(cov19.plot.get_rcparams_default())
 cov19.plot.rcParams.draw_ci_50 = True
 cov19.plot.rcParams.locale = "de_DE"
