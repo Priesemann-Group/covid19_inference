@@ -2,8 +2,8 @@ from .model import Cov19Model
 from .compartmental_models import SIR, SEIR, uncorrelated_prior_I
 from .delay import delay_cases
 from .spreading_rate import lambda_t_with_sigmoids
-
-from .week_modulation import week_modulation
+from .likelihood import student_t_likelihood
+from .week_modulation import week_modulation  # maybe rename the filename
 
 """
 # TODO 2020-05-19
@@ -35,7 +35,7 @@ from .week_modulation import week_modulation
 * [x] JPN compartmental_models.py
 * [x] SM spreading_rate.py
 * [ ] JPN week_modulation.py
-* [x] PS delay.py
+* [x ] PS delay.py
 * [x] SM likelihood.py
 * [ ] JPN utility.py
 
