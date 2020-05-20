@@ -374,6 +374,7 @@ def uncorrelated_prior_I(
         I_begin: :class:`~theano.tensor.TensorVariable`
 
     """
+    log.info("Uncorrelated prior_I")
     model = modelcontext(model)
 
     num_regions = () if model.sim_ndim == 1 else model.sim_shape[1]
