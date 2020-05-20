@@ -1,3 +1,8 @@
+# ------------------------------------------------------------------------------ #
+# This file implements the abstract model base class.
+# It has some helper properties to access date ranges and hierarchical details
+# ------------------------------------------------------------------------------ #
+
 import datetime
 import logging
 

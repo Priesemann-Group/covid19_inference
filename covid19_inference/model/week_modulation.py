@@ -1,8 +1,5 @@
 # ------------------------------------------------------------------------------ #
-# @Author:        F. Paul Spitzner
-# @Email:         paul.spitzner@ds.mpg.de
-# @Created:       2020-05-19 11:58:22
-# @Last Modified: 2020-05-20 11:26:43
+# Apply a weekly modulation to the reported cases. Less reports on the weekend
 # ------------------------------------------------------------------------------ #
 
 import logging
@@ -16,11 +13,11 @@ log = logging.getLogger(__name__)
 
 from .model import *
 
-# week_modulation.py
+
 def week_modulation(
     new_cases_raw,
-    name_weekend_factor = "weekend_factor",
-    name_offset_modulation = "offset_modulation",
+    name_weekend_factor="weekend_factor",
+    name_offset_modulation="offset_modulation",
     week_modulation_type="abs_sine",
     pr_mean_weekend_factor=0.3,
     pr_sigma_weekend_factor=0.5,
@@ -69,6 +66,7 @@ def week_modulation(
     new_cases : :class:`~theano.tensor.TensorVariable`
 
     """
+
     def step_modulation():
         """
         Helper function for the step modulation
@@ -92,43 +90,43 @@ def week_modulation(
         -------
         modulation
         """
-        offset_rad = pm.VonMises(name_offset_modulation+"_rad", mu=0, kappa=0.01)
+        offset_rad = pm.VonMises(name_offset_modulation + "_rad", mu=0, kappa=0.01)
         offset = pm.Deterministic(name_offset_modulation, offset_rad / (2 * np.pi) * 7)
         t = np.arange(shape_modulation[0]) - model.data_begin.weekday()  # Sunday @ zero
         modulation = 1 - tt.abs_(tt.sin(t / 7 * np.pi + offset_rad / 2))
         return modulation
 
     log.info("Week modulation")
-    #Create our model context
+    # Create our model context
     model = modelcontext(model)
 
-    #Get the shape of the modulation from the shape of our simulation
+    # Get the shape of the modulation from the shape of our simulation
     shape_modulation = list(model.sim_shape)
     shape_modulation[0] -= model.diff_data_sim
-        
+
     if not model.is_hierarchical:
         weekend_factor_log = pm.Normal(
-            name=name_weekend_factor+"_log",
+            name=name_weekend_factor + "_log",
             mu=tt.log(pr_mean_weekend_factor),
-            sigma=pr_sigma_weekend_factor
-            )
+            sigma=pr_sigma_weekend_factor,
+        )
         week_end_factor = tt.exp(weekend_factor_log)
         pm.Deterministic(name_weekend_factor, week_end_factor)
 
-    else: #hierarchical  
+    else:  # hierarchical
         week_end_factor_L2_log, week_end_factor_L1_log = hierarchical_normal(
-            name_L1 =name_weekend_factor+"_hc_L1_log",
-            name_L2 =name_weekend_factor+"_hc_L1_log",
-            name_sigma="sigma_"+name_weekend_factor,
+            name_L1=name_weekend_factor + "_hc_L1_log",
+            name_L2=name_weekend_factor + "_hc_L1_log",
+            name_sigma="sigma_" + name_weekend_factor,
             pr_mean=tt.log(pr_mean_weekend_factor),
             pr_sigma=pr_sigma_weekend_factor,
-            )
+        )
 
         # We do that so we can use it later (same name as non hierarchical)
         week_end_factor = tt.exp(week_end_factor_L2_log)
 
-        pm.Deterministic(name_weekend_factor+"_hc_L2", weekend_factor)
-        pm.Deterministic(name_weekend_factor+"_hc_L1", tt.exp(week_end_factor_L1_log))
+        pm.Deterministic(name_weekend_factor + "_hc_L2", weekend_factor)
+        pm.Deterministic(name_weekend_factor + "_hc_L1", tt.exp(week_end_factor_L1_log))
 
     # Different modulation types
     modulation = step_modulation() if week_modulation_type == "step" else 0
@@ -140,7 +138,6 @@ def week_modulation(
     multiplication_vec = tt.abs_(
         np.ones(shape_modulation) - week_end_factor * modulation
     )
-
 
     new_cases_inferred_eff = new_cases_raw * multiplication_vec
 
