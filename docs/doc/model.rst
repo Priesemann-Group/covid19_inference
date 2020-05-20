@@ -43,7 +43,7 @@ Example
     ]
 
     # create model instance and add details
-    with cov19.model.Cov19Model(**params_model) as model:
+    with cov19.model.Cov19Model(**params_model) as this_model:
         # apply change points, lambda is in log scale
         lambda_t_log = cov19.model.lambda_t_with_sigmoids(
             pr_median_lambda_0=0.4,
@@ -68,6 +68,9 @@ Example
 
         # set the likeliehood
         cov19.model.student_t_likelihood(new_cases_inferred)
+
+    # run the sampling
+    trace = pm.sample(model=this_model, tune=50, draws=10, init="advi+adapt_diag")
 ..
 
 
@@ -158,17 +161,21 @@ References
     Ann Intern Med 2020. https://doi.org/10.7326/M20-0504.
 
 ---------------------------------------
-
 .. autofunction:: covid19_inference.model.uncorrelated_prior_I
+
 
 Likelihood
 ----------
 .. autofunction:: covid19_inference.model.student_t_likelihood
 
+
+Spreading Rate
+--------------
+.. autofunction:: covid19_inference.model.lambda_t_with_sigmoids
+
 Delay
 -----
 .. autofunction:: covid19_inference.model.delay_cases
-
 
 More Details
 ^^^^^^^^^^^^
@@ -188,6 +195,7 @@ If the model is 2-dimensional (hierarchical), the :math:`\log(\text{delay})` is 
 modelled with the :func:`hierarchical_normal` function using the default parameters
 except that the prior `sigma` of `delay_L2` is HalfNormal distributed
 (``error_cauchy=False``).
+
 
 
 Week modulation
