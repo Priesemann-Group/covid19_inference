@@ -11,4 +11,6 @@ from . import plotting
 from . import data_retrieval
 from . import plot
 from . import model
+from .model import Cov19Model
+
 from ._dev_helper import create_example_instance
