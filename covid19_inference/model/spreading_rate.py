@@ -213,7 +213,7 @@ def lambda_t_with_sigmoids(
         ----
         Documentation on this
     """
-
+    log.info("Lambda_t with sigmoids")
     # Get our default mode context
     model = modelcontext(model)
 

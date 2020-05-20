@@ -60,6 +60,7 @@ def SIR(
             time series of the susceptible (if return_all set to True)
 
     """
+    log.info("SIR")
     model = modelcontext(model)
 
     # Total number of people in population
@@ -203,6 +204,7 @@ def SEIR(
         time series of the susceptible (if return_all set to True)
 
     """
+    log.info("SEIR")
     model = modelcontext(model)
 
     # Build prior distrubutions:
