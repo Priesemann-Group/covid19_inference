@@ -140,7 +140,7 @@ class OWD(Retrieval):
         """
         return self.data["country"].unique()
 
-    def get_total(self, value="tests", country = None, data_begin = None , data_end = None):
+    def get_total(self, value="tests", country=None, data_begin=None, data_end=None):
         """
             Retrieves all new cases from the Our World in Data dataset as a DataFrame with datetime index.
             Can be filtered by value, country and state, if only a country is given all available states get summed up.
@@ -165,18 +165,23 @@ class OWD(Retrieval):
             : pandas.DataFrame
                 table with new cases and the date as index
         """
-        if value not in ["confirmed","deaths","tests"]:
+        if value not in ["confirmed", "deaths", "tests"]:
             log.warning("Valid values are 'confirmed' and 'deaths'")
-            raise ValueError("No valid value given! " + value)            
+            raise ValueError("No valid value given! " + value)
         if value == "confirmed":
             filter_value = "total_cases"
         if value == "deaths":
             filter_value = "total_deaths"
         if value == "tests":
             filter_value = "total_tests"
-        return self._filter(value=filter_value, country=country,data_begin=data_begin,data_end=data_end).dropna()
+        return self._filter(
+            value=filter_value,
+            country=country,
+            data_begin=data_begin,
+            data_end=data_end,
+        ).dropna()
 
-    def get_new(self, value="tests", country = None, data_begin = None , data_end = None):
+    def get_new(self, value="tests", country=None, data_begin=None, data_end=None):
         """
             Retrieves all new cases from the Our World in Data dataset as a DataFrame with datetime index.
             casesn be filtered by value, country and state, if only a country is given all available states get summed up.
@@ -201,32 +206,41 @@ class OWD(Retrieval):
             : pandas.DataFrame
                 table with new cases and the date as index
         """
-        if value not in ["confirmed","deaths","tests"]:
+        if value not in ["confirmed", "deaths", "tests"]:
             log.warning("Valid values are 'confirmed' and 'deaths'")
-            raise ValueError("No valid value given! " + value)            
+            raise ValueError("No valid value given! " + value)
         if value == "confirmed":
             filter_value = "new_cases"
         if value == "deaths":
             filter_value = "new_deaths"
         if value == "tests":
             filter_value = "new_tests"
-        return self._filter(value=filter_value, country=country,data_begin=data_begin,data_end=data_end).dropna()
+        return self._filter(
+            value=filter_value,
+            country=country,
+            data_begin=data_begin,
+            data_end=data_end,
+        ).dropna()
 
-    def _filter(self, value="new_cases", country = None, data_begin = None , data_end = None):
+    def _filter(self, value="new_cases", country=None, data_begin=None, data_end=None):
         """
         Filter the dataset by value, country and date.
         """
         if country not in self.data["country"].unique():
-            log.warning("Please select a valid country. For the full dataset use self.data!")
+            log.warning(
+                "Please select a valid country. For the full dataset use self.data!"
+            )
             raise ValueError("No valid country given! " + country)
 
         if value not in self.data.columns:
-            log.warning("Please select a valid filter value. For the full dataset use self.data!")
+            log.warning(
+                "Please select a valid filter value. For the full dataset use self.data!"
+            )
             raise ValueError("No valid value given! " + value)
 
-        #First we filter by the given country
+        # First we filter by the given country
         df = self.data.loc[self.data["country"] == country]
-        #Than we get the corresponding value
+        # Than we get the corresponding value
         df = df[value]
 
         if data_begin is None:

@@ -10,12 +10,13 @@ import pymc3 as pm
 
 from .model import *
 
+
 def hierarchical_normal(
-    name_L1,
-    name_L2,
-    name_sigma,
     pr_mean,
     pr_sigma,
+    name_L1="delay_hc_L1",
+    name_L2="delay_hc_L2",
+    name_sigma="delay_hc_sigma",
     model=None,
     error_fact=2.0,
     error_cauchy=True,
@@ -68,6 +69,9 @@ def hierarchical_normal(
 
     model = modelcontext(model)
 
+    if not model.is_hierarchical:
+        raise RuntimeError("Model is not hierarchical.")
+
     if error_cauchy:
         sigma_Y = pm.HalfCauchy(name_sigma, beta=error_fact * pr_sigma)
     else:
@@ -75,7 +79,7 @@ def hierarchical_normal(
 
     X = pm.Normal(name_L1, mu=pr_mean, sigma=pr_sigma)
     phi = pm.Normal(
-        name_L2 + "_raw", mu=0, sigma=1, shape=model.shape_of_regions
+        name_L2 + "_raw_", mu=0, sigma=1, shape=model.shape_of_regions
     )  # (1-w**2)*sigma_X+1*w**2, shape=len_Y)
     Y = X + phi * sigma_Y
     pm.Deterministic(name_L2, Y)
@@ -83,22 +87,23 @@ def hierarchical_normal(
     return Y, X
 
 
-
 # utility.py
 # names
 # still do decide
-def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2):
+def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2, model=None):
 
-    if not len_L2:  # not hierarchical
+    model = modelcontext(model)
+
+    if not model.is_hierarchical:  # not hierarchical
         Y = pm.Beta(name, alpha=pr_mean / pr_sigma, beta=1 / pr_sigma * (1 - pr_mean))
         X = None
     else:
-        sigma_Y = pm.HalfCauchy(name_sigma + "_L2", beta=pr_sigma)
+        sigma_Y = pm.HalfCauchy(name_sigma + "_hc_L2", beta=pr_sigma)
         X = pm.Beta(
-            name + "_L1", alpha=pr_mean / pr_sigma, beta=1 / pr_sigma * (1 - pr_mean)
+            name + "_hc_L1", alpha=pr_mean / pr_sigma, beta=1 / pr_sigma * (1 - pr_mean)
         )
         Y = pm.Beta(
-            name + "_L2", alpha=X / sigma_Y, beta=1 / sigma_Y * (1 - X), shape=len_L2
+            name + "_hc_L2", alpha=X / sigma_Y, beta=1 / sigma_Y * (1 - X), shape=len_L2
         )
 
     return Y, X
