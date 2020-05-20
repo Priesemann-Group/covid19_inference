@@ -65,9 +65,11 @@ cp_base = [
     ),
 ]
 
-# Scenarios for May 11, due to ~11 days delay, not evident in data yet
-# Add additional change points with reference to the previous values,
-# we use the posterior value that we inferred before (as of May 14)
+"""
+    Scenarios for May 11, due to ~11 days delay, not evident in data yet
+    Add additional change points with reference to the previous values,
+    we use the posterior value that we inferred before (as of May 14)
+"""
 ref = 0.10
 
 # a: double the contacts (this only effectively applies apart from family)
@@ -134,16 +136,17 @@ mod_a = create_model(cp_a, params_model)
 mod_b = create_model(cp_b, params_model)
 mod_c = create_model(cp_c, params_model)
 
-# engage!
+"""## engage!
+"""
 tr_a = pm.sample(model=mod_a, tune=50, draws=10, init="advi+adapt_diag")
 tr_b = pm.sample(model=mod_b, tune=50, draws=10, init="advi+adapt_diag")
 tr_c = pm.sample(model=mod_c, tune=50, draws=10, init="advi+adapt_diag")
 tr_b = tr_a
 tr_c = tr_a
 
-
-# ## Plotting
-# ### english
+"""## Plotting
+    ### english
+"""
 cov19.plot.set_rcparams(cov19.plot.get_rcparams_default())
 cov19.plot.rcParams.draw_ci_50 = True
 
@@ -176,7 +179,9 @@ fig, axes = cov19.plot.timeseries_overview(
     color="tab:green",
 )
 
-# ### german
+"""
+    ### german
+"""
 cov19.plot.set_rcparams(cov19.plot.get_rcparams_default())
 cov19.plot.rcParams.draw_ci_50 = True
 cov19.plot.rcParams.locale = "de_DE"

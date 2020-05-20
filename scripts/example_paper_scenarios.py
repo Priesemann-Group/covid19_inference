@@ -1,16 +1,11 @@
-# ------------------------------------------------------------------------------ #
-# @Author:        F. Paul Spitzner
-# @Email:         paul.spitzner@ds.mpg.de
-# @Created:       2020-05-12 17:09:38
-# @Last Modified: 2020-05-19 09:56:36
-# ------------------------------------------------------------------------------ #
-# Reproduce Dehning et al. arXiv:2004.01105 Figure 3
-# In the new code we have implemented smoother transitions at the change points
-# via sigmoids instead of the linear transient.
-# This slightly changes the interpretation of the change-point onset time. In the
-# paper, it was the beginning of the change, now it is at the center (of the
-# sigmoid)
-# ------------------------------------------------------------------------------ #
+"""
+Reproduce Dehning et al. arXiv:2004.01105 Figure 3
+In the new code we have implemented smoother transitions at the change points
+via sigmoids instead of the linear transient.
+This slightly changes the interpretation of the change-point onset time. In the
+paper, it was the beginning of the change, now it is at the center (of the
+sigmoid)
+"""
 
 import datetime
 
@@ -75,10 +70,12 @@ change_points = [
     ),
 ]
 
-# create a model instance from the parameters and change points from above.
-# Add further details.
-# Every variable we define in the `with ... as model`-context gets attached
-# to the model and becomes a variable in the trace.
+"""
+create a model instance from the parameters and change points from above.
+Add further details.
+Every variable we define in the `with ... as model`-context gets attached
+"""
+to the model and becomes a variable in the trace.
 with cov19.Cov19Model(**params_model) as model:
     # Create the an array of the time dependent infection rate lambda
     lambda_t_log = cov19.lambda_t_with_sigmoids(
@@ -110,14 +107,13 @@ with cov19.Cov19Model(**params_model) as model:
     cov19.student_t_likelihood(new_cases_inferred)
 
 
-# engage!
+"""## engage!
+"""
 trace = pm.sample(model=model, tune=5000, draws=1000, init="advi+adapt_diag")
 
 
-# ------------------------------------------------------------------------------ #
-# plotting
-# ------------------------------------------------------------------------------ #
-
+"""## plotting
+"""
 fig, axes = cov19.plot.timeseries_overview(model, trace, offset=cum_cases[0])
 
 fig, axes = plt.subplots(6, 3, figsize=(4, 6.4))

@@ -1,16 +1,11 @@
 
-# This file create the model with three changing points of the paper https://science.sciencemag.org/content/early/2020/05/14/science.abb9789. 
+"""
+    This file create the model with three changing points of the paper https://science.sciencemag.org/content/early/2020/05/14/science.abb9789. 
 
-# It implements an Hierarchical Bayesian Model for all German states (Bundeslaender).
+    It implements an Hierarchical Bayesian Model for all German states (Bundeslaender).
 
-# ## Installation
-# Run this if the module isn't installed yet, or you run it in Google Colab:
-
-!pip install git+https://github.com/Priesemann-Group/covid19_inference_forecast.git
-
-
-# ## Importing modules
-
+    ## Importing modules
+"""
 import datetime
 import time as time_module
 import sys
@@ -41,12 +36,12 @@ except ModuleNotFoundError:
 #Dates to obtain the data from
 date_begin_data = datetime.datetime(2020,3,10)
 date_end_data   = datetime.datetime(2020,4,19)
-
+    
 #Downloads 2-D array of new cases (for each state) from the Robert Koch Institute
 rki = cov19.data_retrieval.RKI(True)
 df_bundeslaender = rki.filter_all_bundesland(date_begin_data, date_end_data)
 new_cases_obs = np.diff(np.array(df_bundeslaender),axis=0)[:,:]
-
+    
 #1D array of state population, ordered alphabetically
 N_state = [10880000, 12844000, 3520000, 2485000, 671000, 1787000, 6176000, 
            7927000, 1612000, 17865000, 4053000, 996000, 4085000, 2245000, 2859000, 2171000]
@@ -54,7 +49,6 @@ N_state = [10880000, 12844000, 3520000, 2485000, 671000, 1787000, 6176000,
 #Number of days the simulation starts earlier than the data.
 #Should be significantly larger than the expected delay in order to always fit the same number of data points.
 diff_data_sim = 16
-
 #Number of days in the future (after date_end_data) to forecast cases
 num_days_forecast = 10
 
@@ -141,9 +135,10 @@ trace = pm.sample(model=model, tune=1000, draws=1000, init='advi+adapt_diag')
     
     The model uses a large number of parameters, and internally creates new versions (e.g. var_log_)
     for handling. All defined parameters can be found in `trace.varnames`, and all traces are found in `trace[varname]`.
-"""
 
-# ### Violin plots
+
+    ### Violin plots
+"""
 #Defines plotted variables, their names and plotting range
 var_names = {
     'delay_L2' : {'name':'delay', 'xlim':[0,14]},
