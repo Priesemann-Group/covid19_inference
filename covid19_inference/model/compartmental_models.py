@@ -129,79 +129,95 @@ def SEIR(
     return_all=False,
 ):
     r"""
-    Implements a model similar to the susceptible-exposed-infected-recovered model. Instead of a exponential decaying
-    incubation period, the length of the period is lognormal distributed.
+        Implements a model similar to the susceptible-exposed-infected-recovered model.
+        Instead of a exponential decaying incubation period, the length of the period is
+        lognormal distributed.
 
-    Parameters
-    ----------
-    lambda_t_log : :class:`~theano.tensor.TensorVariable`
-        time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional, the first
-        dimension is time.
+        Parameters
+        ----------
+        lambda_t_log : :class:`~theano.tensor.TensorVariable`
+            time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional, the first
+            dimension is time.
 
-    mu : :class:`~theano.tensor.TensorVariable`
-        the recovery rate :math:`\mu`, typically a random variable. Can be 0 or 1-dimensional. If 1-dimensional,
-        the dimension are the different regions.
+        mu : :class:`~theano.tensor.TensorVariable`
+            the recovery rate :math:`\mu`, typically a random variable. Can be 0 or
+            1-dimensional. If 1-dimensional, the dimension are the different regions.
 
-    name_new_I_t : str, optional
-        Name of the ``new_I_t`` variable
+        name_new_I_t : str, optional
+            Name of the ``new_I_t`` variable
 
-    name_I_t : str, optional
-        Name of the ``I_t`` variable
+        name_I_t : str, optional
+            Name of the ``I_t`` variable
 
-    name_S_t : str, optional
-        Name of the ``S_t`` variable
+        name_S_t : str, optional
+            Name of the ``S_t`` variable
 
-    name_I_begin : str, optional
-        Name of the ``I_begin`` variable
+        name_I_begin : str, optional
+            Name of the ``I_begin`` variable
 
-    name_new_E_begin : str, optional
-        Name of the ``new_E_begin`` variable
+        name_new_E_begin : str, optional
+            Name of the ``new_E_begin`` variable
 
-    name_median_incubation : str
-        The name under which the median incubation time is saved in the trace
+        name_median_incubation : str
+            The name under which the median incubation time is saved in the trace
 
-    pr_beta_I_begin : float or array_like
-        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy` distribution of :math:`I(0)`.
+        pr_beta_I_begin : float or array_like
+            Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
+            distribution of :math:`I(0)`.
 
-    pr_beta_new_E_begin : float or array_like
-        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy` distribution of :math:`E(0)`.
+        pr_beta_new_E_begin : float or array_like
+            Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
+            distribution of :math:`E(0)`.
 
-    pr_median_mu : float or array_like
-        Prior for the median of the :class:`~pymc3.distributions.continuous.Lognormal` distribution of the recovery rate :math:`\mu`.
+        pr_median_mu : float or array_like
+            Prior for the median of the
+            :class:`~pymc3.distributions.continuous.Lognormal` distribution of the
+            recovery rate :math:`\mu`.
 
-    pr_mean_median_incubation : Prior mean of the :class:`~pymc3.distributions.continuous.Normal` distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
-        Defaults to 4 days [Nishiura2020]_, which is the median serial interval (the important measure here is not exactly
-        the incubation period, but the delay until a person becomes infectious which seems to be about
-        1 day earlier as showing symptoms).
+        pr_mean_median_incubation :
+            Prior mean of the :class:`~pymc3.distributions.continuous.Normal`
+            distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
+            Defaults to 4 days [Nishiura2020]_, which is the median serial interval (the
+            important measure here is not exactly the incubation period, but the delay
+            until a person becomes infectious which seems to be about 1 day earlier as
+            showing symptoms).
 
-    pr_sigma_median_incubation : Prior sigma of the :class:`~pymc3.distributions.continuous.Normal` distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
-        Default is 1 day.
+        pr_sigma_median_incubation :
+            Prior sigma of the :class:`~pymc3.distributions.continuous.Normal`
+            distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
+            Default is 1 day.
 
-    sigma_incubation : Scale parameter of the :class:`~pymc3.distributions.continuous.Lognormal` distribution of the incubation time/
-        delay until infectiousness. The default is set to 0.4, which is about the scale found in [Nishiura2020]_, [Lauer2020]_.
+        sigma_incubation :
+            Scale parameter of the :class:`~pymc3.distributions.continuous.Lognormal`
+            distribution of the incubation time/ delay until infectiousness. The default
+            is set to 0.4, which is about the scale found in [Nishiura2020]_,
+            [Lauer2020]_.
 
-    pr_sigma_mu : float or array_like
-        Prior for the sigma of the lognormal distribution of recovery rate :math:`\mu`.
+        pr_sigma_mu : float or array_like
+            Prior for the sigma of the lognormal distribution of recovery rate
+            :math:`\mu`.
 
-    model : :class:`Cov19Model`
-      if none, it is retrieved from the context
+        model : :class:`Cov19Model`
+            if none, it is retrieved from the context
 
-    return_all : bool
-        if True, returns ``name_new_I_t``, ``name_new_E_t``,  ``name_I_t``, ``name_S_t`` otherwise returns only ``name_new_I_t``
+        return_all : bool
+            if True, returns ``name_new_I_t``, ``name_new_E_t``,  ``name_I_t``,
+            ``name_S_t`` otherwise returns only ``name_new_I_t``
 
-    Returns
-    -------
-    name_new_I_t : :class:`~theano.tensor.TensorVariable`
-        time series of the number daily newly infected persons.
+        Returns
+        -------
+        name_new_I_t : :class:`~theano.tensor.TensorVariable`
+            time series of the number daily newly infected persons.
 
-    name_new_E_t : :class:`~theano.tensor.TensorVariable`
-        time series of the number daily newly exposed persons. (if return_all set to True)
+        name_new_E_t : :class:`~theano.tensor.TensorVariable`
+            time series of the number daily newly exposed persons. (if return_all set to
+            True)
 
-    name_I_t : :class:`~theano.tensor.TensorVariable`
-        time series of the infected (if return_all set to True)
+        name_I_t : :class:`~theano.tensor.TensorVariable`
+            time series of the infected (if return_all set to True)
 
-    name_S_t : :class:`~theano.tensor.TensorVariable`
-        time series of the susceptible (if return_all set to True)
+        name_S_t : :class:`~theano.tensor.TensorVariable`
+            time series of the susceptible (if return_all set to True)
 
     """
     log.info("SEIR")
@@ -324,37 +340,38 @@ def uncorrelated_prior_I(
     model=None,
 ):
     r"""
-    Builds the prior for I begin  by solving the SIR differential from the first data backwards. This decorrelates the
-    I_begin from the lambda_t at the beginning, allowing a more efficient sampling. The example_one_bundesland runs
-    about 30\% faster with this prior, instead of a HalfCauchy.
+        Builds the prior for I begin  by solving the SIR differential from the first
+        data backwards. This decorrelates the I_begin from the lambda_t at the
+        beginning, allowing a more efficient sampling. The example_one_bundesland runs
+        about 30\% faster with this prior, instead of a HalfCauchy.
 
-    Parameters
-    ----------
-    lambda_t_log : TYPE
-        Description
-    mu : TYPE
-        Description
-    pr_median_delay : TYPE
-        Description
-    name_I_begin : str, optional
-        Description
-    name_I_begin_ratio_log : str, optional
-        Description
-    pr_sigma_I_begin : int, optional
-        Description
-    n_data_points_used : int, optional
-        Description
-    model : :class:`Cov19Model`
-        if none, it is retrieved from the context
-    lambda_t_log : :class:`~theano.tensor.TensorVariable`
-    mu : :class:`~theano.tensor.TensorVariable`
-    pr_median_delay : float
-    pr_sigma_I_begin : float
-    n_data_points_used : int
+        Parameters
+        ----------
+        lambda_t_log : TYPE
+            Description
+        mu : TYPE
+            Description
+        pr_median_delay : TYPE
+            Description
+        name_I_begin : str, optional
+            Description
+        name_I_begin_ratio_log : str, optional
+            Description
+        pr_sigma_I_begin : int, optional
+            Description
+        n_data_points_used : int, optional
+            Description
+        model : :class:`Cov19Model`
+            if none, it is retrieved from the context
+        lambda_t_log : :class:`~theano.tensor.TensorVariable`
+        mu : :class:`~theano.tensor.TensorVariable`
+        pr_median_delay : float
+        pr_sigma_I_begin : float
+        n_data_points_used : int
 
-    Returns
-    ------------------
-    I_begin: :class:`~theano.tensor.TensorVariable`
+        Returns
+        ------------------
+        I_begin: :class:`~theano.tensor.TensorVariable`
 
     """
     model = modelcontext(model)
