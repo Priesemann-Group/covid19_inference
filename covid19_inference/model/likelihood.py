@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 from .model import *
 import pymc3 as pm
 
+
 def student_t_likelihood(
     new_cases_inferred,
     name_student_t="_new_cases_studentT",

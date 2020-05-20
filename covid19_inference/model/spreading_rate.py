@@ -5,7 +5,9 @@ import theano.tensor as tt
 from .model import *
 
 import logging
+
 log = logging.getLogger(__name__)
+
 
 def _make_change_point_RVs(
     change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=1, model=None
@@ -96,7 +98,7 @@ def _make_change_point_RVs(
             )
             if tr_len_L1_log is not None:
                 pm.Deterministic(f"transient_len_{i + 1}_hc_L1", tt.exp(tr_len_L1_log))
-                pm.Deterministic(f"transient_len_{i + 1}_hc_L2", tt.exp(tr_len_L2_log))      
+                pm.Deterministic(f"transient_len_{i + 1}_hc_L2", tt.exp(tr_len_L2_log))
             else:
                 pm.Deterministic(f"transient_len_{i + 1}", tt.exp(tr_len_L2_log))
         tr_len_list.append(tt.exp(tr_len_L2_log))
@@ -180,12 +182,12 @@ def _make_change_point_RVs(
     return lambda_log_list, tr_time_list, tr_len_list
 
 
-
 """
     TODO
     ----
     def lambda_t_with_transient
 """
+
 
 def lambda_t_with_sigmoids(
     change_points_list,
@@ -221,16 +223,18 @@ def lambda_t_with_sigmoids(
     )
 
     # Build the time-dependent spreading rate
-    lambda_t_list = [lambda_list[0] * tt.ones(model.sim_shape)] # model.sim_shape = (time, state)
+    lambda_t_list = [
+        lambda_list[0] * tt.ones(model.sim_shape)
+    ]  # model.sim_shape = (time, state)
     lambda_before = lambda_list[0]
 
-    # Loop over all lambda values and there corresponding transient values 
+    # Loop over all lambda values and there corresponding transient values
     for tr_time, tr_len, lambda_after in zip(
         tr_time_list, tr_len_list, lambda_list[1:]
     ):
-        # Create the right shape for the time array 
+        # Create the right shape for the time array
         t = np.arange(model.sim_shape[0])
-        tr_len = tr_len + 1e-5 #?Reason
+        tr_len = tr_len + 1e-5  # ?Reason
 
         # If the model is hirarchical repeatly add the t array to itself to match the shape
         if model.is_hierarchical:
@@ -239,7 +243,7 @@ def lambda_t_with_sigmoids(
         # Applies standart sigmoid nonlinearity
         lambda_t = tt.nnet.sigmoid((t - tr_time) / tr_len * 4) * (
             lambda_after - lambda_before
-        ) # tr_len*4 because the derivative of the sigmoid at zero is 1/4, we want to set it to 1/tr_len
+        )  # tr_len*4 because the derivative of the sigmoid at zero is 1/4, we want to set it to 1/tr_len
 
         lambda_before = lambda_after
         lambda_t_list.append(lambda_t)

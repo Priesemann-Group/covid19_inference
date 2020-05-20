@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 log = logging.getLogger(__name__)
 
+
 def get_all_free_RVs_names(model):
     """
         Returns the names of all free parameters of the model
@@ -326,4 +327,3 @@ def plot_cases(
     plt.subplots_adjust(wspace=0.4, hspace=0.3)
 
     return fig, axes
-

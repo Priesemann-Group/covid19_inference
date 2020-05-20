@@ -91,9 +91,7 @@ def create_example_instance(num_change_points=3):
 
         new_I_t = SIR(lambda_t_log, mu=0.13)
 
-        new_cases_inferred_raw = delay_cases(
-            new_I_t
-        )
+        new_cases_inferred_raw = delay_cases(new_I_t)
 
         new_cases_inferred = week_modulation(new_cases_inferred_raw)
 

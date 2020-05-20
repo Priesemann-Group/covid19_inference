@@ -97,30 +97,30 @@ def week_modulation(
         modulation = 1 - tt.abs_(tt.sin(t / 7 * np.pi + offset_rad / 2))
         return modulation
 
-    #Create our model context
+    # Create our model context
     model = modelcontext(model)
 
-    #Get the shape of the modulation from the shape of our simulation
+    # Get the shape of the modulation from the shape of our simulation
     shape_modulation = list(model.sim_shape)
     shape_modulation[0] -= model.diff_data_sim
-        
+
     if not model.is_hierarchical:
         weekend_factor_log = pm.Normal(
             name="weekend_factor_log",
             mu=tt.log(pr_mean_weekend_factor),
-            sigma=pr_sigma_weekend_factor
-            )
+            sigma=pr_sigma_weekend_factor,
+        )
         week_end_factor = tt.exp(weekend_factor_log)
         pm.Deterministic("weekend_factor", week_end_factor)
 
-    else: #hierarchical  
+    else:  # hierarchical
         week_end_factor_L2_log, week_end_factor_L1_log = hierarchical_normal(
-            name_L1 ="weekend_factor_hc_L1_log",
-            name_L2 ="weekend_factor_hc_L1_log",
+            name_L1="weekend_factor_hc_L1_log",
+            name_L2="weekend_factor_hc_L1_log",
             name_sigma="sigma_weekend_factor",
             pr_mean=tt.log(pr_mean_weekend_factor),
             pr_sigma=pr_sigma_weekend_factor,
-            )
+        )
 
         # We do that so we can use it later (same name as non hierarchical)
         week_end_factor = tt.exp(week_end_factor_L2_log)
@@ -134,11 +134,10 @@ def week_modulation(
 
     if model.is_hierarchical:
         modulation = tt.shape_padaxis(modulation, axis=-1)
-        
+
     multiplication_vec = tt.abs_(
         np.ones(shape_modulation) - week_end_factor * modulation
     )
-
 
     new_cases_inferred_eff = new_cases_raw * multiplication_vec
 
