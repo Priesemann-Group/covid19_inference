@@ -1,3 +1,7 @@
+# ------------------------------------------------------------------------------ #
+# Helper functions that are used by other parts of the modeling
+# ------------------------------------------------------------------------------ #
+
 import theano
 import theano.tensor as tt
 import pymc3 as pm

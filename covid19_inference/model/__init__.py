@@ -14,7 +14,6 @@ from .week_modulation import week_modulation  # maybe rename the filename
 * automated figure creation old repo
 
 
-
 # Aim
 * name(s) argument with defaults
     * explicit name_I_t = "I_t"
@@ -34,10 +33,10 @@ from .week_modulation import week_modulation  # maybe rename the filename
 * [x] PS model.py
 * [x] JPN compartmental_models.py
 * [x] SM spreading_rate.py
-* [ ] JPN week_modulation.py
-* [x ] PS delay.py
+* [x] JPN week_modulation.py
+* [x] PS delay.py
 * [x] SM likelihood.py
-* [ ] JPN utility.py
+* [x] JPN utility.py
 
 * [ ] JD testing
 

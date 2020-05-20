@@ -1,13 +1,22 @@
 Model
 =====
 
-Give an overview how the model is constructed:
+If you are familiar with ``pymc3``, then looking at the example below should explain
+how our model works. Otherwise, here is a quick overivew:
 
-* Create an Instance of the base class
-* Everything else is attached to the pymc3 model.
-* None of our functions actually modifies any data. They rather define ways
-  how pymc3 should is allowed to modify data (during the sampling).
-* pymc3 context and adding trace variables
+* First, we have to create an instance of the base class (that is derived from pymc3s model class). It has some convenient properties to get the range of the data, simulation length and so forth.
+* We then add details that base model. They correspond to the actual (physical) model features, such as the change points, the reporting delay and the week modulation.
+
+    - Every feature has it's own function that takes in arguments to set prior
+      assumptions.
+    - Sometimes they also take in input (data, reported cases ... ) but none of the
+      function performs any actual modifactions on the data. They only tell pymc3 what
+      it is supposed to do during the sampling.
+    - None of our functions actually modifies any data. They rather define ways how
+      pymc3 should modify data during the sampling.
+    - Most of the feature functions add variables to the ``pymc3.trace``, see the function arguments that start with ``name_``.
+
+* in pymc3 it is common to use a context, as we also do in the example. everything within the block ``with cov19.model.Cov19Model(**params_model) as this_model:`` automagically applies to ``this_model``. Alternatively, you could provide a keyword to each function ``model=this_model``.
 
 Example
 -------
@@ -43,7 +52,7 @@ Example
     ]
 
     # create model instance and add details
-    with cov19.model.Cov19Model(**params_model) as model:
+    with cov19.model.Cov19Model(**params_model) as this_model:
         # apply change points, lambda is in log scale
         lambda_t_log = cov19.model.lambda_t_with_sigmoids(
             pr_median_lambda_0=0.4,
@@ -68,6 +77,9 @@ Example
 
         # set the likeliehood
         cov19.model.student_t_likelihood(new_cases_inferred)
+
+    # run the sampling
+    trace = pm.sample(model=this_model, tune=50, draws=10, init="advi+adapt_diag")
 ..
 
 
@@ -158,17 +170,21 @@ References
     Ann Intern Med 2020. https://doi.org/10.7326/M20-0504.
 
 ---------------------------------------
-
 .. autofunction:: covid19_inference.model.uncorrelated_prior_I
+
 
 Likelihood
 ----------
 .. autofunction:: covid19_inference.model.student_t_likelihood
 
+
+Spreading Rate
+--------------
+.. autofunction:: covid19_inference.model.lambda_t_with_sigmoids
+
 Delay
 -----
 .. autofunction:: covid19_inference.model.delay_cases
-
 
 More Details
 ^^^^^^^^^^^^
@@ -188,6 +204,7 @@ If the model is 2-dimensional (hierarchical), the :math:`\log(\text{delay})` is 
 modelled with the :func:`hierarchical_normal` function using the default parameters
 except that the prior `sigma` of `delay_L2` is HalfNormal distributed
 (``error_cauchy=False``).
+
 
 
 Week modulation

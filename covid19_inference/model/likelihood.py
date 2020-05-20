@@ -1,8 +1,5 @@
 # ------------------------------------------------------------------------------ #
-# @Author:        F. Paul Spitzner
-# @Email:         paul.spitzner@ds.mpg.de
-# @Created:       2020-05-19 11:58:38
-# @Last Modified: 2020-05-20 10:54:26
+# Implementation of the Likelihood that is used during the mcmc acceptance
 # ------------------------------------------------------------------------------ #
 
 import logging
