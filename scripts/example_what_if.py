@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-14 11:14:19
-# @Last Modified: 2020-05-19 10:05:46
+# @Last Modified: 2020-05-20 11:39:51
 # ------------------------------------------------------------------------------ #
 # What if scenarios for relaxations around May 11.
 # This is a simple example how to construct incorporate expected change points
@@ -21,6 +21,8 @@ import matplotlib.pyplot as plt
 try:
     import covid19_inference as cov19
 except ModuleNotFoundError:
+    import sys
+
     sys.path.append("..")
     import covid19_inference as cov19
 

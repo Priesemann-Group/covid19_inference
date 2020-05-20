@@ -1,9 +1,9 @@
-from .model import Cov19Model  # should rename this to base.py or baseClass.py
-from .compartmental_models import SIR, SEIR, make_prior_I
+from .model import Cov19Model
+from .compartmental_models import SIR, SEIR, uncorrelated_prior_I
 from .delay import delay_cases
 from .spreading_rate import lambda_t_with_sigmoids
 
-from .week_modulation import week_modulation  # maybe rename the filename
+from .week_modulation import week_modulation
 
 """
 # TODO 2020-05-19

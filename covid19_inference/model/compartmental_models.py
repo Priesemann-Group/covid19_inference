@@ -1,8 +1,5 @@
 # ------------------------------------------------------------------------------ #
-# @Author:        F. Paul Spitzner
-# @Email:         paul.spitzner@ds.mpg.de
-# @Created:       2020-05-19 11:58:07
-# @Last Modified: 2020-05-20 10:28:37
+# Implementations of the SIR and SEIR-like models
 # ------------------------------------------------------------------------------ #
 
 import logging
@@ -13,12 +10,9 @@ import numpy as np
 import pymc3 as pm
 from .model import *
 
-
 log = logging.getLogger(__name__)
 
 
-# compartmental_models.py
-# name 4 trace arguments, if I_t and S_t are none do not save
 def SIR(
     lambda_t_log,
     mu,
@@ -31,49 +25,39 @@ def SIR(
     return_all=False,
 ):
     r"""
-    Implements the susceptible-infected-recovered model.
+        Implements the susceptible-infected-recovered model.
 
-    .. math::
+        Parameters
+        ----------
+        lambda_t_log : :class:`~theano.tensor.TensorVariable`
+            time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional the first
+            dimension is time.
+        mu : :class:`~theano.tensor.TensorVariable`
+            the recovery rate :math:`\mu`, typically a random variable. Can be 0 or 1-dimensional. If 1-dimensional,
+            the dimension are the different regions.
+        name_new_I_t : str, optional
+            Name of the ``new_I_t`` variable
+        name_I_t : str, optional
+            Name of the ``I_t`` variable
+        name_S_t : str, optional
+            Name of the ``S_t`` variable
+        name_I_begin : str, optional
+            Name of the ``I_begin`` variable
+        pr_I_begin : float or array_like or :class:`~theano.tensor.TensorVariable`
+            Prior beta of the Half-Cauchy distribution of :math:`I(0)`.
+        model : :class:`Cov19Model`
+            if none, it is retrieved from the context
+        return_all : bool
+            if True, returns ``name_new_I_t``, ``name_I_t``, ``name_S_t`` otherwise returns only ``name_new_I_t``
 
-        I_{new}(t) &= \lambda_t I(t-1)  \frac{S(t-1)}{N}   \\
-        S(t) &= S(t-1) - I_{new}(t)  \\
-        I(t) &= I(t-1) + I_{new}(t) - \mu  I(t)
-
-    The prior distribution of the recovery rate :math:`\mu` is set to
-    :math:`LogNormal(\text{log(pr\_median\_mu)), pr\_sigma\_mu})`. And the prior distribution of
-    :math:`I(0)` to :math:`HalfCauchy(\text{pr\_beta\_I\_begin})`
-
-    Parameters
-    ----------
-    lambda_t_log : :class:`~theano.tensor.TensorVariable`
-        time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional the first
-        dimension is time.
-    mu : :class:`~theano.tensor.TensorVariable`
-        the recovery rate :math:`\mu`, typically a random variable. Can be 0 or 1-dimensional. If 1-dimensional,
-        the dimension are the different regions.
-    name_new_I_t : str, optional
-        Name of the ``new_I_t`` variable
-    name_I_t : str, optional
-        Name of the ``I_t`` variable
-    name_S_t : str, optional
-        Name of the ``S_t`` variable
-    name_I_begin : str, optional
-        Name of the ``I_begin`` variable
-    pr_I_begin : float or array_like or :class:`~theano.tensor.TensorVariable`
-        Prior beta of the Half-Cauchy distribution of :math:`I(0)`.
-    model : :class:`Cov19Model`
-        if none, it is retrieved from the context
-    return_all : bool
-        if True, returns ``name_new_I_t``, ``name_I_t``, ``name_S_t`` otherwise returns only ``name_new_I_t``
-
-    Returns
-    ------------------
-    new_I_t : :class:`~theano.tensor.TensorVariable`
-        time series of the number daily newly infected persons.
-    I_t : :class:`~theano.tensor.TensorVariable`
-        time series of the infected (if return_all set to True)
-    S_t : :class:`~theano.tensor.TensorVariable`
-        time series of the susceptible (if return_all set to True)
+        Returns
+        ------------------
+        new_I_t : :class:`~theano.tensor.TensorVariable`
+            time series of the number daily newly infected persons.
+        I_t : :class:`~theano.tensor.TensorVariable`
+            time series of the infected (if return_all set to True)
+        S_t : :class:`~theano.tensor.TensorVariable`
+            time series of the susceptible (if return_all set to True)
 
     """
     model = modelcontext(model)
@@ -124,8 +108,6 @@ def SIR(
         return new_I_t
 
 
-# compartmental_models.py
-# names as SIR, hc_fix regions, pass mu distribution as argument.
 def SEIR(
     lambda_t_log,
     mu,
@@ -147,94 +129,78 @@ def SEIR(
 ):
     r"""
     Implements a model similar to the susceptible-exposed-infected-recovered model. Instead of a exponential decaying
-    incubation period, the length of the period is lognormal distributed. The complete equation is:
-
-     .. math::
-
-        E_{\text{new}}(t) &= \lambda_t I(t-1) \frac{S(t)}{N}   \\
-        S(t) &= S(t-1) - E_{\text{new}}(t)  \\
-        I_\text{new}(t) &= \sum_{k=1}^{10} \beta(k) E_{\text{new}}(t-k)   \\
-        I(t) &= I(t-1) + I_{\text{new}}(t) - \mu  I(t) \\
-        \beta(k) & = P(k) \sim LogNormal(\text{log}(d_{\text{incubation}})), \text{sigma\_incubation})
-
-    The recovery rate :math:`\mu` and the incubation period is the same for all regions and follow respectively:
-
-    .. math::
-
-         P(\mu) &\sim LogNormal(\text{log(pr\_median\_mu)), pr\_sigma\_mu}) \\
-         P(d_{\text{incubation}}) &\sim Normal(\text{pr\_mean\_median\_incubation, pr\_sigma\_median\_incubation})
-
-    The initial number of infected and newly exposed differ for each region and follow prior
-    :class:`~pymc3.distributions.continuous.HalfCauchy` distributions:
-
-    .. math::
-
-         E(t)  &\sim HalfCauchy(\text{pr\_beta\_E\_begin}) \:\: \text{ for} \: t \in {-9, -8, ..., 0}\\
-         I(0)  &\sim HalfCauchy(\text{pr\_beta\_I\_begin}).
-
+    incubation period, the length of the period is lognormal distributed.
 
     Parameters
     ----------
     lambda_t_log : :class:`~theano.tensor.TensorVariable`
         time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional, the first
         dimension is time.
+
     mu : :class:`~theano.tensor.TensorVariable`
         the recovery rate :math:`\mu`, typically a random variable. Can be 0 or 1-dimensional. If 1-dimensional,
         the dimension are the different regions.
+
     name_new_I_t : str, optional
         Name of the ``new_I_t`` variable
+
     name_I_t : str, optional
         Name of the ``I_t`` variable
+
     name_S_t : str, optional
         Name of the ``S_t`` variable
+
     name_I_begin : str, optional
         Name of the ``I_begin`` variable
+
     name_new_E_begin : str, optional
         Name of the ``new_E_begin`` variable
+
     name_median_incubation : str
         The name under which the median incubation time is saved in the trace
+
     pr_beta_I_begin : float or array_like
         Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy` distribution of :math:`I(0)`.
+
     pr_beta_new_E_begin : float or array_like
         Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy` distribution of :math:`E(0)`.
+
     pr_median_mu : float or array_like
         Prior for the median of the :class:`~pymc3.distributions.continuous.Lognormal` distribution of the recovery rate :math:`\mu`.
+
     pr_mean_median_incubation : Prior mean of the :class:`~pymc3.distributions.continuous.Normal` distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
         Defaults to 4 days [Nishiura2020]_, which is the median serial interval (the important measure here is not exactly
         the incubation period, but the delay until a person becomes infectious which seems to be about
         1 day earlier as showing symptoms).
+
     pr_sigma_median_incubation : Prior sigma of the :class:`~pymc3.distributions.continuous.Normal` distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
         Default is 1 day.
+
     sigma_incubation : Scale parameter of the :class:`~pymc3.distributions.continuous.Lognormal` distribution of the incubation time/
         delay until infectiousness. The default is set to 0.4, which is about the scale found in [Nishiura2020]_, [Lauer2020]_.
+
     pr_sigma_mu : float or array_like
         Prior for the sigma of the lognormal distribution of recovery rate :math:`\mu`.
+
     model : :class:`Cov19Model`
       if none, it is retrieved from the context
+
     return_all : bool
         if True, returns ``name_new_I_t``, ``name_new_E_t``,  ``name_I_t``, ``name_S_t`` otherwise returns only ``name_new_I_t``
 
-    References
-    ----------
-
-    .. [Nishiura2020] Nishiura, H.; Linton, N. M.; Akhmetzhanov, A. R.
-        Serial Interval of Novel Coronavirus (COVID-19) Infections.
-        Int. J. Infect. Dis. 2020, 93, 284–286. https://doi.org/10.1016/j.ijid.2020.02.060.
-    .. [Lauer2020] Lauer, S. A.; Grantz, K. H.; Bi, Q.; Jones, F. K.; Zheng, Q.; Meredith, H. R.; Azman, A. S.; Reich, N. G.; Lessler, J.
-        The Incubation Period of Coronavirus Disease 2019 (COVID-19) From Publicly Reported Confirmed Cases: Estimation and Application.
-        Ann Intern Med 2020. https://doi.org/10.7326/M20-0504.
-
-   Returns
-    ------------------
+    Returns
+    -------
     name_new_I_t : :class:`~theano.tensor.TensorVariable`
         time series of the number daily newly infected persons.
+
     name_new_E_t : :class:`~theano.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to True)
+
     name_I_t : :class:`~theano.tensor.TensorVariable`
         time series of the infected (if return_all set to True)
+
     name_S_t : :class:`~theano.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
-
 
     """
     model = modelcontext(model)
@@ -345,10 +311,7 @@ def SEIR(
         return new_I_t
 
 
-# names arg
-# compartmental.py
-# rename to uncorrelated_prior_I()
-def make_prior_I(
+def uncorrelated_prior_I(
     lambda_t_log,
     mu,
     pr_median_delay,

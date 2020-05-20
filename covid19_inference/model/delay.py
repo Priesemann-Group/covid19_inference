@@ -119,32 +119,6 @@ def delay_cases(
         delayed_cases : :class:`~theano.tensor.TensorVariable`
             The delayed input :math:`y_\\text{delayed}(t)`,
             typically the daily number new cases that one expects to measure.
-
-        Example
-        -------
-        .. code-block:: python
-
-            with cov19.model.Cov19Model(**params_model) as model:
-                lambda_t_log = cov19.model.lambda_t_with_sigmoids(
-                    pr_median_lambda_0=0.4,
-                    pr_sigma_lambda_0=0.5,
-                    change_points_list=cp_base,
-                )
-
-                mu = pm.Lognormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
-                pr_median_delay = 10
-
-                new_I_t = cov19.model.SIR(lambda_t_log, mu)
-
-                new_cases_inferred_raw = cov19.model.delay_cases(
-                    cases=new_I_t,
-                    pr_mean_of_median=pr_median_delay, pr_median_of_width=0.3
-                )
-
-                new_cases_inferred = cov19.model.week_modulation(new_cases_inferred_raw)
-
-                cov19.model.student_t_likelihood(new_cases_inferred)
-        ..
     """
     log.info("Delaying cases")
     model = modelcontext(model)
