@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-19 11:58:38
-# @Last Modified: 2020-05-19 14:13:36
+# @Last Modified: 2020-05-20 10:54:26
 # ------------------------------------------------------------------------------ #
 
 import logging
@@ -14,6 +14,7 @@ import numpy as np
 log = logging.getLogger(__name__)
 
 from .model import *
+import pymc3 as pm
 
 def student_t_likelihood(
     new_cases_inferred,

@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-19 11:58:22
-# @Last Modified: 2020-05-20 10:46:25
+# @Last Modified: 2020-05-20 10:53:03
 # ------------------------------------------------------------------------------ #
 
 import logging
@@ -10,6 +10,7 @@ import logging
 import theano
 import theano.tensor as tt
 import numpy as np
+import pymc3 as pm
 
 log = logging.getLogger(__name__)
 
@@ -109,7 +110,8 @@ def week_modulation(
             mu=tt.log(pr_mean_weekend_factor),
             sigma=pr_sigma_weekend_factor
             )
-        pm.Deterministic("weekend_factor", tt.exp(weekend_factor_log))
+        week_end_factor = tt.exp(weekend_factor_log)
+        pm.Deterministic("weekend_factor", week_end_factor)
 
     else: #hierarchical  
         week_end_factor_L2_log, week_end_factor_L1_log = hierarchical_normal(
@@ -119,19 +121,24 @@ def week_modulation(
             pr_mean=tt.log(pr_mean_weekend_factor),
             pr_sigma=pr_sigma_weekend_factor,
             )
-        pm.Deterministic("weekend_factor_L2", tt.exp(week_end_factor_L2_log))
+
+        # We do that so we can use it later (same name as non hierarchical)
+        week_end_factor = tt.exp(week_end_factor_L2_log)
+
+        pm.Deterministic("weekend_factor_L2", weekend_factor)
         pm.Deterministic("weekend_factor_L1", tt.exp(week_end_factor_L1_log))
 
     # Different modulation types
-    modulation = step_modulation() if week_modulation_type == "step"
-    modulation = abs_sine_modulation() if week_modulation_type == "abs_sine"
+    modulation = step_modulation() if week_modulation_type == "step" else 0
+    modulation = abs_sine_modulation() if week_modulation_type == "abs_sine" else 0
 
     if model.is_hierarchical:
         modulation = tt.shape_padaxis(modulation, axis=-1)
-
+        
     multiplication_vec = tt.abs_(
-        np.ones(shape_modulation) - week_end_factor_L2 * modulation
+        np.ones(shape_modulation) - week_end_factor * modulation
     )
+
 
     new_cases_inferred_eff = new_cases_raw * multiplication_vec
 

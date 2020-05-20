@@ -1,10 +1,9 @@
-from .model import Cov19Model  # should rename this to base.py or baseClass.py
+from .model import Cov19Model # should rename this to base.py or baseClass.py
 from .compartmental_models import SIR, SEIR, make_prior_I
 from .delay import delay_cases
 from .spreading_rate import lambda_t_with_sigmoids
-
-from .week_modulation import week_modulation  # maybe rename the filename
-
+from .likelihood import student_t_likelihood
+from .week_modulation import week_modulation # maybe rename the filename
 """
 # TODO 2020-05-19
 
@@ -35,7 +34,7 @@ from .week_modulation import week_modulation  # maybe rename the filename
 * [x] JPN compartmental_models.py
 * [x] SM spreading_rate.py
 * [ ] JPN week_modulation.py
-* [x] PS delay.py
+* [x ] PS delay.py
 * [x] SM likelihood.py
 * [ ] JPN utility.py
 
