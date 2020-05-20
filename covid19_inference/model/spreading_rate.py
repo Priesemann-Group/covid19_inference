@@ -4,6 +4,9 @@ import theano.tensor as tt
 
 from .model import *
 
+import logging
+log = logging.getLogger(__name__)
+
 def _make_change_point_RVs(
     change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=1, model=None
 ):
