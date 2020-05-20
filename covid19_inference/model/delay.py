@@ -146,7 +146,7 @@ def delay_cases(
                 cov19.model.student_t_likelihood(new_cases_inferred)
         ..
     """
-    log.debug("delay_cases()")
+    log.info("Delaying cases")
     model = modelcontext(model)
 
     # log normal distributed delays (the median values)

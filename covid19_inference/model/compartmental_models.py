@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-19 11:58:07
-# @Last Modified: 2020-05-19 15:52:14
+# @Last Modified: 2020-05-20 10:28:37
 # ------------------------------------------------------------------------------ #
 
 import logging
@@ -20,29 +20,29 @@ log = logging.getLogger(__name__)
 # compartmental_models.py
 # name 4 trace arguments, if I_t and S_t are none do not save
 def SIR(
-    lambda_t_log, 
-    mu, 
-    name_new_I_t = 'new_I_t',
-    name_I_t = 'I_t',
-    name_S_t = 'S_t',
-    name_I_begin = 'I_begin',
-    pr_I_begin=100, 
-    model=None, 
-    return_all=False
+    lambda_t_log,
+    mu,
+    name_new_I_t="new_I_t",
+    name_I_t="I_t",
+    name_S_t="S_t",
+    name_I_begin="I_begin",
+    pr_I_begin=100,
+    model=None,
+    return_all=False,
 ):
     r"""
     Implements the susceptible-infected-recovered model.
-    
+
     .. math::
-    
+
         I_{new}(t) &= \lambda_t I(t-1)  \frac{S(t-1)}{N}   \\
         S(t) &= S(t-1) - I_{new}(t)  \\
         I(t) &= I(t-1) + I_{new}(t) - \mu  I(t)
-    
+
     The prior distribution of the recovery rate :math:`\mu` is set to
     :math:`LogNormal(\text{log(pr\_median\_mu)), pr\_sigma\_mu})`. And the prior distribution of
     :math:`I(0)` to :math:`HalfCauchy(\text{pr\_beta\_I\_begin})`
-    
+
     Parameters
     ----------
     lambda_t_log : :class:`~theano.tensor.TensorVariable`
@@ -65,7 +65,7 @@ def SIR(
         if none, it is retrieved from the context
     return_all : bool
         if True, returns ``name_new_I_t``, ``name_I_t``, ``name_S_t`` otherwise returns only ``name_new_I_t``
-    
+
     Returns
     ------------------
     new_I_t : :class:`~theano.tensor.TensorVariable`
@@ -74,7 +74,7 @@ def SIR(
         time series of the infected (if return_all set to True)
     S_t : :class:`~theano.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
-    
+
     """
     model = modelcontext(model)
 
@@ -115,7 +115,7 @@ def SIR(
     pm.Deterministic(name_new_I_t, new_I_t)
     if name_S_t is not None:
         pm.Deterministic(name_S_t, S_t)
-    if name_I_t is not None:    
+    if name_I_t is not None:
         pm.Deterministic(name_I_t, I_t)
 
     if return_all:
@@ -123,16 +123,17 @@ def SIR(
     else:
         return new_I_t
 
+
 # compartmental_models.py
 # names as SIR, hc_fix regions, pass mu distribution as argument.
 def SEIR(
     lambda_t_log,
     mu,
-    name_new_I_t = 'new_I_t',
-    name_I_t = 'I_t',
-    name_S_t = 'S_t',
-    name_I_begin = 'I_begin',    
-    name_new_E_begin = 'new_E_begin',
+    name_new_I_t="new_I_t",
+    name_I_t="I_t",
+    name_S_t="S_t",
+    name_I_begin="I_begin",
+    name_new_E_begin="new_E_begin",
     name_median_incubation="median_incubation",
     pr_beta_I_begin=100,
     pr_beta_new_E_begin=50,
@@ -142,36 +143,36 @@ def SEIR(
     sigma_incubation=0.4,
     pr_sigma_mu=0.2,
     model=None,
-    return_all=False
+    return_all=False,
 ):
     r"""
     Implements a model similar to the susceptible-exposed-infected-recovered model. Instead of a exponential decaying
     incubation period, the length of the period is lognormal distributed. The complete equation is:
-    
+
      .. math::
-    
+
         E_{\text{new}}(t) &= \lambda_t I(t-1) \frac{S(t)}{N}   \\
         S(t) &= S(t-1) - E_{\text{new}}(t)  \\
         I_\text{new}(t) &= \sum_{k=1}^{10} \beta(k) E_{\text{new}}(t-k)   \\
         I(t) &= I(t-1) + I_{\text{new}}(t) - \mu  I(t) \\
         \beta(k) & = P(k) \sim LogNormal(\text{log}(d_{\text{incubation}})), \text{sigma\_incubation})
-    
+
     The recovery rate :math:`\mu` and the incubation period is the same for all regions and follow respectively:
-    
+
     .. math::
-    
+
          P(\mu) &\sim LogNormal(\text{log(pr\_median\_mu)), pr\_sigma\_mu}) \\
          P(d_{\text{incubation}}) &\sim Normal(\text{pr\_mean\_median\_incubation, pr\_sigma\_median\_incubation})
-    
+
     The initial number of infected and newly exposed differ for each region and follow prior
     :class:`~pymc3.distributions.continuous.HalfCauchy` distributions:
-    
+
     .. math::
-    
+
          E(t)  &\sim HalfCauchy(\text{pr\_beta\_E\_begin}) \:\: \text{ for} \: t \in {-9, -8, ..., 0}\\
          I(0)  &\sim HalfCauchy(\text{pr\_beta\_I\_begin}).
-    
-    
+
+
     Parameters
     ----------
     lambda_t_log : :class:`~theano.tensor.TensorVariable`
@@ -212,17 +213,17 @@ def SEIR(
       if none, it is retrieved from the context
     return_all : bool
         if True, returns ``name_new_I_t``, ``name_new_E_t``,  ``name_I_t``, ``name_S_t`` otherwise returns only ``name_new_I_t``
-    
+
     References
     ----------
-    
+
     .. [Nishiura2020] Nishiura, H.; Linton, N. M.; Akhmetzhanov, A. R.
         Serial Interval of Novel Coronavirus (COVID-19) Infections.
         Int. J. Infect. Dis. 2020, 93, 284–286. https://doi.org/10.1016/j.ijid.2020.02.060.
     .. [Lauer2020] Lauer, S. A.; Grantz, K. H.; Bi, Q.; Jones, F. K.; Zheng, Q.; Meredith, H. R.; Azman, A. S.; Reich, N. G.; Lessler, J.
         The Incubation Period of Coronavirus Disease 2019 (COVID-19) From Publicly Reported Confirmed Cases: Estimation and Application.
         Ann Intern Med 2020. https://doi.org/10.7326/M20-0504.
-    
+
    Returns
     ------------------
     name_new_I_t : :class:`~theano.tensor.TensorVariable`
@@ -233,8 +234,8 @@ def SEIR(
         time series of the infected (if return_all set to True)
     name_S_t : :class:`~theano.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
-    
-    
+
+
     """
     model = modelcontext(model)
 
@@ -351,8 +352,8 @@ def make_prior_I(
     lambda_t_log,
     mu,
     pr_median_delay,
-    name_I_begin = 'I_begin', 
-    name_I_begin_ratio_log = 'I_begin_ratio_log',
+    name_I_begin="I_begin",
+    name_I_begin_ratio_log="I_begin_ratio_log",
     pr_sigma_I_begin=2,
     n_data_points_used=5,
     model=None,
@@ -361,7 +362,7 @@ def make_prior_I(
     Builds the prior for I begin  by solving the SIR differential from the first data backwards. This decorrelates the
     I_begin from the lambda_t at the beginning, allowing a more efficient sampling. The example_one_bundesland runs
     about 30\% faster with this prior, instead of a HalfCauchy.
-    
+
     Parameters
     ----------
     lambda_t_log : TYPE
@@ -385,11 +386,11 @@ def make_prior_I(
     pr_median_delay : float
     pr_sigma_I_begin : float
     n_data_points_used : int
-    
+
     Returns
     ------------------
     I_begin: :class:`~theano.tensor.TensorVariable`
-    
+
     """
     model = modelcontext(model)
 

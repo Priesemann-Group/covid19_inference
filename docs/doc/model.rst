@@ -41,7 +41,7 @@ Example
 
 Model Base Class
 ----------------
-.. automodule:: covid19_inference.model.model
+.. autoclass:: covid19_inference.model.Cov19Model
     :members:
 
 Compartmental models
@@ -82,8 +82,8 @@ except that the prior `sigma` of `delay_L2` is HalfNormal distributed
 
 Week modulation
 ---------------
-.. automodule:: covid19_inference.model.week_modulation
-    :members:
+.. autofunction:: covid19_inference.model.week_modulation
+
 
 
 Utility
