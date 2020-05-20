@@ -12,6 +12,7 @@ Give an overview how the model is constructed:
 Example
 -------
 .. code-block:: python
+
     import datetime
 
     import pymc3 as pm
