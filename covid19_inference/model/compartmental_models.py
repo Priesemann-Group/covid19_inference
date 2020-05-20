@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-19 11:58:07
-# @Last Modified: 2020-05-20 10:28:37
+# @Last Modified: 2020-05-20 10:58:31
 # ------------------------------------------------------------------------------ #
 
 import logging
@@ -76,6 +76,7 @@ def SIR(
         time series of the susceptible (if return_all set to True)
 
     """
+    log.info("SIR")
     model = modelcontext(model)
 
     # Total number of people in population
@@ -237,6 +238,7 @@ def SEIR(
 
 
     """
+    log.info("SEIR")
     model = modelcontext(model)
 
     # Build prior distrubutions:

@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-19 11:58:22
-# @Last Modified: 2020-05-20 10:53:03
+# @Last Modified: 2020-05-20 11:26:43
 # ------------------------------------------------------------------------------ #
 
 import logging
@@ -19,6 +19,8 @@ from .model import *
 # week_modulation.py
 def week_modulation(
     new_cases_raw,
+    name_weekend_factor = "weekend_factor",
+    name_offset_modulation = "offset_modulation",
     week_modulation_type="abs_sine",
     pr_mean_weekend_factor=0.3,
     pr_sigma_weekend_factor=0.5,
@@ -67,7 +69,6 @@ def week_modulation(
     new_cases : :class:`~theano.tensor.TensorVariable`
 
     """
-
     def step_modulation():
         """
         Helper function for the step modulation
@@ -91,12 +92,13 @@ def week_modulation(
         -------
         modulation
         """
-        offset_rad = pm.VonMises("offset_modulation_rad", mu=0, kappa=0.01)
-        offset = pm.Deterministic("offset_modulation", offset_rad / (2 * np.pi) * 7)
+        offset_rad = pm.VonMises(name_offset_modulation+"_rad", mu=0, kappa=0.01)
+        offset = pm.Deterministic(name_offset_modulation, offset_rad / (2 * np.pi) * 7)
         t = np.arange(shape_modulation[0]) - model.data_begin.weekday()  # Sunday @ zero
         modulation = 1 - tt.abs_(tt.sin(t / 7 * np.pi + offset_rad / 2))
         return modulation
 
+    log.info("Week modulation")
     #Create our model context
     model = modelcontext(model)
 
@@ -106,18 +108,18 @@ def week_modulation(
         
     if not model.is_hierarchical:
         weekend_factor_log = pm.Normal(
-            name="weekend_factor_log",
+            name=name_weekend_factor+"_log",
             mu=tt.log(pr_mean_weekend_factor),
             sigma=pr_sigma_weekend_factor
             )
         week_end_factor = tt.exp(weekend_factor_log)
-        pm.Deterministic("weekend_factor", week_end_factor)
+        pm.Deterministic(name_weekend_factor, week_end_factor)
 
     else: #hierarchical  
         week_end_factor_L2_log, week_end_factor_L1_log = hierarchical_normal(
-            name_L1 ="weekend_factor_hc_L1_log",
-            name_L2 ="weekend_factor_hc_L1_log",
-            name_sigma="sigma_weekend_factor",
+            name_L1 =name_weekend_factor+"_hc_L1_log",
+            name_L2 =name_weekend_factor+"_hc_L1_log",
+            name_sigma="sigma_"+name_weekend_factor,
             pr_mean=tt.log(pr_mean_weekend_factor),
             pr_sigma=pr_sigma_weekend_factor,
             )
@@ -125,8 +127,8 @@ def week_modulation(
         # We do that so we can use it later (same name as non hierarchical)
         week_end_factor = tt.exp(week_end_factor_L2_log)
 
-        pm.Deterministic("weekend_factor_L2", weekend_factor)
-        pm.Deterministic("weekend_factor_L1", tt.exp(week_end_factor_L1_log))
+        pm.Deterministic(name_weekend_factor+"_hc_L2", weekend_factor)
+        pm.Deterministic(name_weekend_factor+"_hc_L1", tt.exp(week_end_factor_L1_log))
 
     # Different modulation types
     modulation = step_modulation() if week_modulation_type == "step" else 0
@@ -134,7 +136,7 @@ def week_modulation(
 
     if model.is_hierarchical:
         modulation = tt.shape_padaxis(modulation, axis=-1)
-        
+
     multiplication_vec = tt.abs_(
         np.ones(shape_modulation) - week_end_factor * modulation
     )
