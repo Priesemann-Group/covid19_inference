@@ -86,7 +86,7 @@ params_model = dict(new_cases_obs = new_cases_obs[:],
                                         data_begin = bd,
                                         fcast_len = num_days_forecast,
                                         diff_data_sim = diff_data_sim,
-                                        N_population = 83e6) 
+                                        N_population = 4e6) 
 pr_median_delay = 10
 
 """
