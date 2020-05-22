@@ -101,7 +101,7 @@ params_model = dict(
     data_begin=bd,
     fcast_len=num_days_forecast,
     diff_data_sim=diff_data_sim,
-    N_population=83e6,
+    N_population=4e6,
 )
 # Median of the prior for the delay in case reporting, we assume 10 days
 pr_delay = 10
