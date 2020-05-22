@@ -2,13 +2,13 @@
 # This file implements the change points in the spreading rate
 # ------------------------------------------------------------------------------ #
 
+import logging
 import pymc3 as pm
 import theano
 import theano.tensor as tt
 
 from .model import *
-
-import logging
+from . import utility as ut
 
 log = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ def _make_change_point_RVs(
     """
 
     def hierarchical():
-        lambda_0_hc_L2_log, lambda_0_hc_L1_log = hierarchical_normal(
+        lambda_0_hc_L2_log, lambda_0_hc_L1_log = ut.hierarchical_normal(
             name_L1="lambda_0_hc_L1_log_",
             name_L2="lambda_0_log_L2_log",
             name_sigma="sigma_lambda_0_hc_L1",
@@ -119,7 +119,7 @@ def _make_change_point_RVs(
             error_cauchy=False,
         )
 
-        pm.Deterministic("lambda_0_hc_L2", tt.exp(ambda_0_hc_L2_log))
+        pm.Deterministic("lambda_0_hc_L2", tt.exp(lambda_0_hc_L2_log))
         pm.Deterministic("lambda_0_hc_L1", tt.exp(lambda_0_hc_L1_log))
         lambda_log_list.append(lambda_0_hc_L2_log)
 
@@ -132,7 +132,7 @@ def _make_change_point_RVs(
             else:
                 pr_mean_lambda = np.log(cp["pr_median_lambda"])
 
-            lambda_cp_hc_L2_log, lambda_cp_hc_L1_log = hierarchical_normal(
+            lambda_cp_hc_L2_log, lambda_cp_hc_L1_log = ut.hierarchical_normal(
                 name_L1=f"lambda_{i + 1}_hc_L1_log",
                 name_L2=f"lambda_{i + 1}_hc_L2_log",
                 name_sigma=f"sigma_lambda_{i + 1}_hc_L1",
@@ -151,7 +151,7 @@ def _make_change_point_RVs(
             if dt_before is not None and dt_before > dt_begin_transient:
                 raise RuntimeError("Dates of change points are not temporally ordered")
             prior_mean = (dt_begin_transient - model.sim_begin).days
-            tr_time_L2, _ = hierarchical_normal(
+            tr_time_L2, _ = ut.hierarchical_normal(
                 name_L1=f"transient_day_{i + 1}_hc_L1",
                 name_L2=f"transient_day_{i + 1}_hc_L2",
                 name_sigma=f"sigma_transient_day_{i + 1}_L1",
@@ -166,7 +166,7 @@ def _make_change_point_RVs(
         # Create transient len list
         for i, cp in enumerate(change_points_list):
             # if model.sim_ndim == 1:
-            tr_len_L2_log, tr_len_L1_log = hierarchical_normal(
+            tr_len_L2_log, tr_len_L1_log = ut.hierarchical_normal(
                 name_L1=f"transient_len_{i + 1}_hc_L1_log",
                 name_L2=f"transient_len_{i + 1}_hc_L2_log",
                 name_sigma=f"sigma_transient_len_{i + 1}",

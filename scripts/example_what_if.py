@@ -1,5 +1,16 @@
+"""
+    # Example: What-if scenarios
+    Create different scenarios on what may be the effect of a (future) change point
+    Non-hierarchical model using jhu data (no regions).
+
+    Runtime ~ 15 min
+
+    At the end we also show how to plot with German labels.
+"""
+
 import datetime
 import copy
+import sys
 
 import pymc3 as pm
 import numpy as np
@@ -9,9 +20,7 @@ import matplotlib.pyplot as plt
 try:
     import covid19_inference as cov19
 except ModuleNotFoundError:
-    import sys
-
-    sys.path.append("..")
+    sys.path.append("../../")
     import covid19_inference as cov19
 
 # limit the data range
@@ -67,10 +76,12 @@ cp_base = [
 
 """
     Scenarios for May 11, due to ~11 days delay, not evident in data yet
-    Add additional change points with reference to the previous values,
-    we use the posterior value that we inferred before (as of May 14)
+    Add additional change points with reference to the previous values.
 """
+# We use a value as reference that we inferred in a previous run (as of May 14)
 ref = 0.10
+# Median of the prior for the delay in case reporting, we assume 10 days
+pr_delay = 10
 
 # a: double the contacts (this only effectively applies apart from family)
 cp_a = copy.deepcopy(cp_base)
@@ -105,31 +116,30 @@ cp_c.append(
     ),
 )
 
-
+# we want to create multiple models with the different change points
 def create_model(change_points, params_model):
-    with cov19.Cov19Model(**params_model) as model:
-        lambda_t_log = cov19.lambda_t_with_sigmoids(
+    with cov19.Cov19Model(**params_model) as this_model:
+        lambda_t_log = cov19.model.lambda_t_with_sigmoids(
             pr_median_lambda_0=0.4,
             pr_sigma_lambda_0=0.5,
             change_points_list=change_points,
+            name_lambda_t="lambda_t",
         )
 
         mu = pm.Lognormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
-        pr_median_delay = 10
 
-        prior_I = cov19.make_prior_I(lambda_t_log, mu, pr_median_delay=pr_median_delay)
-
-        new_I_t = cov19.SIR(lambda_t_log, mu, pr_I_begin=prior_I)
-
-        new_cases_inferred_raw = cov19.delay_cases(
-            new_I_t, pr_median_delay=pr_median_delay, pr_median_scale_delay=0.3
+        new_cases = cov19.model.SIR(lambda_t_log=lambda_t_log, mu=mu)
+        new_cases = cov19.model.delay_cases(
+            cases=new_cases,
+            name_cases="delayed_cases",
+            pr_mean_of_median=pr_delay,
+            pr_median_of_width=0.3,
         )
+        new_cases = cov19.model.week_modulation(cases=new_cases, name_cases="new_cases")
 
-        new_cases_inferred = cov19.week_modulation(new_cases_inferred_raw)
+        cov19.model.student_t_likelihood(cases=new_cases)
 
-        cov19.student_t_likelihood(new_cases_inferred)
-
-    return model
+    return this_model
 
 
 mod_a = create_model(cp_a, params_model)
@@ -137,12 +147,11 @@ mod_b = create_model(cp_b, params_model)
 mod_c = create_model(cp_c, params_model)
 
 """## engage!
+    Increase tune and/or draws to get better statistics.
 """
-tr_a = pm.sample(model=mod_a, tune=50, draws=10, init="advi+adapt_diag")
-tr_b = pm.sample(model=mod_b, tune=50, draws=10, init="advi+adapt_diag")
-tr_c = pm.sample(model=mod_c, tune=50, draws=10, init="advi+adapt_diag")
-tr_b = tr_a
-tr_c = tr_a
+tr_a = pm.sample(model=mod_a, tune=50, draws=100, init="advi+adapt_diag")
+tr_b = pm.sample(model=mod_b, tune=50, draws=100, init="advi+adapt_diag")
+tr_c = pm.sample(model=mod_c, tune=50, draws=100, init="advi+adapt_diag")
 
 """## Plotting
     ### english

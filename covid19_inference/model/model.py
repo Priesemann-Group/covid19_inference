@@ -9,7 +9,8 @@ import logging
 import numpy as np
 from pymc3 import Model  # this import is needed to get pymc3-style "with ... as model:"
 
-from . import utility as ut
+# we cannot import utility, would create recursive dependencies
+# from . import utility as ut
 
 log = logging.getLogger(__name__)
 

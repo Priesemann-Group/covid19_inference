@@ -9,21 +9,22 @@ import theano.tensor as tt
 import numpy as np
 import pymc3 as pm
 
-log = logging.getLogger(__name__)
-
 from .model import *
+from . import utility as ut
+
+log = logging.getLogger(__name__)
 
 
 def week_modulation(
-    new_cases_raw,
+    cases,
+    name_cases=None,
     name_weekend_factor="weekend_factor",
     name_offset_modulation="offset_modulation",
     week_modulation_type="abs_sine",
     pr_mean_weekend_factor=0.3,
     pr_sigma_weekend_factor=0.5,
-    week_end_days=(6, 7),
+    weekend_days=(6, 7),
     model=None,
-    save_in_trace=True,
 ):
     r"""
     Adds a weekly modulation of the number of new cases:
@@ -33,7 +34,7 @@ def week_modulation(
         f(t) &= f_w \cdot \left(1 - \left|\sin\left(\frac{\pi}{7} t- \frac{1}{2}\Phi_w\right)\right| \right),
 
     if ``week_modulation_type`` is ``"abs_sine"`` (the default). If ``week_modulation_type`` is ``"step"``, the
-    new cases are simply multiplied by the weekend factor on the days set by ``week_end_days``
+    new cases are simply multiplied by the weekend factor on the days set by ``weekend_days``
 
     The weekend factor :math:`f_w` follows a Lognormal distribution with
     median ``pr_mean_weekend_factor`` and sigma ``pr_sigma_weekend_factor``. It is hierarchically constructed if
@@ -45,20 +46,21 @@ def week_modulation(
     Parameters
     ----------
 
-    new_cases_raw : :class:`~theano.tensor.TensorVariable`
-        The input array, can be one- or two-dimensional
+    cases : :class:`~theano.tensor.TensorVariable`
+        The input array of daily new cases, can be one- or two-dimensional
+    name_cases : str or None,
+        The name under which to save the cases as a trace variable.
+        Default: None, cases are not stored in the trace.
     week_modulation_type : str
         The type of modulation, accepts ``"step"`` or  ``"abs_sine`` (the default).
     pr_mean_weekend_factor : float
         Sets the prior mean of the factor :math:`f_w` by which weekends are counted.
     pr_sigma_weekend_factor : float
         Sets the prior sigma of the factor :math:`f_w` by which weekends are counted.
-    week_end_days : tuple of ints
+    weekend_days : tuple of ints
         The days counted as weekend if ``week_modulation_type`` is ``"step"``
     model : :class:`Cov19Model`
         if none, it is retrieved from the context
-    save_in_trace : bool
-        If True (default) the new_cases are saved in the trace.
 
     Returns
     -------
@@ -78,7 +80,7 @@ def week_modulation(
         modulation = np.zeros(shape_modulation[0])
         for i in range(shape_modulation[0]):
             date_curr = model.data_begin + datetime.timedelta(days=i)
-            if date_curr.isoweekday() in week_end_days:
+            if date_curr.isoweekday() in weekend_days:
                 modulation[i] = 1
         return modulation
 
@@ -110,23 +112,24 @@ def week_modulation(
             mu=tt.log(pr_mean_weekend_factor),
             sigma=pr_sigma_weekend_factor,
         )
-        week_end_factor = tt.exp(weekend_factor_log)
-        pm.Deterministic(name_weekend_factor, week_end_factor)
+        weekend_factor = tt.exp(weekend_factor_log)
+        pm.Deterministic(name_weekend_factor, weekend_factor)
 
     else:  # hierarchical
-        week_end_factor_L2_log, week_end_factor_L1_log = hierarchical_normal(
+        weekend_factor_L2_log, weekend_factor_L1_log = ut.hierarchical_normal(
             name_L1=name_weekend_factor + "_hc_L1_log",
-            name_L2=name_weekend_factor + "_hc_L1_log",
+            name_L2=name_weekend_factor + "_hc_L2_log",
             name_sigma="sigma_" + name_weekend_factor,
             pr_mean=tt.log(pr_mean_weekend_factor),
             pr_sigma=pr_sigma_weekend_factor,
         )
 
         # We do that so we can use it later (same name as non hierarchical)
-        week_end_factor = tt.exp(week_end_factor_L2_log)
-
-        pm.Deterministic(name_weekend_factor + "_hc_L2", weekend_factor)
-        pm.Deterministic(name_weekend_factor + "_hc_L1", tt.exp(week_end_factor_L1_log))
+        weekend_factor_L1 = tt.exp(weekend_factor_L1_log)
+        weekend_factor_L2 = tt.exp(weekend_factor_L2_log)
+        pm.Deterministic(name_weekend_factor + "_hc_L1", weekend_factor_L1)
+        pm.Deterministic(name_weekend_factor + "_hc_L2", weekend_factor_L2)
+        weekend_factor = weekend_factor_L2
 
     # Different modulation types
     modulation = step_modulation() if week_modulation_type == "step" else 0
@@ -136,12 +139,12 @@ def week_modulation(
         modulation = tt.shape_padaxis(modulation, axis=-1)
 
     multiplication_vec = tt.abs_(
-        np.ones(shape_modulation) - week_end_factor * modulation
+        np.ones(shape_modulation) - weekend_factor * modulation
     )
 
-    new_cases_inferred_eff = new_cases_raw * multiplication_vec
+    new_cases_inferred_eff = cases * multiplication_vec
 
-    if save_in_trace:
-        pm.Deterministic("new_cases", new_cases_inferred_eff)
+    if name_cases is not None:
+        pm.Deterministic(name_cases, new_cases_inferred_eff)
 
     return new_cases_inferred_eff

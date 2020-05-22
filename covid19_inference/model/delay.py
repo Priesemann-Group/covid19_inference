@@ -4,9 +4,7 @@
 # and adds the required priors and corresponding variables to be traced.
 # ------------------------------------------------------------------------------ #
 
-import platform
 import logging
-
 import theano
 import theano.tensor as tt
 import numpy as np
@@ -16,14 +14,11 @@ from .model import Cov19Model, modelcontext, set_missing_priors_with_default
 
 log = logging.getLogger(__name__)
 
-if platform.system() == "Darwin":
-    theano.config.gcc.cxxflags = "-Wno-c++11-narrowing"  # workaround for macos
-
 
 def delay_cases(
     cases,
     name_delay="delay",
-    name_delayed_cases="delayed_cases",
+    name_cases=None,
     name_width="delay-width",
     pr_mean_of_median=10,
     pr_sigma_of_median=0.2,
@@ -64,7 +59,7 @@ def delay_cases(
             are added depending on which variable is saved.
             Default : "delay"
 
-        name_delayed_cases : str or None
+        name_cases : str or None
             The name under which the delayed cases are saved in the trace.
             If None, no variable will be added to the trace.
             Default: "delayed_cases"
@@ -192,8 +187,8 @@ def delay_cases(
     )
 
     # optionally, add the cases to the trace. maybe let the user do this in the future.
-    if name_delayed_cases is not None:
-        pm.Deterministic(f"{name_delayed_cases}", delayed_cases)
+    if name_cases is not None:
+        pm.Deterministic(f"{name_cases}", delayed_cases)
 
     return delayed_cases
 

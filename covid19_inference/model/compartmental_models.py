@@ -17,9 +17,9 @@ def SIR(
     lambda_t_log,
     mu,
     name_new_I_t="new_I_t",
+    name_I_begin="I_begin",
     name_I_t="I_t",
     name_S_t="S_t",
-    name_I_begin="I_begin",
     pr_I_begin=100,
     model=None,
     return_all=False,
@@ -37,12 +37,12 @@ def SIR(
             the dimension are the different regions.
         name_new_I_t : str, optional
             Name of the ``new_I_t`` variable
-        name_I_t : str, optional
-            Name of the ``I_t`` variable
-        name_S_t : str, optional
-            Name of the ``S_t`` variable
         name_I_begin : str, optional
             Name of the ``I_begin`` variable
+        name_I_t : str, optional
+            Name of the ``I_t`` variable, set to None to avoid adding as trace variable.
+        name_S_t : str, optional
+            Name of the ``S_t`` variable, set to None to avoid adding as trace variable.
         pr_I_begin : float or array_like or :class:`~theano.tensor.TensorVariable`
             Prior beta of the Half-Cauchy distribution of :math:`I(0)`.
         model : :class:`Cov19Model`

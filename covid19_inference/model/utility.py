@@ -2,17 +2,19 @@
 # Helper functions that are used by other parts of the modeling
 # ------------------------------------------------------------------------------ #
 
+import platform
+import logging
 import theano
 import theano.tensor as tt
 import pymc3 as pm
 
-# utility.py
-# add model argument
-# var names argument and defaults
-# if model.is_hierc.: ... make this apply only to the hierarchical case and check before
-# remove w parameter
-
 from .model import *
+
+log = logging.getLogger(__name__)
+
+# workaround for macos, sufficient to do this once
+if platform.system() == "Darwin":
+    theano.config.gcc.cxxflags = "-Wno-c++11-narrowing"
 
 
 def hierarchical_normal(

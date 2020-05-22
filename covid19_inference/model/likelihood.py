@@ -7,15 +7,16 @@ import logging
 import theano
 import theano.tensor as tt
 import numpy as np
+import pymc3 as pm
+
+from .model import *
+from . import utility as ut
 
 log = logging.getLogger(__name__)
 
-from .model import *
-import pymc3 as pm
-
 
 def student_t_likelihood(
-    new_cases_inferred,
+    cases,
     name_student_t="_new_cases_studentT",
     name_sigma_obs="sigma_obs",
     pr_beta_sigma_obs=30,
@@ -41,9 +42,11 @@ def student_t_likelihood(
 
         Parameters
         ----------
-        new_cases_inferred : :class:`~theano.tensor.TensorVariable`
-            One or two dimensonal array. If 2 dimensional, the first dimension is time and the second are the
-            regions/countries
+        cases : :class:`~theano.tensor.TensorVariable`
+            The daily new cases estimated by the model.
+            Will be compared to  the real world data ``data_obs``.
+            One or two dimensonal array. If 2 dimensional, the first dimension is time
+            and the second are the regions/countries
 
         name_student_t :
             The name under which the studentT distribution is saved in the trace.
@@ -60,7 +63,7 @@ def student_t_likelihood(
 
         offset_sigma : float
             An offset added to the sigma, to make the inference procedure robust. Otherwise numbers of
-            ``new_cases_inferred`` would lead to very small errors and diverging likelihoods. Defaults to 1.
+            ``cases`` would lead to very small errors and diverging likelihoods. Defaults to 1.
 
         model:
             The model on which we want to add the distribution
@@ -95,8 +98,8 @@ def student_t_likelihood(
     pm.StudentT(
         name=name_student_t,
         nu=nu,
-        mu=new_cases_inferred[: len(data_obs)],
-        sigma=tt.abs_(new_cases_inferred[: len(data_obs)] + offset_sigma) ** 0.5
+        mu=cases[: len(data_obs)],
+        sigma=tt.abs_(cases[: len(data_obs)] + offset_sigma) ** 0.5
         * sigma_obs,  # offset and tt.abs to avoid nans
         observed=data_obs,
     )
