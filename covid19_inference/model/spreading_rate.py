@@ -112,7 +112,7 @@ def _make_change_point_RVs(
     def hierarchical():
         lambda_0_hc_L2_log, lambda_0_hc_L1_log = ut.hierarchical_normal(
             name_L1="lambda_0_hc_L1_log_",
-            name_L2="lambda_0_log_L2_log",
+            name_L2="lambda_0_hc_L2_log",
             name_sigma="sigma_lambda_0_hc_L1",
             pr_mean=np.log(pr_median_lambda_0),
             pr_sigma=pr_sigma_lambda_0,
@@ -229,6 +229,7 @@ def _make_change_point_RVs(
                 sigma=cp["pr_sigma_transient_len"],
             )
             pm.Deterministic(f"transient_len_{i + 1}", tt.exp(tr_len_log))
+            tr_len_list.append(tt.exp(tr_len_log))
 
     # ------------------------------------------------------------------------------ #
     # Start of function body
@@ -247,6 +248,7 @@ def _make_change_point_RVs(
 
     for cp_priors in change_points_list:
         set_missing_priors_with_default(cp_priors, default_priors_change_points)
+
 
     model = modelcontext(model)
     lambda_log_list = []
