@@ -162,3 +162,4 @@ for i, key in enumerate(
     cov19.plot._distribution(this_model, trace, key, ax=axes[i + 2, 2])
 
 fig.tight_layout()
+fig #To show figure in jupyter notebook

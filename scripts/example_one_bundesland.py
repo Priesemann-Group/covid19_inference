@@ -173,7 +173,13 @@ with cov19.model.Cov19Model(**params_model) as this_model:
     cov19.model.student_t_likelihood(new_cases)
 
 """## MCMC sampling
+
+    After the model is built, it is sampled using an MCMC sampler.
+    The number of parallel runs can be set with the argument `cores=`.
+    In particular, due to a bug in Theano, Windows users should set `cores=1`.
+    The sampling can take a long time.
 """
+
 trace = pm.sample(model=this_model, tune=500, draws=1000, init="advi+adapt_diag")
 
 
@@ -214,6 +220,7 @@ for i, key in enumerate(
     cov19.plot._distribution(this_model, trace, key, ax=axes[i + 2, 2])
 
 fig.tight_layout()
+fig #To print in jupyter notebook
 
 """### Timeseries
     timeseries overview, for now needs an offset variable to get cumulative cases

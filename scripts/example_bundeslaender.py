@@ -152,7 +152,7 @@ with cov19.model.Cov19Model(**params_model) as this_model:
 
 
 """
-    ## MCM sampling
+    ## MCMC sampling
 
     After the model is built, it is sampled using an MCMC sampler.
     The number of parallel runs can be set with the argument `cores=`.
@@ -232,3 +232,4 @@ for i in range(16):
     cov19.plot._timeseries(x_dat, y, axes[i], what="data", lw=0)
 
 plt.tight_layout()
+fig #To show figure in jupyter notebook
