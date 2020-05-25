@@ -6,7 +6,7 @@ Data Retrieval
 Utility
 -------
 .. automodule:: covid19_inference.data_retrieval.retrieval
-	:members: set_data_dir
+	:members: set_data_dir, backup_instances
 
 Johns Hops University
 ---------------------
@@ -20,13 +20,11 @@ Robert Koch Institute
 .. autoclass:: covid19_inference.data_retrieval.RKI
 	:members:
 
-
 Robert Koch Institute situation reports
 ---------------------------------------
 
 .. autoclass:: covid19_inference.data_retrieval.RKIsituationreports
 	:members:
-
 
 Google
 ------
@@ -34,6 +32,11 @@ Google
 .. autoclass:: covid19_inference.data_retrieval.GOOGLE
 	:members:
 
+Our World in Data
+-----------------
+
+.. autoclass:: covid19_inference.data_retrieval.OWD
+	:members:
 
 Base Retrieval Class
 --------------------
