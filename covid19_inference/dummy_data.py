@@ -85,6 +85,11 @@ class DummyData(object):
     def data_len(self):
         return (self.data_end - self.data_begin).days
 
+    @property
+    def R_0(self):
+        return self.initials["alpha"]/(self.mu + self.initials["alpha"])*self.initials["lambda_initial"]/(self.mu+self.initials["gamma"])
+    
+
 
     def _update_initial(self, **initial_values):
         """
@@ -124,6 +129,11 @@ class DummyData(object):
             self.initials["S_initial"] = initial_values.get("S_initial")
         else:
             self.initials["S_initial"] = np.random.randint(5000000, 10000000)
+
+        if "E_initial" in initial_values:
+            self.initials["E_initial"] = initial_values.get("E_initial")
+        else:
+            self.initials["E_initial"] = 0
 
         if "I_initial" in initial_values:
             self.initials["I_initial"] = initial_values.get("I_initial")
@@ -171,6 +181,17 @@ class DummyData(object):
         else:
             self.initials["case_delay"] = 6
 
+        #SEIR
+        if "alpha" in initial_values:
+            self.initials["alpha"] = initial_values.get("alpha")
+        else:
+            self.initials["alpha"] = 1/14 #14 days incubation
+
+        if "gamma" in initial_values:
+            self.initials["gamma"] = initial_values.get("gamma")
+        else:
+            self.initials["gamma"] = 0.4           
+
         return self.initials
 
     def generate(self):
@@ -197,13 +218,13 @@ class DummyData(object):
         # ------------------------------------------------------------------------------ #
         # 2. solve SIR differential equation by RK4
         # ------------------------------------------------------------------------------ #
-        t_n, data = self._generate_SIR() #data[:,0]=S data[:,1]=I data[:,2]=R
-
+        #t_n, data = self._generate_SIR() #data[:,0]=S data[:,1]=I data[:,2]=R
+        t_n, data = self._generate_SEIR() #data[:,0]=S data[:,1]=E data[:,2]=I data[:,3]=R
         # ------------------------------------------------------------------------------ #
         # 3. calculate new cases raw
         # ------------------------------------------------------------------------------ #
-        new_cases_raw = self._calc_new_cases_raw(data[:, 1])
-
+        new_cases_raw = self._calc_new_cases_raw(data[:, 2])
+        return data
         # ------------------------------------------------------------------------------ #
         # 4. Week modulation
         # ------------------------------------------------------------------------------ #
@@ -284,15 +305,21 @@ class DummyData(object):
         change_points = self.initials["change_points"]
         change_points.sort(key=lambda x: x[0])
         change_points = np.array(change_points)
-
-        lambda_t = [ helper_lambda_between([self.data_begin,self.initials["lambda_initial"]],change_points[0])]
+        for i, cp in enumerate(change_points):
+            if self.data_begin < cp[0]:
+                lambda_t = [ helper_lambda_between([self.data_begin,self.initials["lambda_initial"]],cp)]
+                break
+            else:
+                change_points = np.delete(change_points, i, axis=0)
+                lambda_t = []
+        print(change_points)
         for i, value in enumerate(change_points):
             if (i == len(change_points)-1):
                 continue
             lambda_t = np.append(lambda_t, helper_lambda_between(change_points[i],change_points[i+1]))
 
-        lambda_t = np.append(lambda_t,[change_points[-1][1]] * ((self.data_end - change_points[-1][0]).days + 1))
 
+        lambda_t = np.append(lambda_t,[change_points[-1][1]] * ((self.data_end - change_points[-1][0]).days + 1))
         return lambda_t.flatten()
 
 
@@ -543,3 +570,111 @@ class DummyData(object):
                 diff.append(diff[i - 1])
 
         return diff
+
+    def _generate_SEIR(self):
+        r"""        
+        Numerically solves the differential equation
+
+        .. math::
+            \frac{dS}{dt}  &= \mu N - \mu S - \lambda \frac{I}{N}S \\
+            \frac{dE}{dt}  &= \lambda \frac{I}{N} S - (\mu+\alpha) E \\
+            \frac{dI}{dt}  &= \alpha E - (\gamma + \mu) I \\
+            \frac{dR}{dt}  &= \gamma I - \mu R
+
+        using Runge-Kutta 4, whereby
+
+        .. math::
+            y = \begin{bmatrix}
+                S \\ E \\ I \\ R 
+            \end{bmatrix}
+            = \begin{bmatrix}
+                y_0 \\ y_1 \\ y_2 \\ y_3
+            \end{bmatrix}
+
+        and the population size :math:`N` is the sum of :math:`S`,:math:`E`, :math:`I` and :math:`R`. References to
+        the Runge-Kutta method can be found for example on this `website <https://lpsa.swarthmore.edu/NumInt/NumIntFourth.html>`_.
+
+        The initial SIR parameters and the force of infection :math:`\lambda(t)` are obtained from the object.
+        
+        Attributes
+        ----------
+        initials["S_initial"] : :math:`S_0`
+            Number of initial susceptible
+        initials["I_initial"] : :math:`I_0`
+            Number of initial infected 
+        initials["R_initial"] : :math:`I_0`
+            Number of initial recovered
+        lambda_t : :math:`\lambda(t)`
+            lambda_t array for each time step. Generated by :py:meth:`_change_points_to_lambda_t`
+        initials["gamma"] : :math:`\gamma`
+        initials["mu"] : :math:`\mu`
+        initials["alpha"] : :math:`\alpha`
+        Return
+        ------
+        t_n, y_n : array array ,1-dim
+            Returns the time steps t_n and the time series of the S I R values y_n as vector
+        """
+        # SEIR model as vector
+        def f(t,y,lambda_t, i):
+            """
+            Parameters
+            ----------
+            t : time t
+                not needed but here for consistency in RK4
+            y : state_vector
+                containing S_t,E_t,I_t,R_t
+            lambda_t : number
+                lambda at time t
+            """
+            S = y[0]
+            E = y[1]
+            I = y[2]
+            R = y[3]
+            dS = self.mu * N - self.mu * S - lambda_t * I / N * S
+            dE = lambda_t * I / N * S - (self.mu + self.initials["alpha"]) * E
+
+
+            dI = self.initials["alpha"] * E - (self.initials["gamma"] + self.mu) * I
+            dR = self.initials["gamma"] * I - self.mu * R
+            return np.array([dS,dE,dI,dR])
+
+        # Runge_Kutta_4 timesteps
+        def RK4(dt, t_n, y_n, lambda_t, i):
+            k_1 = f(t_n[i], y_n[i], lambda_t[i], i)
+            k_2 = f(t_n[i] + dt / 2, y_n[i] + k_1 * dt / 2, lambda_t[i], i)
+            k_3 = f(t_n[i] + dt / 2, y_n[i] + k_2 * dt / 2, lambda_t[i], i)
+            k_4 = f(t_n[i] + dt, y_n[i] + k_3 * dt, lambda_t[i], i)
+            return y_n[i] + dt / 6 * (k_1 + 2 * k_2 + 2 * k_3 + k_4)
+
+        # ------------------------------------------------------------------------------ #
+        # Preliminar parameters
+        # ------------------------------------------------------------------------------ #
+        time_range = self.data_len
+
+        N = (
+            self.initials["S_initial"]
+            + self.initials["E_initial"]
+            + self.initials["I_initial"]
+            + self.initials["R_initial"]
+        )
+        t_n = [0]
+        y_n = [ 
+            np.array(
+                [
+                    self.initials["S_initial"],
+                    self.initials["E_initial"],
+                    self.initials["I_initial"],
+                    self.initials["R_initial"],
+                ]
+            )
+            ]
+        dt = 0.01
+        # ------------------------------------------------------------------------------ #
+        # Timesteps
+        # ------------------------------------------------------------------------------ #
+        for i in range(time_range):
+            t_n.append(t_n[i] + dt)
+            print(y_n)
+            y_n.append(RK4(dt, t_n, y_n, self.lambda_t, i))
+
+        return t_n, np.array(y_n)
