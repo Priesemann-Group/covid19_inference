@@ -6,8 +6,9 @@ import numpy as np
 
 log = logging.getLogger(__name__)
 
+
 def tt_lognormal(x, mu, sigma):
-    distr = 1/x * tt.exp(-((tt.log(x) - mu) ** 2) / (2 * sigma ** 2))
+    distr = 1 / x * tt.exp(-((tt.log(x) - mu) ** 2) / (2 * sigma ** 2))
     return distr / (tt.sum(distr, axis=0) + 1e-5)
 
 
@@ -74,12 +75,15 @@ def apply_delay(array, delay, sigma_delay, delay_mat):
         array_shuf = array.dimshuffle((1, 0))
         mat_shuf = mat.dimshuffle((2, 0, 1))
         delayed_arr = tt.batched_dot(array_shuf, mat_shuf)
-        delayed_arr = delayed_arr.dimshuffle((1,0))
+        delayed_arr = delayed_arr.dimshuffle((1, 0))
     elif array.ndim == 1 and mat.ndim == 2:
         delayed_arr = tt.dot(array, mat)
     else:
-        raise RuntimeError("For some reason, wrong number of dimensions, shouldn't happen")
+        raise RuntimeError(
+            "For some reason, wrong number of dimensions, shouldn't happen"
+        )
     return delayed_arr
+
 
 def delay_cases_lognormal(
     input_arr,
@@ -98,9 +102,10 @@ def delay_cases_lognormal(
         delay_mat < 0.01
     ] = 0.01  # needed because negative values lead to nans in the lognormal distribution.
     if input_arr.ndim == 2:
-        delay_mat = delay_mat[:,:, None]
+        delay_mat = delay_mat[:, :, None]
     delayed_arr = apply_delay(input_arr, median_delay, scale_delay, delay_mat)
     return delayed_arr
+
 
 def interpolate(array, delay, delay_matrix):
     """
@@ -144,7 +149,6 @@ def smooth_step_function(start_val, end_val, t_begin, t_end, t_total):
         tt.clip((t - t_begin) / (t_end - t_begin), 0, 1) * (end_val - start_val)
         + start_val
     )
-
 
 
 def set_missing_with_default(priors_dict, default_priors):
