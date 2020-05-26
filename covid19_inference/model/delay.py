@@ -170,9 +170,9 @@ def delay_cases(
 
     # enable this function for custom data and data ranges
     if len_output_arr is None:
-        len_output_arr = model.data_len + model.fcast_len
+        len_output_arr = model.sim_len
     if diff_input_output is None:
-        diff_input_output = model.diff_data_sim
+        diff_input_output = 0
     if len_input_arr is None:
         len_input_arr = model.sim_len
 
