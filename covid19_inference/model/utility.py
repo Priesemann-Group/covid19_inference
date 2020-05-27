@@ -119,9 +119,11 @@ def tt_lognormal(x, mu, sigma):
     """
     Calculates a lognormal pdf for integer spaced x input.
     """
-    x = tt.nnet.relu(x - 1e-12) + 1e-12
+    x = tt.nnet.relu(x - 1e-12) + 1e-12  # clip values at 1e-12
     distr = 1 / x * tt.exp(-((tt.log(x) - mu) ** 2) / (2 * sigma ** 2))
-    return distr / (tt.sum(distr, axis=0) + 1e-12)
+
+    # normalize, add a small offset in case the sum is zero
+    return distr / tt.sum(distr, axis=0) + 1e-8
 
 
 def tt_gamma(x, mu=None, sigma=None, alpha=None, beta=None):
@@ -133,6 +135,8 @@ def tt_gamma(x, mu=None, sigma=None, alpha=None, beta=None):
     if alpha is None and beta is None:
         alpha = mu ** 2 / sigma ** 2
         beta = mu / sigma ** 2
-    x = tt.nnet.relu(x - 1e-12) + 1e-12
+    x = tt.nnet.relu(x - 1e-12) + 1e-12  # clip values at 1e-12
     distr = beta ** alpha * x ** (alpha - 1) * tt.exp(-beta * x)
-    return distr / (tt.sum(distr, axis=0) + 1e-12)
+
+    # normalize, add a small offset in case the sum is zero
+    return distr / tt.sum(distr, axis=0) + 1e-8
