@@ -117,5 +117,6 @@ def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2, model=None):
 
 # utility.py
 def tt_lognormal(x, mu, sigma):
+    x = tt.clip(x,1e-12,1e12)
     distr = 1 / x * tt.exp(-((tt.log(x) - mu) ** 2) / (2 * sigma ** 2))
     return distr / (tt.sum(distr, axis=0) + 1e-5)

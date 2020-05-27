@@ -113,6 +113,7 @@ def SEIR(
     lambda_t_log,
     mu,
     name_new_I_t="new_I_t",
+    name_new_E_t="new_E_t",
     name_I_t="I_t",
     name_S_t="S_t",
     name_I_begin="I_begin",
@@ -316,6 +317,7 @@ def SEIR(
     )
     S_t, new_E_t, I_t, new_I_t = outputs
     pm.Deterministic(name_new_I_t, new_I_t)
+
     if name_S_t is not None:
         pm.Deterministic(name_S_t, S_t)
     if name_I_t is not None:
