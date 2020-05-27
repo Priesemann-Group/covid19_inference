@@ -27,8 +27,11 @@ except ModuleNotFoundError:
     sys.path.append("../../../")
     import covid19_inference as cov19
 
-def create_our_SIR(model,trace):
-    new_cases_obs, time  = cov19.plot._get_array_from_trace_via_date(model,trace,"new_symptomatic")
+
+def create_our_SIR(model, trace, begin_date=None):
+    new_cases_obs, time = cov19.plot._get_array_from_trace_via_date(
+        model, trace, "new_symptomatic", start=begin_date
+    )
 
     diff_data_sim = 16  # should be significantly larger than the expected delay, in
     # order to always fit the same number of data points.
@@ -39,11 +42,12 @@ def create_our_SIR(model,trace):
             pr_mean_date_transient=datetime.datetime(2020, 3, 23),
             pr_sigma_date_transient=3,
             pr_median_lambda=0.2,
-            pr_sigma_lambda=1)
-        ]
+            pr_sigma_lambda=1,
+        )
+    ]
 
     params_model = dict(
-        new_cases_obs=new_cases_obs,
+        new_cases_obs=np.median(new_cases_obs, axis=0),
         data_begin=time[0],
         fcast_len=num_days_forecast,
         diff_data_sim=16,
@@ -59,7 +63,7 @@ def create_our_SIR(model,trace):
             pr_sigma_lambda_0=0.5,
             change_points_list=change_points,  # The change point priors we constructed earlier
             name_lambda_t="lambda_t",  # Name for the variable in the trace (see later)
-        )        
+        )
         # set prior distribution for the recovery rate
         mu = pm.Lognormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
         # This builds a decorrelated prior for I_begin for faster inference.
@@ -99,6 +103,7 @@ def create_our_SIR(model,trace):
         # Define the likelihood, uses the new_cases_obs set as model parameter
         cov19.model.student_t_likelihood(new_cases)
     return this_model
+
 
 # helper to showcase the reporting delay via lognormal
 def delay_lognormal(inp, median, sigma, amplitude=1.0, dist_len=40):
@@ -163,10 +168,10 @@ def create_fixed_model(params_model, cp_center, cp_duration, lambda_new):
             # with pymc3
             pr_I_begin=tt.constant(100, dtype="float64"),
             # dirty workaround, we need shape 11 for the convolution running in SEIR
-            pr_new_E_begin=tt.ones(11, dtype="float64")*50,
+            pr_new_E_begin=tt.ones(11, dtype="float64") * 50,
             # another dirty workaround so we keep one free variable but it is alwys the same effectively
             pr_sigma_median_incubation=0.1,
-            return_all =True,
+            return_all=True,
         )
         pm.Deterministic("mu", tt.constant(mu_fixed))
 
@@ -190,13 +195,11 @@ def create_fixed_model(params_model, cp_center, cp_duration, lambda_new):
         #    Infected -> Infectious  | E         | "Serial interval" 4 days
         #    Infected -> Sympotmatic | E +delay  | "Incubation period" 4-6 days
 
-
         # Plots
         # Infected          | E
         # Symptomatic       | E + .. delay ..           | ~ 4-6 day | check cori et al 2013, machtes rki
         # Reported          | I + ^^ large ^^ delay
         #   -> Tests are performed without symptoms, and can be positive when in I pool
-
 
         # incubation period
         new_symptomatic = delay_lognormal(inp=new_E_t, median=5, sigma=0.3, dist_len=30)
@@ -205,7 +208,6 @@ def create_fixed_model(params_model, cp_center, cp_duration, lambda_new):
         # the other stuff
         new_reported = delay_lognormal(inp=new_I_t, median=7, sigma=0.3, dist_len=30)
         pm.Deterministic("new_reported", new_reported)
-
 
         # here, we do not need to optimize the parameters and can skip the likelihood
         # cov19.model.student_t_likelihood(cases=new_cases)
@@ -271,17 +273,17 @@ tr["b"] = pm.sample(model=mod["b"])
 tr["c"] = pm.sample(model=mod["c"])
 
 """
-Use our dummy data to run a new model 
+Use our dummy data to run a new model
 """
 sir_mod = dict()
-sir_mod["a"] = create_our_SIR(mod["a"],tr["a"])
-sir_mod["b"] = create_our_SIR(mod["b"],tr["b"])
-sir_mod["c"] = create_our_SIR(mod["c"],tr["c"])
+sir_mod["a"] = create_our_SIR(mod["a"], tr["a"], begin_date=bd)
+sir_mod["b"] = create_our_SIR(mod["b"], tr["b"], begin_date=bd)
+sir_mod["c"] = create_our_SIR(mod["c"], tr["c"], begin_date=bd)
 
 sir_tr = dict()
-sir_tr["a"] = pm.sample(model=sir_mod["a"], tune=50, draws=100,init="advi+adapt_diag")
-sir_tr["b"] = pm.sample(model=sir_mod["b"], tune=50, draws=100,init="advi+adapt_diag")
-sir_tr["c"] = pm.sample(model=sir_mod["c"], tune=50, draws=100,init="advi+adapt_diag")
+sir_tr["a"] = pm.sample(model=sir_mod["a"], tune=50, draws=100, init="advi+adapt_diag")
+sir_tr["b"] = pm.sample(model=sir_mod["b"], tune=50, draws=100, init="advi+adapt_diag")
+sir_tr["c"] = pm.sample(model=sir_mod["c"], tune=50, draws=100, init="advi+adapt_diag")
 
 ax = cov19.plot.timeseries_overview(sir_mod["a"], sir_tr["a"])
 plt.show()
