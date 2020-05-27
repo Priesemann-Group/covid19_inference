@@ -28,12 +28,50 @@ except ModuleNotFoundError:
     import covid19_inference as cov19
 
 
+def RKI_R(infected_t,window=4):
+    """
+        Calculate R value as published in 'Erkäuterung der Schätzung der zeitlich variierenden Reproduktionszahl R'    average over 4 days is default.
+        infected: Timeseries or trace.
+
+        From matthias linden: https://github.com/Priesemann-Group/covid19_research/blob/master/data_exploration/R_RKI.ipynb
+        window: averaging window
+    """
+    offset = 0
+    if window == 7:
+        offset = -1
+    
+    r = np.zeros(infected_t.shape) # Empty array with the same shape as Timeseries
+    
+    if infected_t.ndim == 1:
+        if window == 1:
+            r[4:] = infected_t[4:] / infected_t[:-4]
+        elif window == 7:
+            for i in range(10,infected_t.shape[-1]-1):
+                # NOTE: R7_Wert[t-1] <- sum(data$NeuErk[t-0:6]) / sum(data&NeuErk[t-4:10]) 
+                # Indexing in R is inclusive, in numpy exclusive: upper boundary in sum is increased by 1
+                r[i-1] = np.sum(infected_t[i-6:i+1]) / np.sum(infected_t[i-10:i-4+1])
+        else: # Default window = 4
+            for i in range(7,infected_t.shape[-1]):
+                r[i] = np.sum(infected_t[i-3:i+1]) / np.sum(infected_t[i-7:i-3])
+    else:
+        if window == 1:
+            r[:,4:] = infected_t[:,4:] / infected_t[:,:-4]
+        elif window == 7:
+            for i in range(10,infected_t.shape[-1]-1):
+                r[:,i-1] = np.sum(infected_t[:,i-6:i+1],axis=1) / np.sum(infected_t[:,i-10:i-3],axis=1)
+        else: # Default window = 4
+            for i in range(7,infected_t.shape[-1]):
+                r[:,i] = np.sum(infected_t[:,i-3:i+1],axis=1) / np.sum(infected_t[:,i-7:i-3],axis=1)
+        
+    # mask of R_values that were not calculated to match time-index of output to input
+    return np.ma.masked_where((r == 0) | np.isinf(r) | np.isnan(r),r)
+
 def create_our_SIR(model, trace, begin_date=None):
     new_cases_obs, time = cov19.plot._get_array_from_trace_via_date(
         model, trace, "new_symptomatic", start=begin_date
     )
 
-    diff_data_sim = 16  # should be significantly larger than the expected delay, in
+    #diff_data_sim = 16  # should be significantly larger than the expected delay, in
     # order to always fit the same number of data points.
     num_days_forecast = 10
 
@@ -48,9 +86,9 @@ def create_our_SIR(model, trace, begin_date=None):
 
     params_model = dict(
         new_cases_obs=np.median(new_cases_obs, axis=0),
-        data_begin=time[0],
+        data_begin=begin_date,
         fcast_len=num_days_forecast,
-        diff_data_sim=16,
+        diff_data_sim=0,
         N_population=83e6,
     )
 
@@ -69,15 +107,6 @@ def create_our_SIR(model, trace, begin_date=None):
         # This builds a decorrelated prior for I_begin for faster inference.
         # It is not necessary to use it, one can simply remove it and use the default argument
         # for pr_I_begin in cov19.SIR
-        prior_I = cov19.model.uncorrelated_prior_I(
-            lambda_t_log=lambda_t_log,
-            mu=mu,
-            pr_median_delay=pr_delay,
-            name_I_begin="I_begin",
-            name_I_begin_ratio_log="I_begin_ratio_log",
-            pr_sigma_I_begin=2,
-            n_data_points_used=5,
-        )
 
         # Use lambda_t_log and mu to run the SIR model
         new_cases = cov19.model.SIR(
@@ -86,7 +115,6 @@ def create_our_SIR(model, trace, begin_date=None):
             name_new_I_t="new_I_t",
             name_I_t="I_t",
             name_I_begin="I_begin",
-            pr_I_begin=prior_I,
         )
 
         # Delay the cases by a lognormal reporting delay
@@ -281,12 +309,9 @@ sir_mod["b"] = create_our_SIR(mod["b"], tr["b"], begin_date=bd)
 sir_mod["c"] = create_our_SIR(mod["c"], tr["c"], begin_date=bd)
 
 sir_tr = dict()
-sir_tr["a"] = pm.sample(model=sir_mod["a"], tune=50, draws=100, init="advi+adapt_diag")
-sir_tr["b"] = pm.sample(model=sir_mod["b"], tune=50, draws=100, init="advi+adapt_diag")
-sir_tr["c"] = pm.sample(model=sir_mod["c"], tune=50, draws=100, init="advi+adapt_diag")
-
-ax = cov19.plot.timeseries_overview(sir_mod["a"], sir_tr["a"])
-plt.show()
+sir_tr["a"] = pm.sample(model=sir_mod["a"], tune=1000, draws=100, init="advi+adapt_diag")
+sir_tr["b"] = pm.sample(model=sir_mod["b"], tune=1000, draws=100, init="advi+adapt_diag")
+sir_tr["c"] = pm.sample(model=sir_mod["c"], tune=1000, draws=100, init="advi+adapt_diag")
 
 """
     ## Plotting
@@ -297,10 +322,10 @@ cov19.plot.rcParams.draw_ci_75 = False
 cov19.plot.rcParams.draw_ci_95 = False
 
 fig, axes = plt.subplots(
-    4,
+    8,
     1,
-    figsize=(6, 8),
-    gridspec_kw={"height_ratios": [2, 2, 3, 3]},
+    figsize=(6, 12),
+    gridspec_kw={"height_ratios": [2, 2, 3, 3, 3, 3,3,3 ]},
     constrained_layout=True,
 )
 
@@ -339,17 +364,60 @@ for key, clr in zip(["a", "b", "c"], ["tab:red", "tab:orange", "tab:green"]):
     cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
     ax.set_ylabel("new Reported")
 
+
+    # ------------------------------------------------------------------------------ #
+    # Comparisson for different calculation of R
+    # ------------------------------------------------------------------------------ #
+
     # R inferred naive: R_t = Sy_t / Sy_t-d, d=4 generation time
+    # Does not work yet todo
+    ax = axes[4]
+    y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
+    cov19.plot._timeseries(x=x, y=y[4:]/y[:-4], ax=ax, what="model", color=clr)
+    ax.set_ylabel(r"$R$ calculated naive")
+    ax.set_ylim(0.8, 3.1)
+    if key == "a":
+        # only annotate once
+        ax.hlines(1, x[0], x[-1], linestyles=":")
 
-    # R rki avg 4:
+    # R rki avg 4: on Symptomatics
+    ax = axes[5]
+    y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
+    cov19.plot._timeseries(x=x, y=RKI_R(y,4), ax=ax, what="model", color=clr)
+    ax.set_ylabel(r"$R$  via"+"\n"+"RKI method (4 days)")
+    ax.set_ylim(0.8, 3.1)
+    if key == "a":
+        # only annotate once
+        ax.hlines(1, x[0], x[-1], linestyles=":")
 
-    # R rki avg 7:
+    # R rki avg 7: on Symptomatics
+    ax = axes[6]
+    y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
+    cov19.plot._timeseries(x=x, y=RKI_R(y,7), ax=ax, what="model", color=clr)
+    ax.set_ylabel(r"$R$ via"+"\n"+"RKI method (7 days)")
+    ax.set_ylim(0.8, 3.1)
+    if key == "a":
+        # only annotate once
+        ax.hlines(1, x[0], x[-1], linestyles=":")
 
-    # infer R via our SIR model with 1 cp assumption
-    #   * fix prior values for time integration of SEIR generator
+    # R inferred with our model (1cp)
+    trace = sir_tr[key]
+    model = sir_mod[key]
+    mu = trace["mu"]
+    ax = axes[7]
+    lambda_t, x = cov19.plot._get_array_from_trace_via_date(model, trace, "lambda_t")
+    y = lambda_t[:, :] / trace["mu"][:, None]
+    cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+    ax.set_ylabel(r"$\lambda / \mu$"+"\n"+"inferred by model with 1 cp")
+    ax.set_ylim(0.8, 3.1)
+    if key == "a":
+        # only annotate once
+        ax.hlines(1, x[0], x[-1], linestyles=":")
 
     # "if what we inferred (3CP!) was correct, what would the R inferred via RKi etc. look like?!"
     #   * plug in the estimates we inferred in the paper as (fixed) values for the SEIR generation
 
 for ax in axes:
     ax.set_xlim(datetime.datetime(2020, 3, 1), datetime.datetime(2020, 4, 19))
+
+
