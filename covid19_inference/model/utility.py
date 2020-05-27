@@ -115,8 +115,24 @@ def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2, model=None):
     return Y, X
 
 
-# utility.py
 def tt_lognormal(x, mu, sigma):
-    x = tt.clip(x,1e-12,1e12)
+    """
+    Calculates a lognormal pdf for integer spaced x input.
+    """
+    x = tt.nnet.relu(x - 1e-12) + 1e-12
     distr = 1 / x * tt.exp(-((tt.log(x) - mu) ** 2) / (2 * sigma ** 2))
-    return distr / (tt.sum(distr, axis=0) + 1e-5)
+    return distr / (tt.sum(distr, axis=0) + 1e-12)
+
+
+def tt_gamma(x, mu=None, sigma=None, alpha=None, beta=None):
+    """
+    Calculates a gamma distribution pdf for integer spaced x input. Parametrized similarly to
+    :class:`~pymc3.distributions.continuous.Gamma`
+    """
+    assert (alpha is None and beta is None) != (mu is None and sigma is None)
+    if alpha is None and beta is None:
+        alpha = mu ** 2 / sigma ** 2
+        beta = mu / sigma ** 2
+    x = tt.nnet.relu(x - 1e-12) + 1e-12
+    distr = beta ** alpha * x ** (alpha - 1) * tt.exp(-beta * x)
+    return distr / (tt.sum(distr, axis=0) + 1e-12)
