@@ -6,6 +6,8 @@
 
 This is a Bayesian python toolbox for inference and forecast of the spread of the Coronavirus.
 
+The latest stable version is [v0.1.7](https://github.com/Priesemann-Group/covid19_inference/tree/v0.1.7).
+
 Check out our [documentation](https://covid19-inference.readthedocs.io/en/latest/doc/gettingstarted.html).
 
 An example notebook for one bundesland is [here](scripts/example_one_bundesland.ipynb), and for an hierarchical analysis of the bundeslaender [here](scripts/example_bundeslaender.ipynb) (could still have some problems).
