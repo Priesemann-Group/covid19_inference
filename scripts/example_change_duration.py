@@ -22,40 +22,90 @@ import matplotlib.pyplot as plt
 try:
     import covid19_inference as cov19
 except ModuleNotFoundError:
+    sys.path.append("../")
     sys.path.append("../../")
+    sys.path.append("../../../")
     import covid19_inference as cov19
 
-cov19.log.loglevel = "DEBUG"
+def create_our_SIR(model,trace):
+    new_cases_obs, time  = cov19.plot._get_array_from_trace_via_date(model,trace,"new_symptomatic")
 
-# limit the data range to exponential growth
-bd = datetime.datetime(2020, 3, 2)
-ed = datetime.datetime(2020, 3, 15)
+    diff_data_sim = 16  # should be significantly larger than the expected delay, in
+    # order to always fit the same number of data points.
+    num_days_forecast = 10
 
-# download data
-# the toy model could do without data but the toolbox assumes some realworld data.
-jhu = cov19.data_retrieval.JHU(auto_download=True)
-cum_cases = jhu.get_total(country="Germany", data_begin=bd, data_end=ed)
-new_cases = jhu.get_new(country="Germany", data_begin=bd, data_end=ed)
+    change_points = [
+        dict(
+            pr_mean_date_transient=datetime.datetime(2020, 3, 23),
+            pr_sigma_date_transient=3,
+            pr_median_lambda=0.2,
+            pr_sigma_lambda=1)
+        ]
 
-# set model parameters
-params_model = dict(
-    new_cases_obs=new_cases,
-    data_begin=bd,
-    fcast_len=45,
-    diff_data_sim=16,
-    N_population=83e6,
-)
+    params_model = dict(
+        new_cases_obs=new_cases_obs,
+        data_begin=time[0],
+        fcast_len=45,
+        diff_data_sim=16,
+        N_population=83e6,
+    )
 
-# hard coded recovery rate and initial spreading rate, R ~ 3
-mu_fixed = 0.13
-lambda_fixed = 0.39
+    # Median of the prior for the delay in case reporting, we assume 10 days
+    pr_delay = 5
 
+    with cov19.model.Cov19Model(**params_model) as this_model:
+        # Create the an array of the time dependent infection rate lambda
+        lambda_t_log = cov19.model.lambda_t_with_sigmoids(
+            pr_median_lambda_0=0.4,
+            pr_sigma_lambda_0=0.5,
+            change_points_list=change_points,  # The change point priors we constructed earlier
+            name_lambda_t="lambda_t",  # Name for the variable in the trace (see later)
+        )        
+        # set prior distribution for the recovery rate
+        mu = pm.Lognormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
+        # This builds a decorrelated prior for I_begin for faster inference.
+        # It is not necessary to use it, one can simply remove it and use the default argument
+        # for pr_I_begin in cov19.SIR
+        prior_I = cov19.model.uncorrelated_prior_I(
+            lambda_t_log=lambda_t_log,
+            mu=mu,
+            pr_median_delay=pr_delay,
+            name_I_begin="I_begin",
+            name_I_begin_ratio_log="I_begin_ratio_log",
+            pr_sigma_I_begin=2,
+            n_data_points_used=5,
+        )
+
+        # Use lambda_t_log and mu to run the SIR model
+        new_cases = cov19.model.SIR(
+            lambda_t_log=lambda_t_log,
+            mu=mu,
+            name_new_I_t="new_I_t",
+            name_I_t="I_t",
+            name_I_begin="I_begin",
+            pr_I_begin=prior_I,
+        )
+
+        # Delay the cases by a lognormal reporting delay
+        new_cases = cov19.model.delay_cases(
+            cases=new_cases,
+            name_cases="delayed_cases",
+            name_delay="delay",
+            name_width="delay-width",
+            pr_mean_of_median=pr_delay,
+            pr_sigma_of_median=0.2,
+            pr_median_of_width=0.3,
+        )
+
+        # Define the likelihood, uses the new_cases_obs set as model parameter
+        cov19.model.student_t_likelihood(new_cases)
+    return this_model
 
 # helper to showcase the reporting delay via lognormal
 def delay_lognormal(inp, median, sigma, amplitude=1.0, dist_len=40):
     """ Delays input inp by lognormal distirbution using convolution """
     dist_len = tt.cast(dist_len, "int64")
-    beta = cov19.model.utility.tt_lognormal(
+    beta = cov19.model._utility.tt_lognormal(
         tt.arange(dist_len * 2), tt.log(median), sigma
     )
 
@@ -77,7 +127,7 @@ def delay_lognormal(inp, median, sigma, amplitude=1.0, dist_len=40):
 
 
 # we want to create multiple models with the different change points
-def create_model(params_model, cp_center, cp_duration, lambda_new):
+def create_fixed_model(params_model, cp_center, cp_duration, lambda_new):
     with cov19.model.Cov19Model(**params_model) as this_model:
 
         # usually, make lambda a pymc3 random variable.
@@ -156,20 +206,52 @@ def create_model(params_model, cp_center, cp_duration, lambda_new):
     return this_model
 
 
+# ------------------------------------------------------------------------------ #
+# Start here
+# ------------------------------------------------------------------------------ #
+cov19.log.loglevel = "DEBUG"
+
+# limit the data range to exponential growth
+bd = datetime.datetime(2020, 3, 2)
+ed = datetime.datetime(2020, 3, 15)
+
+# download data
+# the toy model could do without data but the toolbox assumes some realworld data.
+jhu = cov19.data_retrieval.JHU(auto_download=True)
+cum_cases = jhu.get_total(country="Germany", data_begin=bd, data_end=ed)
+new_cases = jhu.get_new(country="Germany", data_begin=bd, data_end=ed)
+
+# set model parameters
+params_model = dict(
+    new_cases_obs=new_cases,
+    data_begin=bd,
+    fcast_len=45,
+    diff_data_sim=16,
+    N_population=83e6,
+)
+
+# hard coded recovery rate and initial spreading rate, R ~ 3
+mu_fixed = 0.13
+lambda_fixed = 0.39
+
+"""
+Create dummy data with fixed parameters and
+run it to obtain a dataset which we later use as new cases obs.
+"""
 mod = dict()
-mod["a"] = create_model(
+mod["a"] = create_fixed_model(
     params_model,
     cp_center=datetime.datetime(2020, 3, 23),
     cp_duration=0.1,
     lambda_new=0.15,
 )
-mod["b"] = create_model(
+mod["b"] = create_fixed_model(
     params_model,
     cp_center=datetime.datetime(2020, 3, 23),
     cp_duration=4,
     lambda_new=0.15,
 )
-mod["c"] = create_model(
+mod["c"] = create_fixed_model(
     params_model,
     cp_center=datetime.datetime(2020, 3, 23),
     cp_duration=8,
@@ -180,6 +262,22 @@ tr = dict()
 tr["a"] = pm.sample(model=mod["a"], tune=50, draws=100)
 tr["b"] = pm.sample(model=mod["b"], tune=50, draws=100)
 tr["c"] = pm.sample(model=mod["c"], tune=50, draws=100)
+
+"""
+Use our dummy data to run a new model 
+"""
+sir_mod = dict()
+sir_mod["a"] = create_our_SIR(mod["a"],tr["a"])
+sir_mod["b"] = create_our_SIR(mod["b"],tr["b"])
+sir_mod["c"] = create_our_SIR(mod["c"],tr["c"])
+
+sir_tr = dict()
+sir_tr["a"] = pm.sample(model=sir_mod["a"], tune=50, draws=100)
+sir_tr["b"] = pm.sample(model=sir_mod["b"], tune=50, draws=100)
+sir_tr["c"] = pm.sample(model=sir_mod["c"], tune=50, draws=100)
+
+ax = cov19.plot.timeseries_overview(sir_mod["a"], sir_tr["a"])
+plt.show()
 
 """
     ## Plotting
