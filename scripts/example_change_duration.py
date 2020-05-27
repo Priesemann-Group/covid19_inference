@@ -45,12 +45,11 @@ def create_our_SIR(model,trace):
     params_model = dict(
         new_cases_obs=new_cases_obs,
         data_begin=time[0],
-        fcast_len=45,
+        fcast_len=num_days_forecast,
         diff_data_sim=16,
         N_population=83e6,
     )
 
-    # Median of the prior for the delay in case reporting, we assume 10 days
     pr_delay = 5
 
     with cov19.model.Cov19Model(**params_model) as this_model:
@@ -272,9 +271,9 @@ sir_mod["b"] = create_our_SIR(mod["b"],tr["b"])
 sir_mod["c"] = create_our_SIR(mod["c"],tr["c"])
 
 sir_tr = dict()
-sir_tr["a"] = pm.sample(model=sir_mod["a"], tune=50, draws=100)
-sir_tr["b"] = pm.sample(model=sir_mod["b"], tune=50, draws=100)
-sir_tr["c"] = pm.sample(model=sir_mod["c"], tune=50, draws=100)
+sir_tr["a"] = pm.sample(model=sir_mod["a"], tune=50, draws=100,init="advi+adapt_diag")
+sir_tr["b"] = pm.sample(model=sir_mod["b"], tune=50, draws=100,init="advi+adapt_diag")
+sir_tr["c"] = pm.sample(model=sir_mod["c"], tune=50, draws=100,init="advi+adapt_diag")
 
 ax = cov19.plot.timeseries_overview(sir_mod["a"], sir_tr["a"])
 plt.show()
