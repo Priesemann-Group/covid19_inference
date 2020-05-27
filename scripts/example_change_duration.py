@@ -108,7 +108,15 @@ def create_model(params_model, cp_center, cp_duration, lambda_new):
             # new infectious per day
             name_new_I_t="new_I_t",
             # incubation period, lognormal distributed, duration in the E pool
+            pr_mean_median_incubation=4,
             name_median_incubation="median_incubation",
+            # fix I_begin, new_E_begin and incubation time instead of inferring them
+            # with pymc3
+            pr_I_begin=tt.constant(100, dtype="float64"),
+            # dirty workaround, we need shape 11 for the convolution running in SEIR
+            pr_new_E_begin=tt.ones(11, dtype="float64")*50,
+            # another dirty workaround so we keep one free variable but it is alwys the same effectively
+            pr_sigma_median_incubation=0.1,
             return_all =True,
         )
         pm.Deterministic("mu", tt.constant(mu_fixed))
@@ -142,11 +150,11 @@ def create_model(params_model, cp_center, cp_duration, lambda_new):
 
 
         # incubation period
-        new_symptomatic = delay_lognormal(inp=new_E_t, median=5, sigma=0.4, dist_len=30)
+        new_symptomatic = delay_lognormal(inp=new_E_t, median=5, sigma=0.3, dist_len=30)
         pm.Deterministic("new_symptomatic", new_symptomatic)
 
-        # median
-        new_reported = delay_lognormal(inp=new_I_t, median=7, sigma=0.4, dist_len=30)
+        # the other stuff
+        new_reported = delay_lognormal(inp=new_I_t, median=7, sigma=0.3, dist_len=30)
         pm.Deterministic("new_reported", new_reported)
 
 
@@ -177,9 +185,9 @@ mod["c"] = create_model(
 )
 
 tr = dict()
-tr["a"] = pm.sample(model=mod["a"], tune=50, draws=100)
-tr["b"] = pm.sample(model=mod["b"], tune=50, draws=100)
-tr["c"] = pm.sample(model=mod["c"], tune=50, draws=100)
+tr["a"] = pm.sample(model=mod["a"])
+tr["b"] = pm.sample(model=mod["b"])
+tr["c"] = pm.sample(model=mod["c"])
 
 """
     ## Plotting
@@ -218,19 +226,19 @@ for key, clr in zip(["a", "b", "c"], ["tab:red", "tab:orange", "tab:green"]):
     ax = axes[1]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_E_t")
     cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
-    ax.set_ylabel("New infected\nper day")
+    ax.set_ylabel("new Infected")
 
     # New symptomatic
     ax = axes[2]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
     cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
-    ax.set_ylabel("New symptomatic\nper day")
+    ax.set_ylabel("new Symptomatic")
 
     # New reported
     ax = axes[3]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_reported")
     cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
-    ax.set_ylabel("New reported\nper day")
+    ax.set_ylabel("new Reported")
 
     # R inferred naive: R_t = Sy_t / Sy_t-d, d=4 generation time
 

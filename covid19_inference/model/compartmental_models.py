@@ -45,8 +45,9 @@ def SIR(
             Name of the ``I_t`` variable, set to None to avoid adding as trace variable.
         name_S_t : str, optional
             Name of the ``S_t`` variable, set to None to avoid adding as trace variable.
-        pr_I_begin : float or array_like or :class:`~theano.tensor.TensorVariable`
+        pr_I_begin : float or array_like or :class:`~theano.tensor.Variable`
             Prior beta of the Half-Cauchy distribution of :math:`I(0)`.
+            if type is ``tt.Constant``, I_begin will not be inferred by pymc3
         model : :class:`Cov19Model`
             if none, it is retrieved from the context
         return_all : bool
@@ -69,7 +70,7 @@ def SIR(
     N = model.N_population
 
     # Prior distributions of starting populations (infectious, susceptibles)
-    if isinstance(pr_I_begin, tt.TensorVariable):
+    if isinstance(pr_I_begin, tt.Variable):
         I_begin = pr_I_begin
     else:
         I_begin = pm.HalfCauchy(
@@ -121,8 +122,8 @@ def SEIR(
     name_I_begin="I_begin",
     name_new_E_begin="new_E_begin",
     name_median_incubation="median_incubation",
-    pr_beta_I_begin=100,
-    pr_beta_new_E_begin=50,
+    pr_I_begin=100,
+    pr_new_E_begin=50,
     pr_median_mu=1 / 8,
     pr_mean_median_incubation=4,
     pr_sigma_median_incubation=1,
@@ -164,11 +165,13 @@ def SEIR(
         name_median_incubation : str
             The name under which the median incubation time is saved in the trace
 
-        pr_beta_I_begin : float or array_like
+        pr_I_begin : float or array_like
             Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
             distribution of :math:`I(0)`.
+            if type is ``tt.Variable``, ``I_begin`` will be set to the provided prior as
+            a constant.
 
-        pr_beta_new_E_begin : float or array_like
+        pr_new_E_begin : float or array_like
             Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
             distribution of :math:`E(0)`.
 
@@ -185,9 +188,11 @@ def SEIR(
             until a person becomes infectious which seems to be about 1 day earlier as
             showing symptoms).
 
-        pr_sigma_median_incubation :
+        pr_sigma_median_incubation : number or None
             Prior sigma of the :class:`~pymc3.distributions.continuous.Normal`
             distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
+            If None, the incubation time will be fixed to the value of
+            ``pr_mean_median_incubation`` instead of a random variable
             Default is 1 day.
 
         sigma_incubation :
@@ -232,33 +237,44 @@ def SEIR(
     # Total number of people in population
     N = model.N_population
 
-    # Number of regions as tuple of int
-    num_regions = () if model.sim_ndim == 1 else model.sim_shape[1]
-
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
     # We choose to consider the transitions of newly exposed people of the last 10 days.
-    if num_regions == ():
-        new_E_begin = pm.HalfCauchy(
-            name=name_new_E_begin, beta=pr_beta_new_E_begin, shape=11
-        )
+    if isinstance(pr_new_E_begin, tt.Variable):
+        new_E_begin = pr_new_E_begin
     else:
-        new_E_begin = pm.HalfCauchy(
-            name=name_new_E_begin, beta=pr_beta_new_E_begin, shape=(11, num_regions)
+        if not model.is_hierarchical:
+            new_E_begin = pm.HalfCauchy(
+                name=name_new_E_begin, beta=pr_new_E_begin, shape=11
+            )
+        else:
+            new_E_begin = pm.HalfCauchy(
+                name=name_new_E_begin, beta=pr_new_E_begin, shape=(11, model.shape_of_regions)
+            )
+
+    # Prior distributions of starting populations (infectious, susceptibles)
+    if isinstance(pr_I_begin, tt.Variable):
+        I_begin = pr_I_begin
+    else:
+        I_begin = pm.HalfCauchy(
+            name=name_I_begin, beta=pr_I_begin, shape=model.shape_of_regions
         )
-    I_begin = pm.HalfCauchy(name=name_I_begin, beta=pr_beta_I_begin, shape=num_regions)
+
     S_begin = N - I_begin - pm.math.sum(new_E_begin, axis=0)
 
     lambda_t = tt.exp(lambda_t_log)
     new_I_0 = tt.zeros_like(I_begin)
 
-    median_incubation = pm.Normal(
-        name_median_incubation,
-        mu=pr_mean_median_incubation,
-        sigma=pr_sigma_median_incubation,
-    )
+    if pr_sigma_median_incubation is None:
+        median_incubation = pr_mean_median_incubation
+    else:
+        median_incubation = pm.Normal(
+            name_median_incubation,
+            mu=pr_mean_median_incubation,
+            sigma=pr_sigma_median_incubation,
+        )
 
     # Choose transition rates (E to I) according to incubation period distribution
-    if not num_regions:
+    if not model.is_hierarchical:
         x = np.arange(1, 11)
     else:
         x = np.arange(1, 11)[:, None]
