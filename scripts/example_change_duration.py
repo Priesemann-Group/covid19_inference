@@ -96,6 +96,7 @@ def create_model(params_model, cp_center, cp_duration, lambda_new):
 
         # create the time series of lambda (on log scale)
         lambda_t = step_t * (lambda_new - lambda_old) + lambda_old
+        pm.Deterministic("lambda_t", lambda_t)
 
         # based on the timeseries of the rates, get new cases (infected) via SIR
         # needs lambda_t on log scale
@@ -129,33 +130,25 @@ def create_model(params_model, cp_center, cp_duration, lambda_new):
         # Symptomatic -> Reported       |       | Rki Meldedatum
 
         # RKI:
-        #    Infected -> Sympotmatic "Incubation period" 4-6 days
-        #    Infected -> Infectious "Serial interval" 4 days
+        #    Infected -> Infectious  | E         | "Serial interval" 4 days
+        #    Infected -> Sympotmatic | E +delay  | "Incubation period" 4-6 days
 
 
         # Plots
         # Infected          | E
         # Symptomatic       | E + .. delay ..           | ~ 4-6 day | check cori et al 2013, machtes rki
         # Reported          | I + ^^ large ^^ delay
+        #   -> Tests are performed without symptoms, and can be positive when in I pool
 
-        # symptomatic
 
+        # incubation period
+        new_symptomatic = delay_lognormal(inp=new_E_t, median=5, sigma=0.4, dist_len=30)
+        pm.Deterministic("new_symptomatic", new_symptomatic)
 
-        # always needed to fix the misaligned offset in our toolbox
-        new_cases = cov19.model.delay_cases(
-            cases=new_cases,
-            name_cases="new_cases",
-            pr_mean_of_median=5,
-            pr_median_of_width=0.01,
-        )
+        # median
+        new_reported = delay_lognormal(inp=new_I_t, median=7, sigma=0.4, dist_len=30)
+        pm.Deterministic("new_reported", new_reported)
 
-        # symptom-to-reported delay ~ 10 days
-        new_cases = delay_lognormal(inp=new_cases, median=10, sigma=0.4, dist_len=30)
-
-        # the plotting of the toolbox relies on `new_cases` string in the variable
-        # name to get the right dimensions. this needs to be improved!
-        pm.Deterministic("new_cases_reported", new_cases)
-        pm.Deterministic("lambda_t", lambda_t)
 
         # here, we do not need to optimize the parameters and can skip the likelihood
         # cov19.model.student_t_likelihood(cases=new_cases)
@@ -221,27 +214,35 @@ for key, clr in zip(["a", "b", "c"], ["tab:red", "tab:orange", "tab:green"]):
         # only annotate once
         ax.hlines(1, x[0], x[-1], linestyles=":")
 
-    # lambda
+    # New infected, not infectious
     ax = axes[1]
-    y = lambda_t[:, :]
-    cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
-    ax.set_ylabel(r"$\lambda$")
-    ax.set_ylim(0.09, 0.44)
-    if key == "a":
-        ax.hlines(mu_fixed, x[0], x[-1], linestyles=":")
-
-    # New infected
-    ax = axes[2]
-    y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_cases")
+    y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_E_t")
     cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
     ax.set_ylabel("New infected\nper day")
 
+    # New symptomatic
+    ax = axes[2]
+    y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
+    cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+    ax.set_ylabel("New symptomatic\nper day")
+
     # New reported
     ax = axes[3]
-    y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_cases_reported")
+    y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_reported")
     cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
     ax.set_ylabel("New reported\nper day")
 
+    # R inferred naive: R_t = Sy_t / Sy_t-d, d=4 generation time
+
+    # R rki avg 4:
+
+    # R rki avg 7:
+
+    # infer R via our SIR model with 1 cp assumption
+    #   * fix prior values for time integration of SEIR generator
+
+    # "if what we inferred (3CP!) was correct, what would the R inferred via RKi etc. look like?!"
+    #   * plug in the estimates we inferred in the paper as (fixed) values for the SEIR generation
 
 for ax in axes:
     ax.set_xlim(datetime.datetime(2020, 3, 1), datetime.datetime(2020, 4, 19))

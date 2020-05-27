@@ -8,7 +8,9 @@ import theano
 import theano.tensor as tt
 import numpy as np
 import pymc3 as pm
+
 from .model import *
+from . import utility as ut
 
 log = logging.getLogger(__name__)
 
@@ -261,7 +263,7 @@ def SEIR(
     else:
         x = np.arange(1, 11)[:, None]
 
-    beta = mh.tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
+    beta = ut.tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
 
     # Runs SEIR model:
     def next_day(
