@@ -71,7 +71,7 @@ def create_our_SIR(model, trace, begin_date=None):
         model, trace, "new_symptomatic", start=begin_date
     )
 
-    #diff_data_sim = 16  # should be significantly larger than the expected delay, in
+    diff_data_sim = 16  # should be significantly larger than the expected delay, in
     # order to always fit the same number of data points.
     num_days_forecast = 10
 
@@ -88,7 +88,7 @@ def create_our_SIR(model, trace, begin_date=None):
         new_cases_obs=np.median(new_cases_obs, axis=0),
         data_begin=begin_date,
         fcast_len=num_days_forecast,
-        diff_data_sim=0,
+        diff_data_sim=diff_data_sim,
         N_population=83e6,
     )
 
@@ -304,14 +304,14 @@ tr["c"] = pm.sample(model=mod["c"])
 Use our dummy data to run a new model
 """
 sir_mod = dict()
-sir_mod["a"] = create_our_SIR(mod["a"], tr["a"], begin_date=bd)
-sir_mod["b"] = create_our_SIR(mod["b"], tr["b"], begin_date=bd)
-sir_mod["c"] = create_our_SIR(mod["c"], tr["c"], begin_date=bd)
+sir_mod["a"] = create_our_SIR(mod["a"], tr["a"], begin_date=mod["a"].sim_begin)
+sir_mod["b"] = create_our_SIR(mod["b"], tr["b"], begin_date=mod["b"].sim_begin)
+sir_mod["c"] = create_our_SIR(mod["c"], tr["c"], begin_date=mod["c"].sim_begin)
 
 sir_tr = dict()
-sir_tr["a"] = pm.sample(model=sir_mod["a"], tune=1000, draws=100, init="advi+adapt_diag")
-sir_tr["b"] = pm.sample(model=sir_mod["b"], tune=1000, draws=100, init="advi+adapt_diag")
-sir_tr["c"] = pm.sample(model=sir_mod["c"], tune=1000, draws=100, init="advi+adapt_diag")
+sir_tr["a"] = pm.sample(model=sir_mod["a"], tune=1000, draws=1000, init="advi+adapt_diag")
+sir_tr["b"] = pm.sample(model=sir_mod["b"], tune=1000, draws=1000, init="advi+adapt_diag")
+sir_tr["c"] = pm.sample(model=sir_mod["c"], tune=1000, draws=1000, init="advi+adapt_diag")
 
 """
     ## Plotting
@@ -373,9 +373,10 @@ for key, clr in zip(["a", "b", "c"], ["tab:red", "tab:orange", "tab:green"]):
     # Does not work yet todo
     ax = axes[4]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
-    cov19.plot._timeseries(x=x, y=y[4:]/y[:-4], ax=ax, what="model", color=clr)
+    y = [y[:,i+4]/y[:,i] for i in range(model.sim_len-4)] # R_t = Sy_t / Sy_t-d, d=4 generation time
+    cov19.plot._timeseries(x=x[:-4], y=np.transpose(np.array(y)), ax=ax, what="model", color=clr)
     ax.set_ylabel(r"$R$ calculated naive")
-    ax.set_ylim(0.8, 3.1)
+    ax.set_ylim(0.7, 2.1)
     if key == "a":
         # only annotate once
         ax.hlines(1, x[0], x[-1], linestyles=":")
@@ -385,7 +386,7 @@ for key, clr in zip(["a", "b", "c"], ["tab:red", "tab:orange", "tab:green"]):
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
     cov19.plot._timeseries(x=x, y=RKI_R(y,4), ax=ax, what="model", color=clr)
     ax.set_ylabel(r"$R$  via"+"\n"+"RKI method (4 days)")
-    ax.set_ylim(0.8, 3.1)
+    ax.set_ylim(0.7, 2.1)
     if key == "a":
         # only annotate once
         ax.hlines(1, x[0], x[-1], linestyles=":")
@@ -395,7 +396,7 @@ for key, clr in zip(["a", "b", "c"], ["tab:red", "tab:orange", "tab:green"]):
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
     cov19.plot._timeseries(x=x, y=RKI_R(y,7), ax=ax, what="model", color=clr)
     ax.set_ylabel(r"$R$ via"+"\n"+"RKI method (7 days)")
-    ax.set_ylim(0.8, 3.1)
+    ax.set_ylim(0.7, 2.1)
     if key == "a":
         # only annotate once
         ax.hlines(1, x[0], x[-1], linestyles=":")
@@ -407,9 +408,9 @@ for key, clr in zip(["a", "b", "c"], ["tab:red", "tab:orange", "tab:green"]):
     ax = axes[7]
     lambda_t, x = cov19.plot._get_array_from_trace_via_date(model, trace, "lambda_t")
     y = lambda_t[:, :] / trace["mu"][:, None]
-    cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+    cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr,draw_ci_75=True)
     ax.set_ylabel(r"$\lambda / \mu$"+"\n"+"inferred by model with 1 cp")
-    ax.set_ylim(0.8, 3.1)
+    ax.set_ylim(0.7, 2.1)
     if key == "a":
         # only annotate once
         ax.hlines(1, x[0], x[-1], linestyles=":")
@@ -419,5 +420,8 @@ for key, clr in zip(["a", "b", "c"], ["tab:red", "tab:orange", "tab:green"]):
 
 for ax in axes:
     ax.set_xlim(datetime.datetime(2020, 3, 1), datetime.datetime(2020, 4, 19))
+
+plt.savefig("comparisson_different_R.png")
+# Finally plot distributions for the model
 
 
