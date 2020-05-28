@@ -13,6 +13,7 @@ import sys
 
 import pymc3 as pm
 import numpy as np
+import pandas as pd
 import theano
 import theano.tensor as tt
 import theano.tensor.signal.conv as tt_conv
@@ -149,6 +150,34 @@ def delay_lognormal(inp, median, sigma, amplitude=1.0, dist_len=40):
     return conv1d(inp, beta, amplitude)[: inp.shape[0]]
 
 
+def get_lambda_t_3cp_from_paper():
+    # hard coded time series of the median lamda values we inferred
+    # as in Fig 3 https://arxiv.org/abs/2004.01105
+    y = np.array(
+      [0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853,
+       0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853,
+       0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853,
+       0.42520093, 0.42517466, 0.4249035 , 0.4236892 , 0.41947994,
+       0.40930175, 0.38876708, 0.34942187, 0.29720015, 0.26635061,
+       0.25552907, 0.25118942, 0.24956378, 0.24907948, 0.24837864,
+       0.24296566, 0.22420404, 0.19470871, 0.16873707, 0.15696049,
+       0.15353644, 0.15277346, 0.15087519, 0.14391068, 0.13167679,
+       0.11795485, 0.10687387, 0.09951218, 0.09551084, 0.09377538,
+       0.09302759, 0.09289024, 0.09285077, 0.09284367, 0.09283485,
+       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485])
+
+    x = pd.date_range(start='2020-2-15', periods=len(y)).date
+
+    return y, x
+
 # we want to create multiple models with the different change points
 def create_fixed_model(params_model, cp_center, cp_duration, lambda_new):
     with cov19.model.Cov19Model(**params_model) as this_model:
@@ -231,6 +260,73 @@ def create_fixed_model(params_model, cp_center, cp_duration, lambda_new):
         # here, we do not need to optimize the parameters and can skip the likelihood
         # cov19.model.student_t_likelihood(cases=new_cases)
 
+    return this_model
+
+def create_3cp_model(params_model):
+    with cov19.model.Cov19Model(**params_model) as this_model:
+
+        lambda_t, t = get_lambda_t_3cp_from_paper()
+        # get the right time-range
+        start = np.where(t == this_model.sim_begin.date())[0][0]
+        lambda_t = tt.constant(lambda_t[start:])
+        pm.Deterministic("lambda_t", lambda_t)
+
+        # based on the timeseries of the rates, get new cases (infected) via SIR
+        # needs lambda_t on log scale
+        new_I_t, new_E_t, I_t, S_t = cov19.model.SEIR(
+            lambda_t_log=tt.log(lambda_t),
+            mu=mu_fixed,
+            # new exposed per day: infected but not infectious yet
+            name_new_E_t="new_E_t",
+            # new infectious per day
+            name_new_I_t="new_I_t",
+            # incubation period, lognormal distributed, duration in the E pool
+            pr_mean_median_incubation=4,
+            name_median_incubation="median_incubation",
+            # fix I_begin, new_E_begin and incubation time instead of inferring them
+            # with pymc3
+            pr_I_begin=tt.constant(100, dtype="float64"),
+            # dirty workaround, we need shape 11 for the convolution running in SEIR
+            pr_new_E_begin=tt.ones(11, dtype="float64") * 50,
+            # another dirty workaround so we keep one free variable but it is alwys the same effectively
+            pr_sigma_median_incubation=0.1,
+            return_all=True,
+        )
+        pm.Deterministic("mu", tt.constant(mu_fixed))
+
+        # SIR our paper
+        # delay: S->Reported
+        #   * fixed timeshift with lognormal prior
+        #   * in ensemble average: lognomal delay
+        #   * different from lognormal convolution
+        #   * hence, different dynamics
+
+        # SIR now:
+        #   * lognorm conv. with (log?)normal prior (kernel) of median
+        #   * hence, the delay influences the dynamic within each trace / sample
+
+        # 3 delays: (all pools new per day)
+        # Infected -> Infectious        | E->I  | pr_median ~ 4 (in paper 5)
+        # Infectious -> Sympotmatic     |       | Rki Refdatum ~ 1 day, not in the code
+        # Symptomatic -> Reported       |       | Rki Meldedatum
+
+        # RKI:
+        #    Infected -> Infectious  | E         | "Serial interval" 4 days
+        #    Infected -> Sympotmatic | E +delay  | "Incubation period" 4-6 days
+
+        # Plots
+        # Infected          | E
+        # Symptomatic       | E + .. delay ..           | ~ 4-6 day | check cori et al 2013, machtes rki
+        # Reported          | I + ^^ large ^^ delay
+        #   -> Tests are performed without symptoms, and can be positive when in I pool
+
+        # incubation period
+        new_symptomatic = delay_lognormal(inp=new_E_t, median=5, sigma=0.3, dist_len=30)
+        pm.Deterministic("new_symptomatic", new_symptomatic)
+
+        # the other stuff
+        new_reported = delay_lognormal(inp=new_I_t, median=7, sigma=0.3, dist_len=30)
+        pm.Deterministic("new_reported", new_reported)
     return this_model
 
 
@@ -326,11 +422,15 @@ mod["c"] = create_fixed_model(
     cp_duration=8,
     lambda_new=0.15,
 )
+mod["d"] = create_3cp_model(
+    params_model
+)
 
 tr = dict()
 tr["a"] = pm.sample(model=mod["a"])
 tr["b"] = pm.sample(model=mod["b"])
 tr["c"] = pm.sample(model=mod["c"])
+tr["d"] = pm.sample(model=mod["d"])
 
 """
 Use our dummy data to run a new model
@@ -339,11 +439,13 @@ sir_mod = dict()
 sir_mod["a"] = create_our_SIR(mod["a"], tr["a"])
 sir_mod["b"] = create_our_SIR(mod["b"], tr["b"])
 sir_mod["c"] = create_our_SIR(mod["c"], tr["c"])
+sir_mod["d"] = create_our_SIR(mod["d"], tr["d"])
 
 sir_tr = dict()
 sir_tr["a"] = pm.sample(model=sir_mod["a"], tune=100, draws=10, init="advi+adapt_diag")
 sir_tr["b"] = pm.sample(model=sir_mod["b"], tune=100, draws=10, init="advi+adapt_diag")
 sir_tr["c"] = pm.sample(model=sir_mod["c"], tune=100, draws=10, init="advi+adapt_diag")
+sir_tr["d"] = pm.sample(model=sir_mod["d"], tune=100, draws=10, init="advi+adapt_diag")
 
 """
     ## Plotting
@@ -361,7 +463,7 @@ fig, axes = plt.subplots(
     constrained_layout=True,
 )
 
-for key, clr in zip(["a", "b", "c"], ["tab:red", "tab:orange", "tab:green"]):
+for key, clr in zip(["a", "b", "c", "d"], ["tab:red", "tab:orange", "tab:green", "tab:blue"]):
     trace = tr[key]
     model = mod[key]
 
