@@ -172,7 +172,7 @@ def delay_cases(
     if len_output_arr is None:
         len_output_arr = model.sim_len
     if diff_input_output is None:
-        diff_input_output = 0
+        diff_input_output = model.diff_data_sim
     if len_input_arr is None:
         len_input_arr = model.sim_len
 

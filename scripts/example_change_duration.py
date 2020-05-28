@@ -28,52 +28,43 @@ except ModuleNotFoundError:
     import covid19_inference as cov19
 
 
-def RKI_R(infected_t,window=4):
-    """
-        Calculate R value as published in 'Erkäuterung der Schätzung der zeitlich variierenden Reproduktionszahl R'    average over 4 days is default.
-        infected: Timeseries or trace.
+def RKI_R(infected_t, window=4, gd=4):
+    """ Calculate R value as published by the RKI on 2020-05-15
+    in 'Erkäuterung der Schätzung der zeitlich variierenden Reproduktionszahl R'
 
-        From matthias linden: https://github.com/Priesemann-Group/covid19_research/blob/master/data_exploration/R_RKI.ipynb
-        window: averaging window
+    infected: Timeseries or trace, in general: last index is considered to calculate R
+    window: averaging window, average over 4 days is default
     """
-    offset = 0
-    if window == 7:
-        offset = -1
-    
-    r = np.zeros(infected_t.shape) # Empty array with the same shape as Timeseries
-    
-    if infected_t.ndim == 1:
-        if window == 1:
-            r[4:] = infected_t[4:] / infected_t[:-4]
-        elif window == 7:
-            for i in range(10,infected_t.shape[-1]-1):
-                # NOTE: R7_Wert[t-1] <- sum(data$NeuErk[t-0:6]) / sum(data&NeuErk[t-4:10]) 
-                # Indexing in R is inclusive, in numpy exclusive: upper boundary in sum is increased by 1
-                r[i-1] = np.sum(infected_t[i-6:i+1]) / np.sum(infected_t[i-10:i-4+1])
-        else: # Default window = 4
-            for i in range(7,infected_t.shape[-1]):
-                r[i] = np.sum(infected_t[i-3:i+1]) / np.sum(infected_t[i-7:i-3])
+    r = np.zeros(infected_t.shape)  # Empty array with the same shape as Timeseries
+
+    if window == 1:
+        r[..., gd:] = infected_t[..., gd:] / infected_t[..., :-gd]
     else:
-        if window == 1:
-            r[:,4:] = infected_t[:,4:] / infected_t[:,:-4]
-        elif window == 7:
-            for i in range(10,infected_t.shape[-1]-1):
-                r[:,i-1] = np.sum(infected_t[:,i-6:i+1],axis=1) / np.sum(infected_t[:,i-10:i-3],axis=1)
-        else: # Default window = 4
-            for i in range(7,infected_t.shape[-1]):
-                r[:,i] = np.sum(infected_t[:,i-3:i+1],axis=1) / np.sum(infected_t[:,i-7:i-3],axis=1)
-        
-    # mask of R_values that were not calculated to match time-index of output to input
-    return np.ma.masked_where((r == 0) | np.isinf(r) | np.isnan(r),r)
+        if window == 7:
+            offset = 1
+        elif window == 4:
+            offset = 0
 
-def create_our_SIR(model, trace, begin_date=None):
+        for t in range(window + gd, infected_t.shape[-1] - offset):
+            # NOTE: R7_Wert[t-1] <- sum(data$NeuErk[t-0:6]) / sum(data&NeuErk[t-4:10])
+            # Indexing in R (the stat-language) is inclusive, in numpy exclusive: upper boundary in sum is increased by 1
+
+            right_block = infected_t[..., t - window : t]
+            left_block = infected_t[..., t - window - gd : t - gd]
+
+            r[..., t - 1 - offset] = np.sum(right_block, axis=-1) / np.sum(left_block, axis=-1)
+
+    # mask of R_values that were not calculated to match time-index of output to input
+    return np.ma.masked_where((r == 0) | np.isinf(r) | np.isnan(r), r)
+
+
+def create_our_SIR(model, trace):
     new_cases_obs, time = cov19.plot._get_array_from_trace_via_date(
-        model, trace, "new_symptomatic", start=begin_date
+        model, trace, "new_symptomatic", start=model.data_begin
     )
 
-    diff_data_sim = 16  # should be significantly larger than the expected delay, in
-    # order to always fit the same number of data points.
-    num_days_forecast = 10
+    diff_data_sim = model.diff_data_sim  # this should to match the input model
+    num_days_forecast = 1  # we do not need a forecast, only inference
 
     change_points = [
         dict(
@@ -86,7 +77,7 @@ def create_our_SIR(model, trace, begin_date=None):
 
     params_model = dict(
         new_cases_obs=np.median(new_cases_obs, axis=0),
-        data_begin=begin_date,
+        data_begin=model.data_begin,
         fcast_len=num_days_forecast,
         diff_data_sim=diff_data_sim,
         N_population=83e6,
@@ -243,6 +234,47 @@ def create_fixed_model(params_model, cp_center, cp_duration, lambda_new):
     return this_model
 
 
+def plot_distributions(model, trace):
+    fig, axes = plt.subplots(6, 3, figsize=(6, 6.4))
+
+    for i, key in enumerate(
+        # left column
+        ["weekend_factor", "mu", "lambda_0", "lambda_1", "lambda_2", "lambda_3"]
+    ):
+        try:
+            cov19.plot._distribution(model, trace, key, ax=axes[i, 0])
+        except:
+            print(f"{key} not in vars")
+
+    for i, key in enumerate(
+        # mid column
+        [
+            "offset_modulation",
+            "sigma_obs",
+            "I_begin",
+            "transient_day_1",
+            "transient_day_2",
+            "transient_day_3",
+        ]
+    ):
+        try:
+            cov19.plot._distribution(model, trace, key, ax=axes[i, 1])
+        except:
+            print(f"{key} not in vars")
+
+    for i, key in enumerate(
+        # right column
+        ["delay", "transient_len_1", "transient_len_2", "transient_len_3",]
+    ):
+        try:
+            cov19.plot._distribution(model, trace, key, ax=axes[i + 2, 2])
+        except:
+            print(f"{key} not in vars")
+
+    fig.tight_layout()
+    return fig, axes
+
+
 # ------------------------------------------------------------------------------ #
 # Start here
 # ------------------------------------------------------------------------------ #
@@ -304,14 +336,14 @@ tr["c"] = pm.sample(model=mod["c"])
 Use our dummy data to run a new model
 """
 sir_mod = dict()
-sir_mod["a"] = create_our_SIR(mod["a"], tr["a"], begin_date=mod["a"].sim_begin)
-sir_mod["b"] = create_our_SIR(mod["b"], tr["b"], begin_date=mod["b"].sim_begin)
-sir_mod["c"] = create_our_SIR(mod["c"], tr["c"], begin_date=mod["c"].sim_begin)
+sir_mod["a"] = create_our_SIR(mod["a"], tr["a"])
+sir_mod["b"] = create_our_SIR(mod["b"], tr["b"])
+sir_mod["c"] = create_our_SIR(mod["c"], tr["c"])
 
 sir_tr = dict()
-sir_tr["a"] = pm.sample(model=sir_mod["a"], tune=1000, draws=1000, init="advi+adapt_diag")
-sir_tr["b"] = pm.sample(model=sir_mod["b"], tune=1000, draws=1000, init="advi+adapt_diag")
-sir_tr["c"] = pm.sample(model=sir_mod["c"], tune=1000, draws=1000, init="advi+adapt_diag")
+sir_tr["a"] = pm.sample(model=sir_mod["a"], tune=100, draws=10, init="advi+adapt_diag")
+sir_tr["b"] = pm.sample(model=sir_mod["b"], tune=100, draws=10, init="advi+adapt_diag")
+sir_tr["c"] = pm.sample(model=sir_mod["c"], tune=100, draws=10, init="advi+adapt_diag")
 
 """
     ## Plotting
@@ -325,7 +357,7 @@ fig, axes = plt.subplots(
     8,
     1,
     figsize=(6, 12),
-    gridspec_kw={"height_ratios": [2, 2, 3, 3, 3, 3,3,3 ]},
+    gridspec_kw={"height_ratios": [2, 2, 3, 3, 3, 3, 3, 3]},
     constrained_layout=True,
 )
 
@@ -340,8 +372,8 @@ for key, clr in zip(["a", "b", "c"], ["tab:red", "tab:orange", "tab:green"]):
     ax = axes[0]
     y = lambda_t[:, :] / mu
     cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
-    ax.set_ylabel(r"$\lambda / \mu$")
-    ax.set_ylim(0.8, 3.1)
+    ax.set_title(r"$\lambda / \mu$")
+    ax.set_ylim(0.0, 3.3)
     if key == "a":
         # only annotate once
         ax.hlines(1, x[0], x[-1], linestyles=":")
@@ -350,56 +382,51 @@ for key, clr in zip(["a", "b", "c"], ["tab:red", "tab:orange", "tab:green"]):
     ax = axes[1]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_E_t")
     cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
-    ax.set_ylabel("new Infected")
+    ax.set_title("new Infected")
 
     # New symptomatic
     ax = axes[2]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
     cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
-    ax.set_ylabel("new Symptomatic")
+    ax.set_title("new Symptomatic")
 
     # New reported
     ax = axes[3]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_reported")
     cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
-    ax.set_ylabel("new Reported")
-
+    ax.set_title("new Reported")
 
     # ------------------------------------------------------------------------------ #
     # Comparisson for different calculation of R
     # ------------------------------------------------------------------------------ #
 
-    # R inferred naive: R_t = Sy_t / Sy_t-d, d=4 generation time
-    # Does not work yet todo
+    # generation duration
+    gd = 4
+
+    # R inferred naive: R_t = Sy_t / Sy_t-gd, gd=4 generation time
     ax = axes[4]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
-    y = [y[:,i+4]/y[:,i] for i in range(model.sim_len-4)] # R_t = Sy_t / Sy_t-d, d=4 generation time
-    cov19.plot._timeseries(x=x[:-4], y=np.transpose(np.array(y)), ax=ax, what="model", color=clr)
-    ax.set_ylabel(r"$R$ calculated naive")
-    ax.set_ylim(0.7, 2.1)
-    if key == "a":
-        # only annotate once
-        ax.hlines(1, x[0], x[-1], linestyles=":")
+    # R naive as in-degree
+    # y = [y[:,i+gd]/y[:,i] for i in range(model.sim_len-gd)]
+    # cov19.plot._timeseries(x=x[:-4], y=np.transpose(np.array(y)), ax=ax, what="model", color=clr)
+    # R naive as out-degree
+    y = [y[:, i] / y[:, i - gd] for i in range(gd, model.sim_len)]
+    cov19.plot._timeseries(
+        x=x[gd:], y=np.transpose(np.array(y)), ax=ax, what="model", color=clr
+    )
+    ax.set_title(r"$R$ calculated naive")
 
     # R rki avg 4: on Symptomatics
     ax = axes[5]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
-    cov19.plot._timeseries(x=x, y=RKI_R(y,4), ax=ax, what="model", color=clr)
-    ax.set_ylabel(r"$R$  via"+"\n"+"RKI method (4 days)")
-    ax.set_ylim(0.7, 2.1)
-    if key == "a":
-        # only annotate once
-        ax.hlines(1, x[0], x[-1], linestyles=":")
+    cov19.plot._timeseries(x=x, y=RKI_R(y, window=4, gd=gd), ax=ax, what="model", color=clr)
+    ax.set_title(r"$R$  via" + "\n" + "RKI method (4 days)")
 
     # R rki avg 7: on Symptomatics
     ax = axes[6]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
-    cov19.plot._timeseries(x=x, y=RKI_R(y,7), ax=ax, what="model", color=clr)
-    ax.set_ylabel(r"$R$ via"+"\n"+"RKI method (7 days)")
-    ax.set_ylim(0.7, 2.1)
-    if key == "a":
-        # only annotate once
-        ax.hlines(1, x[0], x[-1], linestyles=":")
+    cov19.plot._timeseries(x=x, y=RKI_R(y, window=7, gd=gd), ax=ax, what="model", color=clr)
+    ax.set_title(r"$R$ via" + "\n" + "RKI method (7 days)")
 
     # R inferred with our model (1cp)
     trace = sir_tr[key]
@@ -408,20 +435,27 @@ for key, clr in zip(["a", "b", "c"], ["tab:red", "tab:orange", "tab:green"]):
     ax = axes[7]
     lambda_t, x = cov19.plot._get_array_from_trace_via_date(model, trace, "lambda_t")
     y = lambda_t[:, :] / trace["mu"][:, None]
-    cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr,draw_ci_75=True)
-    ax.set_ylabel(r"$\lambda / \mu$"+"\n"+"inferred by model with 1 cp")
-    ax.set_ylim(0.7, 2.1)
-    if key == "a":
-        # only annotate once
-        ax.hlines(1, x[0], x[-1], linestyles=":")
+    cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr, draw_ci_75=True)
+    ax.set_title(r"$\lambda / \mu$" + "\n" + "inferred by model with 1 cp")
 
     # "if what we inferred (3CP!) was correct, what would the R inferred via RKi etc. look like?!"
     #   * plug in the estimates we inferred in the paper as (fixed) values for the SEIR generation
 
-for ax in axes:
+    """
+    * R not 3 but ~ 2
+        * not due to smaller slope (symptomatic vs infected)
+            - using infected gives same R_0 values
+        * smaller R maybe due to convolution
+    * other generation duration
+    * posteriors of our model
+
+    """
+
+for idx, ax in enumerate(axes):
     ax.set_xlim(datetime.datetime(2020, 3, 1), datetime.datetime(2020, 4, 19))
+    if idx >= 4:
+        ax.set_ylim(0.7, 2.1)
+        ax.hlines(1, x[0], x[-1], linestyles=":")
 
 plt.savefig("comparisson_different_R.png")
 # Finally plot distributions for the model
-
-
