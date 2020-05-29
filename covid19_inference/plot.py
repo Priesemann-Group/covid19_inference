@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-20 18:50:13
-# @Last Modified: 2020-05-27 09:52:35
+# @Last Modified: 2020-05-29 13:20:14
 # ------------------------------------------------------------------------------ #
 # Callable in your scripts as e.g. `cov.plot.timeseries()`
 # Plot functions and helper classes
@@ -959,7 +959,7 @@ def _math_for_varname(key):
     # change-point keys, give lower index
     if is_cp:
         # get cp index
-        res = res + f"_{_rx_cp_id(key)}"
+        res = res + r"_{"+_rx_cp_id(key)+"}"
 
     # hierarchical, give upper index
     if is_hc:
