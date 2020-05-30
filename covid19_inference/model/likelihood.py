@@ -98,8 +98,8 @@ def student_t_likelihood(
     pm.StudentT(
         name=name_student_t,
         nu=nu,
-        mu=cases[:model.data_len],
-        sigma=tt.abs_(cases[:model.data_len] + offset_sigma) ** 0.5
+        mu=cases[: model.data_len],
+        sigma=tt.abs_(cases[: model.data_len] + offset_sigma) ** 0.5
         * sigma_obs,  # offset and tt.abs to avoid nans
         observed=data_obs,
     )

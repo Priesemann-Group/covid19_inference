@@ -248,7 +248,9 @@ def SEIR(
             )
         else:
             new_E_begin = pm.HalfCauchy(
-                name=name_new_E_begin, beta=pr_new_E_begin, shape=(11, model.shape_of_regions)
+                name=name_new_E_begin,
+                beta=pr_new_E_begin,
+                shape=(11, model.shape_of_regions),
             )
 
     # Prior distributions of starting populations (infectious, susceptibles)

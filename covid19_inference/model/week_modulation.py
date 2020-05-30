@@ -104,7 +104,7 @@ def week_modulation(
 
     # Get the shape of the modulation from the shape of our simulation
     shape_modulation = list(model.sim_shape)
-    #shape_modulation[0] -= model.diff_data_sim
+    # shape_modulation[0] -= model.diff_data_sim
 
     if not model.is_hierarchical:
         weekend_factor_log = pm.Normal(

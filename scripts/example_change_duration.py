@@ -53,7 +53,9 @@ def RKI_R(infected_t, window=4, gd=4):
             right_block = infected_t[..., t - window : t]
             left_block = infected_t[..., t - window - gd : t - gd]
 
-            r[..., t - 1 - offset] = np.sum(right_block, axis=-1) / np.sum(left_block, axis=-1)
+            r[..., t - 1 - offset] = np.sum(right_block, axis=-1) / np.sum(
+                left_block, axis=-1
+            )
 
     # mask of R_values that were not calculated to match time-index of output to input
     return np.ma.masked_where((r == 0) | np.isinf(r) | np.isnan(r), r)
@@ -154,29 +156,109 @@ def get_lambda_t_3cp_from_paper():
     # hard coded time series of the median lamda values we inferred
     # as in Fig 3 https://arxiv.org/abs/2004.01105
     y = np.array(
-      [0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853,
-       0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853,
-       0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853,
-       0.42520093, 0.42517466, 0.4249035 , 0.4236892 , 0.41947994,
-       0.40930175, 0.38876708, 0.34942187, 0.29720015, 0.26635061,
-       0.25552907, 0.25118942, 0.24956378, 0.24907948, 0.24837864,
-       0.24296566, 0.22420404, 0.19470871, 0.16873707, 0.15696049,
-       0.15353644, 0.15277346, 0.15087519, 0.14391068, 0.13167679,
-       0.11795485, 0.10687387, 0.09951218, 0.09551084, 0.09377538,
-       0.09302759, 0.09289024, 0.09285077, 0.09284367, 0.09283485,
-       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
-       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
-       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
-       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
-       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
-       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
-       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
-       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
-       0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485])
+        [
+            0.42520853,
+            0.42520853,
+            0.42520853,
+            0.42520853,
+            0.42520853,
+            0.42520853,
+            0.42520853,
+            0.42520853,
+            0.42520853,
+            0.42520853,
+            0.42520853,
+            0.42520853,
+            0.42520853,
+            0.42520853,
+            0.42520853,
+            0.42520093,
+            0.42517466,
+            0.4249035,
+            0.4236892,
+            0.41947994,
+            0.40930175,
+            0.38876708,
+            0.34942187,
+            0.29720015,
+            0.26635061,
+            0.25552907,
+            0.25118942,
+            0.24956378,
+            0.24907948,
+            0.24837864,
+            0.24296566,
+            0.22420404,
+            0.19470871,
+            0.16873707,
+            0.15696049,
+            0.15353644,
+            0.15277346,
+            0.15087519,
+            0.14391068,
+            0.13167679,
+            0.11795485,
+            0.10687387,
+            0.09951218,
+            0.09551084,
+            0.09377538,
+            0.09302759,
+            0.09289024,
+            0.09285077,
+            0.09284367,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+            0.09283485,
+        ]
+    )
 
-    x = pd.date_range(start='2020-2-15', periods=len(y)).date
+    x = pd.date_range(start="2020-2-15", periods=len(y)).date
 
     return y, x
+
 
 # we want to create multiple models with the different change points
 def create_fixed_model(params_model, cp_center, cp_duration, lambda_new):
@@ -261,6 +343,7 @@ def create_fixed_model(params_model, cp_center, cp_duration, lambda_new):
         # cov19.model.student_t_likelihood(cases=new_cases)
 
     return this_model
+
 
 def create_3cp_model(params_model):
     with cov19.model.Cov19Model(**params_model) as this_model:
@@ -422,9 +505,7 @@ mod["c"] = create_fixed_model(
     cp_duration=8,
     lambda_new=0.15,
 )
-mod["d"] = create_3cp_model(
-    params_model
-)
+mod["d"] = create_3cp_model(params_model)
 
 tr = dict()
 tr["a"] = pm.sample(model=mod["a"])
@@ -463,7 +544,9 @@ fig, axes = plt.subplots(
     constrained_layout=True,
 )
 
-for key, clr in zip(["a", "b", "c", "d"], ["tab:red", "tab:orange", "tab:green", "tab:blue"]):
+for key, clr in zip(
+    ["a", "b", "c", "d"], ["tab:red", "tab:orange", "tab:green", "tab:blue"]
+):
     trace = tr[key]
     model = mod[key]
 
@@ -521,13 +604,17 @@ for key, clr in zip(["a", "b", "c", "d"], ["tab:red", "tab:orange", "tab:green",
     # R rki avg 4: on Symptomatics
     ax = axes[5]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
-    cov19.plot._timeseries(x=x, y=RKI_R(y, window=4, gd=gd), ax=ax, what="model", color=clr)
+    cov19.plot._timeseries(
+        x=x, y=RKI_R(y, window=4, gd=gd), ax=ax, what="model", color=clr
+    )
     ax.set_title(r"$R$  via" + "\n" + "RKI method (4 days)")
 
     # R rki avg 7: on Symptomatics
     ax = axes[6]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
-    cov19.plot._timeseries(x=x, y=RKI_R(y, window=7, gd=gd), ax=ax, what="model", color=clr)
+    cov19.plot._timeseries(
+        x=x, y=RKI_R(y, window=7, gd=gd), ax=ax, what="model", color=clr
+    )
     ax.set_title(r"$R$ via" + "\n" + "RKI method (7 days)")
 
     # R inferred with our model (1cp)

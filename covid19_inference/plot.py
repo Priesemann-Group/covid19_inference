@@ -602,7 +602,7 @@ def _get_array_from_trace_via_date(
     # the variable `new_cases` and some others (?) used to have different bounds
     # 20-05-27: not anymore, we made things consistent. let's remove this at some point
     # if "new_cases" in var:
-        # ref = model.data_begin
+    # ref = model.data_begin
 
     if dates is None:
         if start is None:
