@@ -29,12 +29,18 @@ except ModuleNotFoundError:
     import covid19_inference as cov19
 
 
+"""
+# helper functions
+"""
+
+
 def RKI_R(infected_t, window=4, gd=4):
     """ Calculate R value as published by the RKI on 2020-05-15
     in 'Erkäuterung der Schätzung der zeitlich variierenden Reproduktionszahl R'
 
     infected: Timeseries or trace, in general: last index is considered to calculate R
     window: averaging window, average over 4 days is default
+    gd: generation duration, default 4 days. assuming this to be larger increases R
     """
     r = np.zeros(infected_t.shape)  # Empty array with the same shape as Timeseries
 
@@ -61,15 +67,30 @@ def RKI_R(infected_t, window=4, gd=4):
     return np.ma.masked_where((r == 0) | np.isinf(r) | np.isnan(r), r)
 
 
-def create_our_SIR(model, trace, cps=1):
+def naive_R(y, x, gd=4, match_rki_convention=False):
+    if not match_rki_convention:
+        # R naive as in-degree
+        r = [y[:, i + gd] / y[:, i] for i in range(0, y.shape[-1] - gd)]
+        x = x[:-gd]
+    else:
+        # R naive as out-degree
+        r = [y[:, i] / y[:, i - gd] for i in range(gd, y.shape[-1])]
+        x = x[gd:]
+
+    return np.transpose(np.array(r)), x
+
+
+def create_our_SIR(model, trace, var_for_cases="new_symptomatic", cps=1, pr_delay=5):
     new_cases_obs, time = cov19.plot._get_array_from_trace_via_date(
-        model, trace, "new_symptomatic", start=model.data_begin
+        model, trace, var_for_cases, start=model.data_begin
     )
 
     diff_data_sim = model.diff_data_sim  # this should to match the input model
     num_days_forecast = 1  # we do not need a forecast, only inference
 
     if cps == 1:
+        # this matches the step we create in out toy-example
+        # the date specifies the middle of the step (passed to lambda_t_with_sigmoids)
         change_points = [
             dict(
                 pr_mean_date_transient=datetime.datetime(2020, 3, 23),
@@ -107,8 +128,6 @@ def create_our_SIR(model, trace, cps=1):
         diff_data_sim=diff_data_sim,
         N_population=83e6,
     )
-
-    pr_delay = 5
 
     with cov19.model.Cov19Model(**params_model) as this_model:
         # Create the an array of the time dependent infection rate lambda
@@ -149,7 +168,7 @@ def create_our_SIR(model, trace, cps=1):
     return this_model
 
 
-# helper to showcase the reporting delay via lognormal
+# reporting delay via lognormal kernel
 def delay_lognormal(inp, median, sigma, amplitude=1.0, dist_len=40):
     """ Delays input inp by lognormal distirbution using convolution """
     dist_len = tt.cast(dist_len, "int64")
@@ -174,123 +193,32 @@ def delay_lognormal(inp, median, sigma, amplitude=1.0, dist_len=40):
     return conv1d(inp, beta, amplitude)[: inp.shape[0]]
 
 
+# hard coded time series of the median lamda values we inferred before
 def get_lambda_t_3cp_from_paper():
-    # hard coded time series of the median lamda values we inferred
     # as in Fig 3 https://arxiv.org/abs/2004.01105
+    # fmt: off
     y = np.array(
-        [
-            0.42520853,
-            0.42520853,
-            0.42520853,
-            0.42520853,
-            0.42520853,
-            0.42520853,
-            0.42520853,
-            0.42520853,
-            0.42520853,
-            0.42520853,
-            0.42520853,
-            0.42520853,
-            0.42520853,
-            0.42520853,
-            0.42520853,
-            0.42520093,
-            0.42517466,
-            0.4249035,
-            0.4236892,
-            0.41947994,
-            0.40930175,
-            0.38876708,
-            0.34942187,
-            0.29720015,
-            0.26635061,
-            0.25552907,
-            0.25118942,
-            0.24956378,
-            0.24907948,
-            0.24837864,
-            0.24296566,
-            0.22420404,
-            0.19470871,
-            0.16873707,
-            0.15696049,
-            0.15353644,
-            0.15277346,
-            0.15087519,
-            0.14391068,
-            0.13167679,
-            0.11795485,
-            0.10687387,
-            0.09951218,
-            0.09551084,
-            0.09377538,
-            0.09302759,
-            0.09289024,
-            0.09285077,
-            0.09284367,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-            0.09283485,
-        ]
-    )
+        [0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520093, 0.42517466, 0.4249035, 0.4236892, 0.41947994, 0.40930175, 0.38876708, 0.34942187, 0.29720015, 0.26635061, 0.25552907, 0.25118942, 0.24956378, 0.24907948, 0.24837864, 0.24296566, 0.22420404, 0.19470871, 0.16873707, 0.15696049, 0.15353644, 0.15277346, 0.15087519, 0.14391068, 0.13167679, 0.11795485, 0.10687387, 0.09951218, 0.09551084, 0.09377538, 0.09302759, 0.09289024, 0.09285077, 0.09284367, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+        ])
+    # fmt: on
 
     x = pd.date_range(start="2020-2-15", periods=len(y)).date
 
     return y, x
 
 
-# we want to create multiple models with the different change points
-def create_fixed_model(params_model, cp_center, cp_duration, lambda_new):
+# we want to create multiple models with the differently fast steps
+def dummy_generator_SIR(
+    params_model, cp_center, cp_duration, lambda_old, lambda_new, mu
+):
     with cov19.model.Cov19Model(**params_model) as this_model:
 
         # usually, make lambda a pymc3 random variable.
         # In this toymodel, we set to a fixed value
         # lambda_old = pm.Lognormal("lambda", mu=0.39, sigma=0.5)
-        lambda_old = tt.constant(lambda_fixed)
+        lambda_old = tt.constant(lambda_old)
         pm.Deterministic("lambda", lambda_old)
+        pm.Deterministic("mu", tt.constant(mu))
 
         # convert date-arguments to (integer) days
         cp_center = (cp_center - this_model.sim_begin).days
@@ -298,98 +226,75 @@ def create_fixed_model(params_model, cp_center, cp_duration, lambda_new):
         # create a simple time series with the change-point as a smooth step:
         # linear interpolation between 0 and 1
         time_array = np.arange(this_model.sim_len)
-        step_t = tt.clip((time_array - cp_center + cp_duration / 2) / cp_duration, 0, 1)
+        step_t = tt.clip(
+            (time_array - cp_center + int(cp_duration / 2)) / cp_duration, 0, 1
+        )
 
-        # create the time series of lambda (on log scale)
+        # create the time series of lambda
         lambda_t = step_t * (lambda_new - lambda_old) + lambda_old
-        mu = mu_fixed * 3
-        lambda_t = lambda_t * 3
         pm.Deterministic("lambda_t", lambda_t)
 
-        # based on the timeseries of the rates, get new cases (infected) via SIR
-        # needs lambda_t on log scale
-        new_I_t, new_E_t, I_t, S_t = cov19.model.SEIR(
+        # we need at least one random variable for pymc3. use I_0 as a dummy variable
+        new_I_t = cov19.model.SIR(
             lambda_t_log=tt.log(lambda_t),
             mu=mu,
-            # new exposed per day: infected but not infectious yet
-            name_new_E_t="new_E_t",
-            # new infectious per day
-            name_new_I_t="new_I_t",
-            # incubation period, lognormal distributed, duration in the E pool
-            pr_mean_median_incubation=4,
-            name_median_incubation="median_incubation",
-            # fix I_begin, new_E_begin and incubation time instead of inferring them
-            # with pymc3
-            pr_I_begin=tt.constant(100, dtype="float64"),
-            # dirty workaround, we need shape 11 for the convolution running in SEIR
-            pr_new_E_begin=tt.ones(11, dtype="float64") * 50,
-            # another dirty workaround so we keep one free variable but it is alwys the same effectively
-            pr_sigma_median_incubation=0.1,
-            return_all=True,
+            name_new_I_t="new_infected",
+            pr_I_begin=100,
         )
-        pm.Deterministic("mu", tt.constant(mu))
-
-        # SIR our paper
-        # delay: S->Reported
-        #   * fixed timeshift with lognormal prior
-        #   * in ensemble average: lognomal delay
-        #   * different from lognormal convolution
-        #   * hence, different dynamics
-
-        # SIR now:
-        #   * lognorm conv. with (log?)normal prior (kernel) of median
-        #   * hence, the delay influences the dynamic within each trace / sample
-
-        # 3 delays: (all pools new per day)
-        # Infected -> Infectious        | E->I  | pr_median ~ 4 (in paper 5)
-        # Infectious -> Sympotmatic     |       | Rki Refdatum ~ 1 day, not in the code
-        # Symptomatic -> Reported       |       | Rki Meldedatum
-
-        # RKI:
-        #    Infected -> Infectious  | E         | "Serial interval" 4 days
-        #    Infected -> Sympotmatic | E +delay  | "Incubation period" 4-6 days
-
-        # Plots
-        # Infected          | E
-        # Symptomatic       | E + .. delay ..           | ~ 4-6 day | check cori et al 2013, machtes rki
-        # Reported          | I + ^^ large ^^ delay
-        #   -> Tests are performed without symptoms, and can be positive when in I pool
 
         # incubation period
-        new_symptomatic = delay_lognormal(inp=new_E_t, median=5, sigma=0.3, dist_len=30)
+        new_symptomatic = delay_lognormal(inp=new_I_t, median=5, sigma=0.3, dist_len=30)
         pm.Deterministic("new_symptomatic", new_symptomatic)
 
         # the other stuff
-        new_reported = delay_lognormal(inp=new_I_t, median=7, sigma=0.3, dist_len=30)
+        new_reported = delay_lognormal(
+            inp=new_symptomatic, median=5, sigma=0.3, dist_len=30
+        )
         pm.Deterministic("new_reported", new_reported)
-
-        # here, we do not need to optimize the parameters and can skip the likelihood
-        # cov19.model.student_t_likelihood(cases=new_cases)
 
     return this_model
 
 
-def create_3cp_model(params_model):
+# we want to create multiple models with the differently fast steps
+def dummy_generator_SEIR(
+    params_model, cp_center, cp_duration, lambda_old, lambda_new, mu
+):
     with cov19.model.Cov19Model(**params_model) as this_model:
 
-        lambda_t, t = get_lambda_t_3cp_from_paper()
-        # dirtiest workaround to convert to SEIR like parameters
-        mu = mu_fixed * 3
-        lambda_t = lambda_t * 3
-        # get the right time-range
-        start = np.where(t == this_model.sim_begin.date())[0][0]
-        lambda_t = tt.constant(lambda_t[start:])
+        # parameters between SIR and SEIR are not comparable
+        # we assume values that are tuned for SIR, hence they need tweaking
+        lambda_old = lambda_old * 3
+        lambda_new = lambda_new * 3
+        mu = mu * 3
+
+        # usually, make lambda a pymc3 random variable.
+        # In this toymodel, we set to a fixed value
+        # lambda_old = pm.Lognormal("lambda", mu=0.39, sigma=0.5)
+        lambda_old = tt.constant(lambda_old)
+        pm.Deterministic("lambda", lambda_old)
+        pm.Deterministic("mu", tt.constant(mu))
+
+        # convert date-arguments to (integer) days
+        cp_center = (cp_center - this_model.sim_begin).days
+
+        # create a simple time series with the change-point as a smooth step:
+        # linear interpolation between 0 and 1
+        time_array = np.arange(this_model.sim_len)
+        step_t = tt.clip(
+            (time_array - cp_center + int(cp_duration / 2)) / cp_duration, 0, 1
+        )
+
+        # create the time series of lambda
+        lambda_t = step_t * (lambda_new - lambda_old) + lambda_old
         pm.Deterministic("lambda_t", lambda_t)
 
-        # based on the timeseries of the rates, get new cases (infected) via SIR
-        # needs lambda_t on log scale
         new_I_t, new_E_t, I_t, S_t = cov19.model.SEIR(
             lambda_t_log=tt.log(lambda_t),
-            mu=mu,
+            mu=mu_fixed,
             # new exposed per day: infected but not infectious yet
-            name_new_E_t="new_E_t",
+            name_new_E_t="new_infected",
             # new infectious per day
-            name_new_I_t="new_I_t",
+            name_new_I_t="new_infectious",
             # incubation period, lognormal distributed, duration in the E pool
             pr_mean_median_incubation=4,
             name_median_incubation="median_incubation",
@@ -402,33 +307,6 @@ def create_3cp_model(params_model):
             pr_sigma_median_incubation=0.1,
             return_all=True,
         )
-        pm.Deterministic("mu", tt.constant(mu))
-
-        # SIR our paper
-        # delay: S->Reported
-        #   * fixed timeshift with lognormal prior
-        #   * in ensemble average: lognomal delay
-        #   * different from lognormal convolution
-        #   * hence, different dynamics
-
-        # SIR now:
-        #   * lognorm conv. with (log?)normal prior (kernel) of median
-        #   * hence, the delay influences the dynamic within each trace / sample
-
-        # 3 delays: (all pools new per day)
-        # Infected -> Infectious        | E->I  | pr_median ~ 4 (in paper 5)
-        # Infectious -> Sympotmatic     |       | Rki Refdatum ~ 1 day, not in the code
-        # Symptomatic -> Reported       |       | Rki Meldedatum
-
-        # RKI:
-        #    Infected -> Infectious  | E         | "Serial interval" 4 days
-        #    Infected -> Sympotmatic | E +delay  | "Incubation period" 4-6 days
-
-        # Plots
-        # Infected          | E
-        # Symptomatic       | E + .. delay ..           | ~ 4-6 day | check cori et al 2013, machtes rki
-        # Reported          | I + ^^ large ^^ delay
-        #   -> Tests are performed without symptoms, and can be positive when in I pool
 
         # incubation period
         new_symptomatic = delay_lognormal(inp=new_E_t, median=5, sigma=0.3, dist_len=30)
@@ -437,6 +315,7 @@ def create_3cp_model(params_model):
         # the other stuff
         new_reported = delay_lognormal(inp=new_I_t, median=7, sigma=0.3, dist_len=30)
         pm.Deterministic("new_reported", new_reported)
+
     return this_model
 
 
@@ -481,9 +360,9 @@ def plot_distributions(model, trace):
     return fig, axes
 
 
-# ------------------------------------------------------------------------------ #
-# Start here
-# ------------------------------------------------------------------------------ #
+"""
+    # Parameterization
+"""
 cov19.log.loglevel = "DEBUG"
 
 # limit the data range to exponential growth
@@ -507,7 +386,7 @@ params_model = dict(
 
 # hard coded recovery rate and initial spreading rate, R ~ 3
 mu_fixed = 0.13
-lambda_fixed = 0.39
+lambda_old = 0.39
 lambda_new = 0.15
 
 """
@@ -515,46 +394,45 @@ Create dummy data with fixed parameters and
 run it to obtain a dataset which we later use as new cases obs.
 """
 mod = dict()
-mod["a"] = create_fixed_model(
-    params_model,
-    cp_center=datetime.datetime(2020, 3, 23),
-    cp_duration=0.1,
-    lambda_new=lambda_new,
-)
-mod["b"] = create_fixed_model(
-    params_model,
-    cp_center=datetime.datetime(2020, 3, 23),
-    cp_duration=4,
-    lambda_new=lambda_new,
-)
-mod["c"] = create_fixed_model(
-    params_model,
-    cp_center=datetime.datetime(2020, 3, 23),
-    cp_duration=8,
-    lambda_new=lambda_new,
-)
-mod["d"] = create_3cp_model(params_model)
-
 tr = dict()
-tr["a"] = pm.sample(model=mod["a"])
-tr["b"] = pm.sample(model=mod["b"])
-tr["c"] = pm.sample(model=mod["c"])
-tr["d"] = pm.sample(model=mod["d"])
+for key, duration in zip(["a", "b", "c"], [1, 5, 9]):
+    mod[key] = dummy_generator_SEIR(
+        params_model,
+        cp_center=datetime.datetime(2020, 3, 23),
+        cp_duration=duration,
+        lambda_new=lambda_new,
+        lambda_old=lambda_old,
+        mu=mu_fixed,
+    )
+    tr[key] = pm.sample(model=mod[key])
+
 
 """
-Use our dummy data to run a new model
+Use our dummy data and infer with a new SIR model using symptom onset
 """
-sir_mod = dict()
-sir_mod["a"] = create_our_SIR(mod["a"], tr["a"])
-sir_mod["b"] = create_our_SIR(mod["b"], tr["b"])
-sir_mod["c"] = create_our_SIR(mod["c"], tr["c"])
-sir_mod["d"] = create_our_SIR(mod["d"], tr["d"], cps=3)
+tr_inf_sym = dict()
+mod_inf_sym = dict()
+for key in ["a", "b", "c"]:
+    mod_inf_sym[key] = create_our_SIR(
+        model=mod[key], trace=tr[key], var_for_cases="new_symptomatic", pr_delay=5
+    )
+    tr_inf_sym[key] = pm.sample(
+        model=mod_inf_sym[key], tune=500, draws=500, init="advi+adapt_diag"
+    )
 
-sir_tr = dict()
-sir_tr["a"] = pm.sample(model=sir_mod["a"], tune=100, draws=10, init="advi+adapt_diag")
-sir_tr["b"] = pm.sample(model=sir_mod["b"], tune=100, draws=10, init="advi+adapt_diag")
-sir_tr["c"] = pm.sample(model=sir_mod["c"], tune=100, draws=10, init="advi+adapt_diag")
-sir_tr["d"] = pm.sample(model=sir_mod["d"], tune=100, draws=10, init="advi+adapt_diag")
+"""
+Use our dummy data and infer with a new SIR model using reported data
+"""
+tr_inf_rep = dict()
+mod_inf_rep = dict()
+for key in ["a", "b", "c"]:
+    mod_inf_rep[key] = create_our_SIR(
+        model=mod[key], trace=tr[key], var_for_cases="new_reported", pr_delay=10
+    )
+    tr_inf_rep[key] = pm.sample(
+        model=mod_inf_rep[key], tune=500, draws=500, init="advi+adapt_diag"
+    )
+
 
 """
     ## Plotting
@@ -564,115 +442,116 @@ cov19.plot.rcParams.draw_ci_50 = False
 cov19.plot.rcParams.draw_ci_75 = False
 cov19.plot.rcParams.draw_ci_95 = False
 
-fig, axes = plt.subplots(
-    8,
-    1,
-    figsize=(6, 12),
-    gridspec_kw={"height_ratios": [2, 2, 3, 3, 3, 3, 3, 3]},
-    constrained_layout=True,
-)
+fig_delay, axes_delay = plt.subplots(4, 1, figsize=(3, 4), constrained_layout=True,)
+fig_r, axes_r = plt.subplots(5, 1, figsize=(3, 5), constrained_layout=True,)
 
-for key, clr in zip(
-    ["a", "b", "c", "d"], ["tab:red", "tab:orange", "tab:green", "tab:blue"]
-):
+for key, clr in zip(["a", "c"], ["tab:red", "tab:green"]):
     trace = tr[key]
     model = mod[key]
 
     mu = trace["mu"][:, None]
     lambda_t, x = cov19.plot._get_array_from_trace_via_date(model, trace, "lambda_t")
 
-    # R
-    ax = axes[0]
+    # ------------------------------------------------------------------------------ #
+    # Figure 1: Delays
+    # ------------------------------------------------------------------------------ #
+
+    # R input
+    ax = axes_delay[0]
     y = lambda_t[:, :] / mu
     cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
-    ax.set_title(r"$\lambda / \mu$")
-    ax.set_ylim(0.0, 3.3)
-    if key == "a":
-        # only annotate once
-        ax.hlines(1, x[0], x[-1], linestyles=":")
+    ax.set_title(r"Input: $R = \lambda / \mu$")
 
-    # New infected, not infectious
-    ax = axes[1]
-    y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_E_t")
+    # New infected
+    ax = axes_delay[1]
+    y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_infected")
     cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
     ax.set_title("new Infected")
 
     # New symptomatic
-    ax = axes[2]
+    ax = axes_delay[2]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
     cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
     ax.set_title("new Symptomatic")
 
     # New reported
-    ax = axes[3]
+    ax = axes_delay[3]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_reported")
     cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
     ax.set_title("new Reported")
 
     # ------------------------------------------------------------------------------ #
-    # Comparisson for different calculation of R
+    # Figure 2: Comparisson for different calculation of R
     # ------------------------------------------------------------------------------ #
 
-    # generation duration
+    # generation duration (serial interval, roughly the incubation time)
     gd = 4
 
+    # R input
+    ax = axes_r[0]
+    y = lambda_t[:, :] / mu
+    cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+    ax.set_title(r"Input: $R = \lambda / \mu$")
+
     # R inferred naive: R_t = Sy_t / Sy_t-gd, gd=4 generation time
-    ax = axes[4]
+    ax = axes_r[1]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
-    # R naive as in-degree
-    # y = [y[:,i+gd]/y[:,i] for i in range(model.sim_len-gd)]
-    # cov19.plot._timeseries(x=x[:-4], y=np.transpose(np.array(y)), ax=ax, what="model", color=clr)
-    # R naive as out-degree
-    y = [y[:, i] / y[:, i - gd] for i in range(gd, model.sim_len)]
-    cov19.plot._timeseries(
-        x=x[gd:], y=np.transpose(np.array(y)), ax=ax, what="model", color=clr
-    )
-    ax.set_title(r"$R$ calculated naive")
+    r, x_r = naive_R(y, x, gd=4, match_rki_convention=False)
+    cov19.plot._timeseries(x=x_r, y=r, ax=ax, what="model", color=clr)
+    r, x_r = naive_R(y, x, gd=4, match_rki_convention=True)
+    cov19.plot._timeseries(x=x_r, y=r, ax=ax, what="model", color=clr, alpha=0.5)
+    ax.set_title(r"$R$ naive")
 
     # R rki avg 4: on Symptomatics
-    ax = axes[5]
+    ax = axes_r[2]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
     cov19.plot._timeseries(
         x=x, y=RKI_R(y, window=4, gd=gd), ax=ax, what="model", color=clr
     )
-    ax.set_title(r"$R$  via" + "\n" + "RKI method (4 days)")
+    ax.set_title(r"$R$ via RKI method (4 days)")
 
     # R rki avg 7: on Symptomatics
-    ax = axes[6]
+    ax = axes_r[3]
     y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
     cov19.plot._timeseries(
         x=x, y=RKI_R(y, window=7, gd=gd), ax=ax, what="model", color=clr
     )
-    ax.set_title(r"$R$ via" + "\n" + "RKI method (7 days)")
+    ax.set_title(r"$R$ via RKI method (7 days)")
 
-    # R inferred with our model (1cp)
-    trace = sir_tr[key]
-    model = sir_mod[key]
+    # R inferred with our model (1cp) on symptomatic
+    ax = axes_r[4]
+    trace = tr_inf_sym[key]
+    model = mod_inf_sym[key]
     mu = trace["mu"]
-    ax = axes[7]
     lambda_t, x = cov19.plot._get_array_from_trace_via_date(model, trace, "lambda_t")
     y = lambda_t[:, :] / trace["mu"][:, None]
-    cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr, draw_ci_75=True)
-    ax.set_title(r"$\lambda / \mu$" + "\n" + "inferred by model with 1 cp")
+    cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+    ax.set_title(r"$R$ inferred by SIR model")
 
-    # "if what we inferred (3CP!) was correct, what would the R inferred via RKi etc. look like?!"
-    #   * plug in the estimates we inferred in the paper as (fixed) values for the SEIR generation
+    # R inferred with our model (1cp) on reported data
+    ax = axes_r[4]
+    trace = tr_inf_rep[key]
+    model = mod_inf_rep[key]
+    mu = trace["mu"]
+    lambda_t, x = cov19.plot._get_array_from_trace_via_date(model, trace, "lambda_t")
+    y = lambda_t[:, :] / trace["mu"][:, None]
+    cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr, alpha=0.5)
+    ax.set_title(r"$R$ inferred by SIR model")
 
-    """
-    * R not 3 but ~ 2
-        * not due to smaller slope (symptomatic vs infected)
-            - using infected gives same R_0 values
-        * smaller R maybe due to convolution
-    * other generation duration
-    * posteriors of our model
 
-    """
+for ax in np.concatenate((axes_delay, axes_r)):
+    ax.spines["right"].set_visible(False)
+    ax.spines["top"].set_visible(False)
+    ax.tick_params(labelbottom=False)
+    ax.set_xlim(datetime.datetime(2020, 3, 11), datetime.datetime(2020, 4, 15))
+    ax.xaxis.set_major_locator(
+        mpl.dates.WeekdayLocator(interval=1, byweekday=mpl.dates.WE)
+    )
+    ax.set_ylim(0, None)
 
-for idx, ax in enumerate(axes):
-    ax.set_xlim(datetime.datetime(2020, 3, 1), datetime.datetime(2020, 4, 19))
-    if idx >= 4:
-        ax.set_ylim(0.7, 2.1)
-        ax.hlines(1, x[0], x[-1], linestyles=":")
+for ax in np.append(axes_r, axes_delay[0]):
+    ax.set_ylim(0.5, 3.05)
+    ax.hlines(1, x[0], x[-1], linestyles=":")
 
-plt.savefig("comparisson_different_R.png")
-# Finally plot distributions for the model
+axes_r[-1].set_xlabel("Time (days)")
+axes_delay[-1].set_xlabel("Time (days)")
