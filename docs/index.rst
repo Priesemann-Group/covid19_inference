@@ -14,6 +14,7 @@
     :caption: Overview
 
     doc/gettingstarted
+    doc/examples
     doc/disclaimer
 
 .. toctree::

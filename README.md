@@ -6,19 +6,26 @@
 
 This is a Bayesian python toolbox for inference and forecast of the spread of the Coronavirus.
 
-The latest stable version is [v0.1.7](https://github.com/Priesemann-Group/covid19_inference/tree/v0.1.7).
+- [**Documentation**](https://covid19-inference.readthedocs.io/en/latest/index.html)
+- [**Getting started**](https://covid19-inference.readthedocs.io/en/latest/doc/gettingstarted.html)
+- [**Examples**](https://covid19-inference.readthedocs.io/en/latest/doc/examples.html)
+- [**Contributing**](https://covid19-inference.readthedocs.io/en/latest/doc/contributing.html)
+- [**Source code**](https://github.com/Priesemann-Group/covid19_inference)
 
-Check out our [documentation](https://covid19-inference.readthedocs.io/en/latest/doc/gettingstarted.html).
 
-An example notebook for one bundesland is [here](scripts/example_one_bundesland.ipynb), and for an hierarchical analysis of the bundeslaender [here](scripts/example_bundeslaender.ipynb) (could still have some problems).
+The latest stable version is [v0.1.7](https://github.com/Priesemann-Group/covid19_inference/tree/v0.1.7)!
+
 
 The research article [is available on arXiv](https://arxiv.org/abs/2004.01105) (**updated on April 13**).
 The code used to produce the figures is available in the other repository [here](https://github.com/Priesemann-Group/covid19_inference_forecast)
 
 
 **We are looking for support** to help us with analyzing other countries and to extend to an hierarchical regional model. We have received additional funding to do so and are recruiting PostDocs, PhD candidates and research assistants:
+
 https://www.ds.mpg.de/3568943/job_full_offer_14729553
+
 https://www.ds.mpg.de/3568926/job_full_offer_14729572
+
 https://www.ds.mpg.de/3568909/job_full_offer_14729591
 
 ### Please take notice of our [disclaimer](DISCLAIMER.md).
