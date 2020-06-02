@@ -382,6 +382,13 @@ cov19.plot.rcParams.draw_ci_50 = False
 cov19.plot.rcParams.draw_ci_75 = False
 cov19.plot.rcParams.draw_ci_95 = False
 
+context_clr = dict()
+context_clr["reported"] = "darkgreen"
+context_clr["symptomatic"] = "darkred"
+context_clr["symptomatic_2"] = "firebrick"
+context_clr["infected"] = "darkgray"
+context_clr["other"] = "darkblue"
+
 
 def _format_k(prec):
     """
@@ -399,7 +406,7 @@ def _format_k(prec):
     return inner
 
 
-def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
+def plot_daily_cases_and_r_smoothing(keys=None, linestyles=None):
     """
         assumes global variables (dicts):
         * mod
@@ -412,13 +419,13 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
     """
     if keys is None:
         keys = ["a", "c"]
-    if colors is None:
-        colors = ["tab:red", "tab:green"]
+    if linestyles is None:
+        linestyles = ["-", "--"]
 
     fig_delay, axes_delay = plt.subplots(4, 1, figsize=(3, 4), constrained_layout=True,)
     fig_r, axes_r = plt.subplots(6, 1, figsize=(3, 6), constrained_layout=True,)
 
-    for key, clr in zip(keys, colors):
+    for key, ls in zip(keys, linestyles):
         trace = tr[key]
         model = mod[key]
 
@@ -434,13 +441,17 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
         # R input
         ax = axes_delay[0]
         y = lambda_t[:, :] / mu
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["other"], ls=ls
+        )
         ax.set_title(r"Input: $R = \lambda / \mu$")
 
         # New infected
         ax = axes_delay[1]
         y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_infected")
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["infected"], ls=ls
+        )
         ax.set_title("new Infected")
 
         # New symptomatic
@@ -448,13 +459,17 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
         y, x = cov19.plot._get_array_from_trace_via_date(
             model, trace, "new_symptomatic"
         )
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["symptomatic_2"], ls=ls
+        )
         ax.set_title("new Symptomatic")
 
         # New reported
         ax = axes_delay[3]
         y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_reported")
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["reported"], ls=ls
+        )
         ax.set_title("new Reported")
 
         # ------------------------------------------------------------------------------ #
@@ -467,7 +482,9 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
         # R input
         ax = axes_r[0]
         y = lambda_t[:, :] / mu
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["other"], ls=ls
+        )
         ax.set_title(r"Input: $R = \lambda / \mu$")
 
         # New symptomatic again
@@ -475,7 +492,9 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
         y, x = cov19.plot._get_array_from_trace_via_date(
             model, trace, "new_symptomatic"
         )
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["symptomatic_2"], ls=ls
+        )
         ax.set_title("new Symptomatic")
 
         # R inferred naive: R_t = Sy_t / Sy_t-gd, gd=4 generation time
@@ -483,11 +502,12 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
         y, x = cov19.plot._get_array_from_trace_via_date(
             model, trace, "new_symptomatic"
         )
-        r, x_r = naive_R(y, x, gd=4, match_rki_convention=False)
-        cov19.plot._timeseries(x=x_r, y=r, ax=ax, what="model", color=clr, alpha=0.25)
-        cov19.plot._timeseries(x=x_r, y=r, ax=ax, what="model", color=clr, ls="--")
+        # r, x_r = naive_R(y, x, gd=4, match_rki_convention=False)
+        # cov19.plot._timeseries(x=x_r, y=r, ax=ax, what="model", color=context_clr["other"], ls=ls)
         r, x_r = naive_R(y, x, gd=4, match_rki_convention=True)
-        cov19.plot._timeseries(x=x_r, y=r, ax=ax, what="model", color=clr)
+        cov19.plot._timeseries(
+            x=x_r, y=r, ax=ax, what="model", color=context_clr["symptomatic"], ls=ls
+        )
         ax.set_title(r"$R$ naive")
 
         # R rki avg 4: on Symptomatics
@@ -496,7 +516,12 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
             model, trace, "new_symptomatic"
         )
         cov19.plot._timeseries(
-            x=x, y=RKI_R(y, window=4, gd=gd), ax=ax, what="model", color=clr
+            x=x,
+            y=RKI_R(y, window=4, gd=gd),
+            ax=ax,
+            what="model",
+            color=context_clr["symptomatic"],
+            ls=ls,
         )
         ax.set_title(r"$R$ via RKI method (4 days)")
 
@@ -506,7 +531,12 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
             model, trace, "new_symptomatic"
         )
         cov19.plot._timeseries(
-            x=x, y=RKI_R(y, window=7, gd=gd), ax=ax, what="model", color=clr
+            x=x,
+            y=RKI_R(y, window=7, gd=gd),
+            ax=ax,
+            what="model",
+            color=context_clr["symptomatic"],
+            ls=ls,
         )
         ax.set_title(r"$R$ via RKI method (7 days)")
 
@@ -519,22 +549,30 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
             model, trace, "lambda_t"
         )
         y = lambda_t[:, :] / trace["mu"][:, None]
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["symptomatic"], ls=ls
+        )
         ax.set_title(r"$R$ inferred by SIR model")
 
         # R inferred with our model (1cp) on reported data
-        ax = axes_r[5]
-        trace = tr_inf_rep[key]
-        model = mod_inf_rep[key]
-        mu = trace["mu"]
-        lambda_t, x = cov19.plot._get_array_from_trace_via_date(
-            model, trace, "lambda_t"
-        )
-        y = lambda_t[:, :] / trace["mu"][:, None]
-        cov19.plot._timeseries(
-            x=x, y=y, ax=ax, what="model", color=clr, alpha=1, draw_ci_95=True, ls="--"
-        )
-        ax.set_title(r"$R$ inferred by SIR model")
+        # ax = axes_r[5]
+        # trace = tr_inf_rep[key]
+        # model = mod_inf_rep[key]
+        # mu = trace["mu"]
+        # lambda_t, x = cov19.plot._get_array_from_trace_via_date(
+        #     model, trace, "lambda_t"
+        # )
+        # y = lambda_t[:, :] / trace["mu"][:, None]
+        # cov19.plot._timeseries(
+        #     x=x,
+        #     y=y,
+        #     ax=ax,
+        #     what="model",
+        #     draw_ci_95=True,
+        #     color=context_clr["reported"],
+        #     ls=ls,
+        # )
+        # ax.set_title(r"$R$ inferred by SIR model")
 
     for ax in np.concatenate((axes_delay, axes_r)):
         ax.spines["right"].set_visible(False)
@@ -563,3 +601,6 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
         ax.spines["bottom"].set_visible(True)
         ax.set_xlabel("Time (days)")
         # ax.tick_params(labelbottom=True, labeltop=False)
+
+
+plot_daily_cases_and_r_smoothing()

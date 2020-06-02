@@ -352,6 +352,12 @@ cov19.plot.rcParams.draw_ci_50 = False
 cov19.plot.rcParams.draw_ci_75 = False
 cov19.plot.rcParams.draw_ci_95 = False
 
+context_clr = dict()
+context_clr["reported"] = "darkgreen"
+context_clr["symptomatic"] = "darkred"
+context_clr["infected"] = "darkgray"
+context_clr["other"] = "darkblue"
+
 
 def _format_k(prec):
     """
@@ -369,7 +375,7 @@ def _format_k(prec):
     return inner
 
 
-def plot_inference_reported_vs_symptomatic(keys=None, colors=None):
+def plot_inference_reported_vs_symptomatic(keys=None, linestyles=None):
     """
         assumes global variables (dicts):
         * mod
@@ -381,12 +387,12 @@ def plot_inference_reported_vs_symptomatic(keys=None, colors=None):
     """
     if keys is None:
         keys = ["a", "c"]
-    if colors is None:
-        colors = ["tab:red", "tab:green"]
+    if linestyles is None:
+        linestyles = ["-", "--"]
 
     fig, axes = plt.subplots(6, 1, figsize=(4, 6), constrained_layout=True,)
 
-    for key, clr in zip(keys, colors):
+    for key, ls in zip(keys, linestyles):
         trace = tr[key]
         model = mod[key]
 
@@ -405,7 +411,9 @@ def plot_inference_reported_vs_symptomatic(keys=None, colors=None):
         # R input
         ax = axes[0]
         y = lambda_t[:, :] / mu
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["other"], ls=ls
+        )
         ax.set_title(r"Input: $R = \lambda / \mu$")
 
         # New symptomatic
@@ -413,7 +421,9 @@ def plot_inference_reported_vs_symptomatic(keys=None, colors=None):
         y, x = cov19.plot._get_array_from_trace_via_date(
             mod[key], tr[key], "new_symptomatic"
         )
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["symptomatic"], ls=ls
+        )
         ax.set_title("new Symptomatic")
 
         # R rki avg 4: on Symptomatics
@@ -422,7 +432,12 @@ def plot_inference_reported_vs_symptomatic(keys=None, colors=None):
             mod[key], tr[key], "new_symptomatic"
         )
         cov19.plot._timeseries(
-            x=x, y=RKI_R(y, window=4, gd=gd), ax=ax, what="model", color=clr
+            x=x,
+            y=RKI_R(y, window=4, gd=gd),
+            ax=ax,
+            what="model",
+            color=context_clr["symptomatic"],
+            ls=ls,
         )
         ax.set_title(r"$R$ via RKI method (4 days)")
 
@@ -435,7 +450,9 @@ def plot_inference_reported_vs_symptomatic(keys=None, colors=None):
             model, trace, "lambda_t"
         )
         y = lambda_t[:, :] / trace["mu"][:, None]
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["symptomatic"], ls=ls
+        )
         ax.set_title(r"$R$ from SIR (Symptomatic)")
 
         # New Reported
@@ -443,7 +460,9 @@ def plot_inference_reported_vs_symptomatic(keys=None, colors=None):
         y, x = cov19.plot._get_array_from_trace_via_date(
             mod[key], tr[key], "new_reported"
         )
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["reported"], ls=ls
+        )
         ax.set_title("new Reported")
 
         # R inferred with our model on reported data
@@ -456,7 +475,13 @@ def plot_inference_reported_vs_symptomatic(keys=None, colors=None):
         )
         y = lambda_t[:, :] / trace["mu"][:, None]
         cov19.plot._timeseries(
-            x=x, y=y, ax=ax, what="model", color=clr, alpha=1, draw_ci_95=True, ls="--"
+            x=x,
+            y=y,
+            ax=ax,
+            what="model",
+            color=context_clr["reported"],
+            ls=ls,
+            draw_ci_95=True,
         )
         ax.set_title(r"$R$ from SIR (Reported)")
 
@@ -489,4 +514,4 @@ def plot_inference_reported_vs_symptomatic(keys=None, colors=None):
         ax.tick_params(labelbottom=True)
 
 
-plot_inference_reported_vs_symptomatic(keys=["d"], colors=["tab:blue"])
+plot_inference_reported_vs_symptomatic(keys=["d"], linestyles=["-"])
