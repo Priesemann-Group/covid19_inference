@@ -239,7 +239,7 @@ def dummy_generator_SIR(
             lambda_t_log=tt.log(lambda_t),
             mu=mu,
             name_new_I_t="new_infected",
-            pr_I_begin=100,
+            pr_I_begin=36,
         )
 
         # incubation period
@@ -247,9 +247,7 @@ def dummy_generator_SIR(
         pm.Deterministic("new_symptomatic", new_symptomatic)
 
         # the other stuff
-        new_reported = delay_lognormal(
-            inp=new_symptomatic, median=5, sigma=0.3, dist_len=30
-        )
+        new_reported = delay_lognormal(inp=new_I_t, median=10, sigma=0.3, dist_len=30)
         pm.Deterministic("new_reported", new_reported)
 
     return this_model
@@ -260,12 +258,6 @@ def dummy_generator_SEIR(
     params_model, cp_center, cp_duration, lambda_old, lambda_new, mu
 ):
     with cov19.model.Cov19Model(**params_model) as this_model:
-
-        # parameters between SIR and SEIR are not comparable
-        # we assume values that are tuned for SIR, hence they need tweaking
-        lambda_old = lambda_old * 3
-        lambda_new = lambda_new * 3
-        mu = mu * 3
 
         # usually, make lambda a pymc3 random variable.
         # In this toymodel, we set to a fixed value
@@ -300,9 +292,9 @@ def dummy_generator_SEIR(
             name_median_incubation="median_incubation",
             # fix I_begin, new_E_begin and incubation time instead of inferring them
             # with pymc3
-            pr_I_begin=tt.constant(100, dtype="float64"),
+            pr_I_begin=tt.constant(26, dtype="float64"),
             # dirty workaround, we need shape 11 for the convolution running in SEIR
-            pr_new_E_begin=tt.ones(11, dtype="float64") * 50,
+            pr_new_E_begin=tt.ones(11, dtype="float64") * 5,
             # another dirty workaround so we keep one free variable but it is alwys the same effectively
             pr_sigma_median_incubation=0.1,
             return_all=True,
@@ -313,7 +305,7 @@ def dummy_generator_SEIR(
         pm.Deterministic("new_symptomatic", new_symptomatic)
 
         # the other stuff
-        new_reported = delay_lognormal(inp=new_I_t, median=7, sigma=0.3, dist_len=30)
+        new_reported = delay_lognormal(inp=new_I_t, median=5, sigma=0.3, dist_len=30)
         pm.Deterministic("new_reported", new_reported)
 
     return this_model
@@ -389,6 +381,11 @@ mu_fixed = 0.13
 lambda_old = 0.39
 lambda_new = 0.15
 
+# for SEIR other values are needed
+# mu_fixed = 0.35
+# lambda_old = 1.2
+# lambda_new = 0.40
+
 """
 Create dummy data with fixed parameters and
 run it to obtain a dataset which we later use as new cases obs.
@@ -396,7 +393,7 @@ run it to obtain a dataset which we later use as new cases obs.
 mod = dict()
 tr = dict()
 for key, duration in zip(["a", "b", "c"], [1, 5, 9]):
-    mod[key] = dummy_generator_SEIR(
+    mod[key] = dummy_generator_SIR(
         params_model,
         cp_center=datetime.datetime(2020, 3, 23),
         cp_duration=duration,
@@ -555,3 +552,8 @@ for ax in np.append(axes_r, axes_delay[0]):
 
 axes_r[-1].set_xlabel("Time (days)")
 axes_delay[-1].set_xlabel("Time (days)")
+
+axes_r[0].ax.tick_params(labelbottom=False, labeltop=True)
+axes_delay[0].ax.tick_params(labelbottom=False, labeltop=True)
+axes_r[-1].ax.tick_params(labelbottom=True, labeltop=False)
+axes_delay[-1].ax.tick_params(labelbottom=True, labeltop=False)
