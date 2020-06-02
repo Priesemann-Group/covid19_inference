@@ -1,10 +1,9 @@
 """
-    # Example: Change duration
-    This showcases the effect of sudden changes in effective spreading-rate (or R)
-    that can cause a temporary decrease in daily new cases.
-    Non-hierarchical model using jhu data (no regions).
+    This script can be executed to create a figure showing the 
+    effect of different generation durations on the example of
+    the RKI_R method.
 
-    Runtime ~ 3 min
+    Runtime ~ 1 min
 """
 
 import datetime
@@ -203,3 +202,7 @@ if __name__ == "__main__":
     # Label on input R and new Symptomatic
     axes[0].tick_params(labelbottom=True)
     axes[1].tick_params(labelbottom=True)
+
+    axes[-3].set_yticks([1,2,3])
+    axes[-2].set_yticks([1,3,5,7])
+    axes[-1].set_yticks([1,5,9,13])
