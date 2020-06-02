@@ -207,31 +207,15 @@ def get_lambda_t_3cp_from_paper():
     return y, x
 
 
-# we want to create multiple models with the differently fast steps
-def dummy_generator_SIR(
-    params_model, cp_center, cp_duration, lambda_old, lambda_new, mu
-):
+def dummy_generator_SIR_3cp_from_paper(params_model, mu):
     with cov19.model.Cov19Model(**params_model) as this_model:
 
-        # usually, make lambda a pymc3 random variable.
-        # In this toymodel, we set to a fixed value
-        # lambda_old = pm.Lognormal("lambda", mu=0.39, sigma=0.5)
-        lambda_old = tt.constant(lambda_old)
-        pm.Deterministic("lambda", lambda_old)
         pm.Deterministic("mu", tt.constant(mu))
 
-        # convert date-arguments to (integer) days
-        cp_center = (cp_center - this_model.sim_begin).days
-
-        # create a simple time series with the change-point as a smooth step:
-        # linear interpolation between 0 and 1
-        time_array = np.arange(this_model.sim_len)
-        step_t = tt.clip(
-            (time_array - cp_center + int(cp_duration / 2)) / cp_duration, 0, 1
-        )
-
-        # create the time series of lambda
-        lambda_t = step_t * (lambda_new - lambda_old) + lambda_old
+        lambda_t, t = get_lambda_t_3cp_from_paper()
+        # get the right time-range
+        start = np.where(t == this_model.sim_begin.date())[0][0]
+        lambda_t = tt.constant(lambda_t[start:])
         pm.Deterministic("lambda_t", lambda_t)
 
         # we need at least one random variable for pymc3. use I_0 as a dummy variable
@@ -239,7 +223,7 @@ def dummy_generator_SIR(
             lambda_t_log=tt.log(lambda_t),
             mu=mu,
             name_new_I_t="new_infected",
-            pr_I_begin=10,
+            pr_I_begin=36,
         )
 
         # incubation period
@@ -318,32 +302,15 @@ params_model = dict(
     N_population=83e6,
 )
 
-# hard coded recovery rate and initial spreading rate, R ~ 3
-mu_fixed = 0.13
-lambda_old = 0.39
-lambda_new = 0.15
-
-# for SEIR other values are needed
-# mu_fixed = 0.35
-# lambda_old = 1.2
-# lambda_new = 0.40
 
 """
-Create dummy data with fixed parameters and
+Create dummy data with fixed parameters from the SIR 3cp results
 run it to obtain a dataset which we later use as new cases obs.
 """
 mod = dict()
 tr = dict()
-for key, duration in zip(["a", "b", "c"], [1, 5, 9]):
-    mod[key] = dummy_generator_SIR(
-        params_model,
-        cp_center=datetime.datetime(2020, 3, 23),
-        cp_duration=duration,
-        lambda_new=lambda_new,
-        lambda_old=lambda_old,
-        mu=mu_fixed,
-    )
-    tr[key] = pm.sample(model=mod[key])
+mod["d"] = dummy_generator_SIR_3cp_from_paper(params_model, mu=0.13,)
+tr["d"] = pm.sample(model=mod["d"])
 
 
 """
@@ -351,9 +318,13 @@ Use our dummy data and infer with a new SIR model using symptom onset
 """
 tr_inf_sym = dict()
 mod_inf_sym = dict()
-for key in ["a", "b", "c"]:
+for key in ["d"]:
     mod_inf_sym[key] = create_our_SIR(
-        model=mod[key], trace=tr[key], var_for_cases="new_symptomatic", pr_delay=5
+        model=mod[key],
+        trace=tr[key],
+        var_for_cases="new_symptomatic",
+        cps=3,
+        pr_delay=5,
     )
     tr_inf_sym[key] = pm.sample(
         model=mod_inf_sym[key], tune=500, draws=500, init="advi+adapt_diag"
@@ -364,9 +335,9 @@ Use our dummy data and infer with a new SIR model using reported data
 """
 tr_inf_rep = dict()
 mod_inf_rep = dict()
-for key in ["a", "b", "c"]:
+for key in ["d"]:
     mod_inf_rep[key] = create_our_SIR(
-        model=mod[key], trace=tr[key], var_for_cases="new_reported", pr_delay=10
+        model=mod[key], trace=tr[key], var_for_cases="new_reported", cps=3, pr_delay=10
     )
     tr_inf_rep[key] = pm.sample(
         model=mod_inf_rep[key], tune=500, draws=500, init="advi+adapt_diag"
@@ -376,7 +347,6 @@ for key in ["a", "b", "c"]:
 """
     ## Plotting
 """
-
 cov19.plot.set_rcparams(cov19.plot.get_rcparams_default())
 cov19.plot.rcParams.draw_ci_50 = False
 cov19.plot.rcParams.draw_ci_75 = False
@@ -399,7 +369,7 @@ def _format_k(prec):
     return inner
 
 
-def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
+def plot_inference_reported_vs_symptomatic(keys=None, colors=None):
     """
         assumes global variables (dicts):
         * mod
@@ -408,15 +378,13 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
         * tr_inf_rep
         * mod_inf_sym
         * tr_inf_sym
-
     """
     if keys is None:
         keys = ["a", "c"]
     if colors is None:
         colors = ["tab:red", "tab:green"]
 
-    fig_delay, axes_delay = plt.subplots(4, 1, figsize=(3, 4), constrained_layout=True,)
-    fig_r, axes_r = plt.subplots(6, 1, figsize=(3, 6), constrained_layout=True,)
+    fig, axes = plt.subplots(6, 1, figsize=(4, 6), constrained_layout=True,)
 
     for key, clr in zip(keys, colors):
         trace = tr[key]
@@ -428,90 +396,38 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
         )
 
         # ------------------------------------------------------------------------------ #
-        # Figure 1: Delays
-        # ------------------------------------------------------------------------------ #
-
-        # R input
-        ax = axes_delay[0]
-        y = lambda_t[:, :] / mu
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
-        ax.set_title(r"Input: $R = \lambda / \mu$")
-
-        # New infected
-        ax = axes_delay[1]
-        y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_infected")
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
-        ax.set_title("new Infected")
-
-        # New symptomatic
-        ax = axes_delay[2]
-        y, x = cov19.plot._get_array_from_trace_via_date(
-            model, trace, "new_symptomatic"
-        )
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
-        ax.set_title("new Symptomatic")
-
-        # New reported
-        ax = axes_delay[3]
-        y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_reported")
-        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
-        ax.set_title("new Reported")
-
-        # ------------------------------------------------------------------------------ #
-        # Figure 2: Comparisson for different calculation of R
+        # Figure Reporting vs Symptomatic
         # ------------------------------------------------------------------------------ #
 
         # generation duration (serial interval, roughly the incubation time)
         gd = 4
 
         # R input
-        ax = axes_r[0]
+        ax = axes[0]
         y = lambda_t[:, :] / mu
         cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
         ax.set_title(r"Input: $R = \lambda / \mu$")
 
-        # New symptomatic again
-        ax = axes_r[1]
+        # New symptomatic
+        ax = axes[1]
         y, x = cov19.plot._get_array_from_trace_via_date(
-            model, trace, "new_symptomatic"
+            mod[key], tr[key], "new_symptomatic"
         )
         cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
         ax.set_title("new Symptomatic")
 
-        # R inferred naive: R_t = Sy_t / Sy_t-gd, gd=4 generation time
-        ax = axes_r[2]
-        y, x = cov19.plot._get_array_from_trace_via_date(
-            model, trace, "new_symptomatic"
-        )
-        r, x_r = naive_R(y, x, gd=4, match_rki_convention=False)
-        cov19.plot._timeseries(x=x_r, y=r, ax=ax, what="model", color=clr, alpha=0.25)
-        cov19.plot._timeseries(x=x_r, y=r, ax=ax, what="model", color=clr, ls="--")
-        r, x_r = naive_R(y, x, gd=4, match_rki_convention=True)
-        cov19.plot._timeseries(x=x_r, y=r, ax=ax, what="model", color=clr)
-        ax.set_title(r"$R$ naive")
-
         # R rki avg 4: on Symptomatics
-        ax = axes_r[3]
+        ax = axes[2]
         y, x = cov19.plot._get_array_from_trace_via_date(
-            model, trace, "new_symptomatic"
+            mod[key], tr[key], "new_symptomatic"
         )
         cov19.plot._timeseries(
             x=x, y=RKI_R(y, window=4, gd=gd), ax=ax, what="model", color=clr
         )
         ax.set_title(r"$R$ via RKI method (4 days)")
 
-        # R rki avg 7: on Symptomatics
-        ax = axes_r[4]
-        y, x = cov19.plot._get_array_from_trace_via_date(
-            model, trace, "new_symptomatic"
-        )
-        cov19.plot._timeseries(
-            x=x, y=RKI_R(y, window=7, gd=gd), ax=ax, what="model", color=clr
-        )
-        ax.set_title(r"$R$ via RKI method (7 days)")
-
-        # R inferred with our model (1cp) on symptomatic
-        ax = axes_r[5]
+        # R inferred by model using symptomatic
+        ax = axes[3]
         trace = tr_inf_sym[key]
         model = mod_inf_sym[key]
         mu = trace["mu"]
@@ -520,10 +436,18 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
         )
         y = lambda_t[:, :] / trace["mu"][:, None]
         cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
-        ax.set_title(r"$R$ inferred by SIR model")
+        ax.set_title(r"$R$ from SIR (Symptomatic)")
 
-        # R inferred with our model (1cp) on reported data
-        ax = axes_r[5]
+        # New Reported
+        ax = axes[4]
+        y, x = cov19.plot._get_array_from_trace_via_date(
+            mod[key], tr[key], "new_reported"
+        )
+        cov19.plot._timeseries(x=x, y=y, ax=ax, what="model", color=clr)
+        ax.set_title("new Reported")
+
+        # R inferred with our model on reported data
+        ax = axes[5]
         trace = tr_inf_rep[key]
         model = mod_inf_rep[key]
         mu = trace["mu"]
@@ -534,17 +458,17 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
         cov19.plot._timeseries(
             x=x, y=y, ax=ax, what="model", color=clr, alpha=1, draw_ci_95=True, ls="--"
         )
-        ax.set_title(r"$R$ inferred by SIR model")
+        ax.set_title(r"$R$ from SIR (Reported)")
 
-    for ax in np.concatenate((axes_delay, axes_r)):
+    for ax in axes:
         ax.spines["right"].set_visible(False)
         ax.spines["top"].set_visible(False)
         ax.spines["bottom"].set_visible(False)
-        ax.tick_params(labelbottom=False)
+        # ax.tick_params(labelbottom=False)
         ax.axes.get_xaxis().set_visible(False)
-        ax.set_xlim(datetime.datetime(2020, 3, 11), datetime.datetime(2020, 4, 15))
+        ax.set_xlim(datetime.datetime(2020, 3, 1), datetime.datetime(2020, 4, 12))
         ax.xaxis.set_major_locator(
-            mpl.dates.WeekdayLocator(interval=1, byweekday=mpl.dates.WE)
+            mpl.dates.WeekdayLocator(interval=1, byweekday=mpl.dates.SU)
         )
 
         if (
@@ -555,11 +479,14 @@ def plot_daily_cases_and_r_smoothing(keys=None, colors=None):
             ax.set_ylim(0, None)
             ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(_format_k(int(0))))
         else:
-            ax.set_ylim(0.5, 3.5)
+            ax.set_ylim(0.5, 4)
             ax.hlines(1, x[0], x[-1], linestyles=":")
 
-    for ax in [axes_r[-1], axes_delay[-1]]:
+    for ax in [axes[-1]]:
         ax.axes.get_xaxis().set_visible(True)
         ax.spines["bottom"].set_visible(True)
         ax.set_xlabel("Time (days)")
-        # ax.tick_params(labelbottom=True, labeltop=False)
+        ax.tick_params(labelbottom=True)
+
+
+plot_inference_reported_vs_symptomatic(keys=["d"], colors=["tab:blue"])
