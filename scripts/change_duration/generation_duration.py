@@ -1,5 +1,5 @@
 """
-    This script can be executed to create a figure showing the 
+    This script can be executed to create a figure showing the
     effect of different generation durations on the example of
     the RKI_R method.
 
@@ -53,15 +53,17 @@ def plot_generation_duration(model, trace, gds, lim_y, axes=None):
     if not len(gds) == len(lim_y):
         raise ValueError("Not enought y_lims")
     if axes is None:
-        fig, axes = plt.subplots(len(gds),1,figsize=(3,5))
+        fig, axes = plt.subplots(len(gds), 1, figsize=(3, 5))
     if not len(axes) == len(gds):
         raise ValueError("Shape missmatch axes and gds")
     """
     Plot different gd
     """
-    for i,gd in enumerate(gds):
+    for i, gd in enumerate(gds):
         ax = axes[i]
-        y, x = cov19.plot._get_array_from_trace_via_date(model, trace, "new_symptomatic")
+        y, x = cov19.plot._get_array_from_trace_via_date(
+            model, trace, "new_symptomatic"
+        )
         y = RKI_R(y, window=4, gd=gd)
         cov19.plot._timeseries(
             x=x, y=y, ax=ax, what="model", color=clr, label=f"gd={gd}"
@@ -70,8 +72,8 @@ def plot_generation_duration(model, trace, gds, lim_y, axes=None):
     """
     Format axes
     """
-    for i,ax in enumerate(axes):
-        ax.set_ylim(lim_y[i][0],lim_y[i][1])
+    for i, ax in enumerate(axes):
+        ax.set_ylim(lim_y[i][0], lim_y[i][1])
         ax.spines["right"].set_visible(False)
         ax.spines["top"].set_visible(False)
         ax.tick_params(labelbottom=False)
@@ -91,7 +93,7 @@ def plot_generation_duration(model, trace, gds, lim_y, axes=None):
 Only run if this file is executed helps with import of plotting function defined above,
 but cant be run as iypthon notebook
 """
-if __name__ == "__main__": 
+if __name__ == "__main__":
     """
         # Parameterization
     """
@@ -154,9 +156,10 @@ if __name__ == "__main__":
     mu = trace["mu"][:, None]
     lambda_t, x = cov19.plot._get_array_from_trace_via_date(model, trace, "lambda_t")
 
-    def y_fmt(x,y):
+    def y_fmt(x, y):
         x = x / 1000
-        return f'{x:.0f} k'
+        return f"{x:.0f} k"
+
     # R input
     ax = axes[0]
     y = lambda_t[:, :] / mu
@@ -171,14 +174,17 @@ if __name__ == "__main__":
     cov19.plot._format_date_xticks(ax)
     ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(y_fmt))
 
-
     # 3 axes for different generation durations
     plot_generation_duration(
         model=model,
         trace=trace,
         axes=axes[2:],
-        gds=[4,7,11],
-        lim_y=[(0.1,3.05),(0.1,7),(-0.6,14.9)]# generation duration (serial interval, roughly the incubation time)
+        gds=[4, 7, 11],
+        lim_y=[
+            (0.1, 3.05),
+            (0.1, 7),
+            (-0.6, 14.9),
+        ],  # generation duration (serial interval, roughly the incubation time)
     )
 
     # Format x_axis
@@ -196,8 +202,8 @@ if __name__ == "__main__":
     axes[-1].tick_params(labelbottom=True, labeltop=False)
 
     # Ticks on top first R via RKI method
-    #axes[2].tick_params(labelbottom=False, labeltop=True)
-    #axes[2].xaxis.tick_top()
+    # axes[2].tick_params(labelbottom=False, labeltop=True)
+    # axes[2].xaxis.tick_top()
 
     # Label on input R and new Symptomatic
     axes[0].tick_params(labelbottom=True)

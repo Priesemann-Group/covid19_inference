@@ -959,7 +959,7 @@ def _math_for_varname(key):
     # change-point keys, give lower index
     if is_cp:
         # get cp index
-        res = res + r"_{"+_rx_cp_id(key)+"}"
+        res = res + r"_{" + _rx_cp_id(key) + "}"
 
     # hierarchical, give upper index
     if is_hc:

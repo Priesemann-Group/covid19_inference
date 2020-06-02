@@ -1,7 +1,7 @@
 from .model import Cov19Model
 from .compartmental_models import SIR, SEIR, uncorrelated_prior_I
 from .delay import delay_cases
-from .spreading_rate import lambda_t_with_sigmoids
+from .spreading_rate import lambda_t_with_sigmoids, lambda_t_with_linear_interp
 from .likelihood import student_t_likelihood
 from .week_modulation import week_modulation
 

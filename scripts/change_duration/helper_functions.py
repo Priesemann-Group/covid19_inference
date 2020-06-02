@@ -120,7 +120,7 @@ def create_our_SIR(model, trace, var_for_cases="new_symptomatic", cps=1, pr_dela
 
     with cov19.model.Cov19Model(**params_model) as this_model:
         # Create the an array of the time dependent infection rate lambda
-        lambda_t_log = cov19.model.lambda_t_with_sigmoids(
+        lambda_t_log = cov19.model.lambda_t_with_linear_interp(
             pr_median_lambda_0=0.4,
             pr_sigma_lambda_0=0.5,
             change_points_list=change_points,  # The change point priors we constructed earlier
@@ -339,5 +339,3 @@ def plot_distributions(model, trace):
 
     fig.tight_layout()
     return fig, axes
-
-
