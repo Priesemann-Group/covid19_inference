@@ -1,6 +1,9 @@
 """
-# helper functions
+    # Example: Change duration
+    This file provides helpers used by the other files.
+    Be careful when altering, indivdual functions might be used in multiple places.
 """
+
 import datetime
 import copy
 import sys
@@ -21,6 +24,10 @@ except ModuleNotFoundError:
     sys.path.append("../../")
     sys.path.append("../../../")
     import covid19_inference as cov19
+
+"""
+    # R inference
+"""
 
 
 def RKI_R(infected_t, window=4, gd=4):
@@ -157,6 +164,10 @@ def create_our_SIR(model, trace, var_for_cases="new_symptomatic", cps=1, pr_dela
     return this_model
 
 
+"""
+    # Data generation
+"""
+
 # reporting delay via lognormal kernel
 def delay_lognormal(inp, median, sigma, amplitude=1.0, dist_len=40):
     """ Delays input inp by lognormal distirbution using convolution """
@@ -186,8 +197,23 @@ def delay_lognormal(inp, median, sigma, amplitude=1.0, dist_len=40):
 def get_lambda_t_3cp_from_paper():
     # as in Fig 3 https://arxiv.org/abs/2004.01105
     # fmt: off
-    y = np.array(
-        [0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520093, 0.42517466, 0.4249035, 0.4236892, 0.41947994, 0.40930175, 0.38876708, 0.34942187, 0.29720015, 0.26635061, 0.25552907, 0.25118942, 0.24956378, 0.24907948, 0.24837864, 0.24296566, 0.22420404, 0.19470871, 0.16873707, 0.15696049, 0.15353644, 0.15277346, 0.15087519, 0.14391068, 0.13167679, 0.11795485, 0.10687387, 0.09951218, 0.09551084, 0.09377538, 0.09302759, 0.09289024, 0.09285077, 0.09284367, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+    y = np.array([
+        0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853,
+        0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853, 0.42520853,
+        0.42520853, 0.42520853, 0.42520853, 0.42520093, 0.42517466, 0.4249035,
+        0.4236892, 0.41947994, 0.40930175, 0.38876708, 0.34942187, 0.29720015,
+        0.26635061, 0.25552907, 0.25118942, 0.24956378, 0.24907948, 0.24837864,
+        0.24296566, 0.22420404, 0.19470871, 0.16873707, 0.15696049, 0.15353644,
+        0.15277346, 0.15087519, 0.14391068, 0.13167679, 0.11795485, 0.10687387,
+        0.09951218, 0.09551084, 0.09377538, 0.09302759, 0.09289024, 0.09285077,
+        0.09284367, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+        0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+        0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+        0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+        0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+        0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+        0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
+        0.09283485, 0.09283485, 0.09283485, 0.09283485, 0.09283485,
         ])
     # fmt: on
 
@@ -196,7 +222,6 @@ def get_lambda_t_3cp_from_paper():
     return y, x
 
 
-# we want to create multiple models with the differently fast steps
 def dummy_generator_SIR(
     params_model, cp_center, cp_duration, lambda_old, lambda_new, mu
 ):
@@ -228,6 +253,36 @@ def dummy_generator_SIR(
             lambda_t_log=tt.log(lambda_t),
             mu=mu,
             name_new_I_t="new_infected",
+            pr_I_begin=10,
+        )
+
+        # incubation period
+        new_symptomatic = delay_lognormal(inp=new_I_t, median=5, sigma=0.3, dist_len=30)
+        pm.Deterministic("new_symptomatic", new_symptomatic)
+
+        # reporting delay, both refer to I pool in SIR but with different median
+        new_reported = delay_lognormal(inp=new_I_t, median=10, sigma=0.3, dist_len=30)
+        pm.Deterministic("new_reported", new_reported)
+
+    return this_model
+
+
+def dummy_generator_SIR_3cp_from_paper(params_model, mu):
+    with cov19.model.Cov19Model(**params_model) as this_model:
+
+        pm.Deterministic("mu", tt.constant(mu))
+
+        lambda_t, t = get_lambda_t_3cp_from_paper()
+        # get the right time-range
+        start = np.where(t == this_model.sim_begin.date())[0][0]
+        lambda_t = tt.constant(lambda_t[start:])
+        pm.Deterministic("lambda_t", lambda_t)
+
+        # we need at least one random variable for pymc3. use I_0 as a dummy variable
+        new_I_t = cov19.model.SIR(
+            lambda_t_log=tt.log(lambda_t),
+            mu=mu,
+            name_new_I_t="new_infected",
             pr_I_begin=36,
         )
 
@@ -235,14 +290,13 @@ def dummy_generator_SIR(
         new_symptomatic = delay_lognormal(inp=new_I_t, median=5, sigma=0.3, dist_len=30)
         pm.Deterministic("new_symptomatic", new_symptomatic)
 
-        # the other stuff
+        # reporting delay, both refer to I pool in SIR but with different median
         new_reported = delay_lognormal(inp=new_I_t, median=10, sigma=0.3, dist_len=30)
         pm.Deterministic("new_reported", new_reported)
 
     return this_model
 
 
-# we want to create multiple models with the differently fast steps
 def dummy_generator_SEIR(
     params_model, cp_center, cp_duration, lambda_old, lambda_new, mu
 ):
@@ -298,6 +352,27 @@ def dummy_generator_SEIR(
         pm.Deterministic("new_reported", new_reported)
 
     return this_model
+
+
+"""
+    # Plotting
+"""
+
+
+def _format_k(prec):
+    """
+        format yaxis 10_000 as 10 k.
+        _format_k(0)(1200, 1000.0) gives "1 k"
+        _format_k(1)(1200, 1000.0) gives "1.2 k"
+    """
+
+    def inner(xval, tickpos):
+        if xval == 0:
+            return "0"
+        else:
+            return f"${xval/1_000:.{prec}f}\,$k"
+
+    return inner
 
 
 def plot_distributions(model, trace):

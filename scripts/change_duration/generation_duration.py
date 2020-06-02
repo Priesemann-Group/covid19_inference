@@ -30,70 +30,7 @@ except ModuleNotFoundError:
 from helper_functions import *
 
 
-def plot_generation_duration(model, trace, gds, lim_y, axes=None):
-    """
-        Helper function that creates generation duration plots with RKI_R
-        method with a window of 4!
-
-        Parameters
-        ----------
-        model:
-        trace:
-            the trace which get used to calculate the R value
-        gds: array
-            generation durations to plot can be multiple
-        lim_y: array of tuples
-            y lims for the gd plots (lower,upper)
-        Returns
-        -------
-        fig_r, axes_r : matplotlib figure and axes
-    """
-    if not isinstance(gds, list):
-        raise ValueError("gds has to be a array")
-    if not len(gds) == len(lim_y):
-        raise ValueError("Not enought y_lims")
-    if axes is None:
-        fig, axes = plt.subplots(len(gds), 1, figsize=(3, 5))
-    if not len(axes) == len(gds):
-        raise ValueError("Shape missmatch axes and gds")
-    """
-    Plot different gd
-    """
-    for i, gd in enumerate(gds):
-        ax = axes[i]
-        y, x = cov19.plot._get_array_from_trace_via_date(
-            model, trace, "new_symptomatic"
-        )
-        y = RKI_R(y, window=4, gd=gd)
-        cov19.plot._timeseries(
-            x=x, y=y, ax=ax, what="model", color=clr, label=f"gd={gd}"
-        )
-        ax.legend()
-    """
-    Format axes
-    """
-    for i, ax in enumerate(axes):
-        ax.set_ylim(lim_y[i][0], lim_y[i][1])
-        ax.spines["right"].set_visible(False)
-        ax.spines["top"].set_visible(False)
-        ax.tick_params(labelbottom=False)
-        ax.set_xlim(datetime.datetime(2020, 3, 11), datetime.datetime(2020, 4, 15))
-        ax.xaxis.set_major_locator(
-            mpl.dates.WeekdayLocator(interval=1, byweekday=mpl.dates.WE)
-        )
-        ax.hlines(1, x[0], x[-1], linestyles=":")
-
-    axes[0].set_title(r"$R$ via RKI method (4 days)")
-    axes[-1].set_xlabel("Time (days)")
-    axes[-1].tick_params(labelbottom=True, labeltop=False)
-    return axes
-
-
-"""
-Only run if this file is executed helps with import of plotting function defined above,
-but cant be run as iypthon notebook
-"""
-if __name__ == "__main__":
+def main():
     """
         # Parameterization
     """
@@ -143,7 +80,7 @@ if __name__ == "__main__":
     trace = pm.sample(model=model)
 
     """
-        ## Plotting
+        # Plotting
     """
     clr = "tab:green"
     cov19.plot.set_rcparams(cov19.plot.get_rcparams_default())
@@ -209,6 +146,74 @@ if __name__ == "__main__":
     axes[0].tick_params(labelbottom=True)
     axes[1].tick_params(labelbottom=True)
 
-    axes[-3].set_yticks([1,2,3])
-    axes[-2].set_yticks([1,3,5,7])
-    axes[-1].set_yticks([1,5,9,13])
+    axes[-3].set_yticks([1, 2, 3])
+    axes[-2].set_yticks([1, 3, 5, 7])
+    axes[-1].set_yticks([1, 5, 9, 13])
+
+
+def plot_generation_duration(model, trace, gds, lim_y, axes=None):
+    """
+        Helper function that creates generation duration plots with RKI_R
+        method with a window of 4!
+
+        Parameters
+        ----------
+        model:
+        trace:
+            the trace which get used to calculate the R value
+        gds: array
+            generation durations to plot can be multiple
+        lim_y: array of tuples
+            y lims for the gd plots (lower,upper)
+        Returns
+        -------
+        fig_r, axes_r : matplotlib figure and axes
+    """
+    if not isinstance(gds, list):
+        raise ValueError("gds has to be a array")
+    if not len(gds) == len(lim_y):
+        raise ValueError("Not enought y_lims")
+    if axes is None:
+        fig, axes = plt.subplots(len(gds), 1, figsize=(3, 5))
+    if not len(axes) == len(gds):
+        raise ValueError("Shape missmatch axes and gds")
+    clr = "tab:green"
+    """
+    Plot different gd
+    """
+    for i, gd in enumerate(gds):
+        ax = axes[i]
+        y, x = cov19.plot._get_array_from_trace_via_date(
+            model, trace, "new_symptomatic"
+        )
+        y = RKI_R(y, window=4, gd=gd)
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=clr, label=f"gd={gd}"
+        )
+        ax.legend()
+    """
+    Format axes
+    """
+    for i, ax in enumerate(axes):
+        ax.set_ylim(lim_y[i][0], lim_y[i][1])
+        ax.spines["right"].set_visible(False)
+        ax.spines["top"].set_visible(False)
+        ax.tick_params(labelbottom=False)
+        ax.set_xlim(datetime.datetime(2020, 3, 11), datetime.datetime(2020, 4, 15))
+        ax.xaxis.set_major_locator(
+            mpl.dates.WeekdayLocator(interval=1, byweekday=mpl.dates.WE)
+        )
+        ax.hlines(1, x[0], x[-1], linestyles=":")
+
+    axes[0].set_title(r"$R$ via RKI method (4 days)")
+    axes[-1].set_xlabel("Time (days)")
+    axes[-1].tick_params(labelbottom=True, labeltop=False)
+    return axes
+
+
+"""
+Only run if this file is executed helps with import of plotting function defined above,
+but cant be run as iypthon notebook
+"""
+if __name__ == "__main__":
+    main()
