@@ -359,7 +359,7 @@ def dummy_generator_SEIR(
 """
 
 
-def _format_k(prec):
+def format_k(prec):
     """
         format yaxis 10_000 as 10 k.
         _format_k(0)(1200, 1000.0) gives "1 k"
@@ -373,6 +373,11 @@ def _format_k(prec):
             return f"${xval/1_000:.{prec}f}\,$k"
 
     return inner
+
+
+def style_legend(ax):
+    ax.get_legend().get_frame().set_linewidth(0.0)
+    ax.get_legend().get_frame().set_facecolor("#F0F0F0")
 
 
 def plot_distributions(model, trace):

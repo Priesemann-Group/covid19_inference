@@ -30,7 +30,151 @@ except ModuleNotFoundError:
 from helper_functions import *
 
 
-def main():
+def plot_inference_reported_vs_symptomatic(keys=None, linestyles=None):
+    """
+        assumes global variables (dicts):
+        * mod
+        * tr
+        * mod_inf_rep
+        * tr_inf_rep
+        * mod_inf_sym
+        * tr_inf_sym
+        * context_clr
+    """
+    if keys is None:
+        keys = ["a", "c"]
+    if linestyles is None:
+        linestyles = ["-", "--"]
+
+    fig, axes = plt.subplots(6, 1, figsize=(4, 6), constrained_layout=True,)
+
+    for key, ls in zip(keys, linestyles):
+        trace = tr[key]
+        model = mod[key]
+
+        mu = trace["mu"][:, None]
+        lambda_t, x = cov19.plot._get_array_from_trace_via_date(
+            model, trace, "lambda_t"
+        )
+
+        # ------------------------------------------------------------------------------ #
+        # Figure Reporting vs Symptomatic
+        # ------------------------------------------------------------------------------ #
+
+        # generation duration (serial interval, roughly the incubation time)
+        gd = 4
+
+        # R input
+        ax = axes[0]
+        y = lambda_t[:, :] / mu
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["other"], ls=ls
+        )
+        ax.set_title(r"Input: $R = \lambda / \mu$")
+
+        # New symptomatic
+        ax = axes[1]
+        y, x = cov19.plot._get_array_from_trace_via_date(
+            mod[key], tr[key], "new_symptomatic"
+        )
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["symptomatic_2"], ls=ls
+        )
+        ax.set_title("new Symptomatic")
+
+        # R rki avg 4: on Symptomatics
+        ax = axes[2]
+        y, x = cov19.plot._get_array_from_trace_via_date(
+            mod[key], tr[key], "new_symptomatic"
+        )
+        cov19.plot._timeseries(
+            x=x,
+            y=RKI_R(y, window=4, gd=gd),
+            ax=ax,
+            what="model",
+            color=context_clr["symptomatic"],
+            ls=ls,
+        )
+        ax.set_title(r"$R$ via RKI method (4 days)")
+
+        # R inferred by model using symptomatic
+        ax = axes[3]
+        trace = tr_inf_sym[key]
+        model = mod_inf_sym[key]
+        mu = trace["mu"]
+        lambda_t, x = cov19.plot._get_array_from_trace_via_date(
+            model, trace, "lambda_t"
+        )
+        y = lambda_t[:, :] / trace["mu"][:, None]
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["symptomatic"], ls=ls
+        )
+        ax.set_title(r"$R$ from SIR (Symptomatic)")
+
+        # New Reported
+        ax = axes[4]
+        y, x = cov19.plot._get_array_from_trace_via_date(
+            mod[key], tr[key], "new_reported"
+        )
+        cov19.plot._timeseries(
+            x=x, y=y, ax=ax, what="model", color=context_clr["reported_2"], ls=ls
+        )
+        ax.set_title("new Reported")
+
+        # R inferred with our model on reported data
+        ax = axes[5]
+        trace = tr_inf_rep[key]
+        model = mod_inf_rep[key]
+        mu = trace["mu"]
+        lambda_t, x = cov19.plot._get_array_from_trace_via_date(
+            model, trace, "lambda_t"
+        )
+        y = lambda_t[:, :] / trace["mu"][:, None]
+        cov19.plot._timeseries(
+            x=x,
+            y=y,
+            ax=ax,
+            what="model",
+            color=context_clr["reported"],
+            ls=ls,
+            draw_ci_95=True,
+        )
+        ax.set_title(r"$R$ from SIR (Reported)")
+
+    for ax in axes:
+        ax.spines["right"].set_visible(False)
+        ax.spines["top"].set_visible(False)
+        ax.spines["bottom"].set_visible(False)
+        # ax.tick_params(labelbottom=False)
+        ax.axes.get_xaxis().set_visible(False)
+        ax.set_xlim(datetime.datetime(2020, 3, 1), datetime.datetime(2020, 4, 12))
+        ax.xaxis.set_major_locator(
+            mpl.dates.WeekdayLocator(interval=1, byweekday=mpl.dates.SU)
+        )
+
+        if (
+            ax.title.get_text() == "new Symptomatic"
+            or ax.title.get_text() == "new Infected"
+            or ax.title.get_text() == "new Reported"
+        ):
+            ax.set_ylim(0, None)
+            ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(format_k(int(0))))
+        else:
+            ax.set_ylim(0.5, 3.5)
+            ax.hlines(1, x[0], x[-1], linestyles=":")
+
+    for ax in [axes[-1]]:
+        ax.axes.get_xaxis().set_visible(True)
+        ax.spines["bottom"].set_visible(True)
+        ax.set_xlabel("Time (days)")
+        ax.tick_params(labelbottom=True)
+
+
+"""
+Only run if this file is executed helps with import of plotting function defined above,
+but cant be run as iypthon notebook
+"""
+if __name__ == "__main__":
     """
         # Parameterization
     """
@@ -108,156 +252,10 @@ def main():
 
     context_clr = dict()
     context_clr["reported"] = "darkgreen"
+    context_clr["reported_2"] = "forestgreen"
     context_clr["symptomatic"] = "darkred"
+    context_clr["symptomatic_2"] = "firebrick"
     context_clr["infected"] = "darkgray"
     context_clr["other"] = "darkblue"
 
     plot_inference_reported_vs_symptomatic(["d"], ["-"])
-
-
-def plot_inference_reported_vs_symptomatic(keys=None, linestyles=None):
-    """
-        assumes global variables (dicts):
-        * mod
-        * tr
-        * mod_inf_rep
-        * tr_inf_rep
-        * mod_inf_sym
-        * tr_inf_sym
-        * context_clr
-    """
-    if keys is None:
-        keys = ["a", "c"]
-    if linestyles is None:
-        linestyles = ["-", "--"]
-
-    fig, axes = plt.subplots(6, 1, figsize=(4, 6), constrained_layout=True,)
-
-    for key, ls in zip(keys, linestyles):
-        trace = tr[key]
-        model = mod[key]
-
-        mu = trace["mu"][:, None]
-        lambda_t, x = cov19.plot._get_array_from_trace_via_date(
-            model, trace, "lambda_t"
-        )
-
-        # ------------------------------------------------------------------------------ #
-        # Figure Reporting vs Symptomatic
-        # ------------------------------------------------------------------------------ #
-
-        # generation duration (serial interval, roughly the incubation time)
-        gd = 4
-
-        # R input
-        ax = axes[0]
-        y = lambda_t[:, :] / mu
-        cov19.plot._timeseries(
-            x=x, y=y, ax=ax, what="model", color=context_clr["other"], ls=ls
-        )
-        ax.set_title(r"Input: $R = \lambda / \mu$")
-
-        # New symptomatic
-        ax = axes[1]
-        y, x = cov19.plot._get_array_from_trace_via_date(
-            mod[key], tr[key], "new_symptomatic"
-        )
-        cov19.plot._timeseries(
-            x=x, y=y, ax=ax, what="model", color=context_clr["symptomatic"], ls=ls
-        )
-        ax.set_title("new Symptomatic")
-
-        # R rki avg 4: on Symptomatics
-        ax = axes[2]
-        y, x = cov19.plot._get_array_from_trace_via_date(
-            mod[key], tr[key], "new_symptomatic"
-        )
-        cov19.plot._timeseries(
-            x=x,
-            y=RKI_R(y, window=4, gd=gd),
-            ax=ax,
-            what="model",
-            color=context_clr["symptomatic"],
-            ls=ls,
-        )
-        ax.set_title(r"$R$ via RKI method (4 days)")
-
-        # R inferred by model using symptomatic
-        ax = axes[3]
-        trace = tr_inf_sym[key]
-        model = mod_inf_sym[key]
-        mu = trace["mu"]
-        lambda_t, x = cov19.plot._get_array_from_trace_via_date(
-            model, trace, "lambda_t"
-        )
-        y = lambda_t[:, :] / trace["mu"][:, None]
-        cov19.plot._timeseries(
-            x=x, y=y, ax=ax, what="model", color=context_clr["symptomatic"], ls=ls
-        )
-        ax.set_title(r"$R$ from SIR (Symptomatic)")
-
-        # New Reported
-        ax = axes[4]
-        y, x = cov19.plot._get_array_from_trace_via_date(
-            mod[key], tr[key], "new_reported"
-        )
-        cov19.plot._timeseries(
-            x=x, y=y, ax=ax, what="model", color=context_clr["reported"], ls=ls
-        )
-        ax.set_title("new Reported")
-
-        # R inferred with our model on reported data
-        ax = axes[5]
-        trace = tr_inf_rep[key]
-        model = mod_inf_rep[key]
-        mu = trace["mu"]
-        lambda_t, x = cov19.plot._get_array_from_trace_via_date(
-            model, trace, "lambda_t"
-        )
-        y = lambda_t[:, :] / trace["mu"][:, None]
-        cov19.plot._timeseries(
-            x=x,
-            y=y,
-            ax=ax,
-            what="model",
-            color=context_clr["reported"],
-            ls=ls,
-            draw_ci_95=True,
-        )
-        ax.set_title(r"$R$ from SIR (Reported)")
-
-    for ax in axes:
-        ax.spines["right"].set_visible(False)
-        ax.spines["top"].set_visible(False)
-        ax.spines["bottom"].set_visible(False)
-        # ax.tick_params(labelbottom=False)
-        ax.axes.get_xaxis().set_visible(False)
-        ax.set_xlim(datetime.datetime(2020, 3, 1), datetime.datetime(2020, 4, 12))
-        ax.xaxis.set_major_locator(
-            mpl.dates.WeekdayLocator(interval=1, byweekday=mpl.dates.SU)
-        )
-
-        if (
-            ax.title.get_text() == "new Symptomatic"
-            or ax.title.get_text() == "new Infected"
-            or ax.title.get_text() == "new Reported"
-        ):
-            ax.set_ylim(0, None)
-            ax.yaxis.set_major_formatter(mpl.ticker.FuncFormatter(_format_k(int(0))))
-        else:
-            ax.set_ylim(0.5, 4)
-            ax.hlines(1, x[0], x[-1], linestyles=":")
-
-    for ax in [axes[-1]]:
-        ax.axes.get_xaxis().set_visible(True)
-        ax.spines["bottom"].set_visible(True)
-        ax.set_xlabel("Time (days)")
-        ax.tick_params(labelbottom=True)
-
-
-"""
-Only run if this file is executed helps with import of plotting function defined above,
-but cant be run as iypthon notebook
-"""
-if __name__ == "__main__":
-    main()
