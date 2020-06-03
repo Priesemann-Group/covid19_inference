@@ -27,8 +27,11 @@ except ModuleNotFoundError:
     sys.path.append("../../../")
     import covid19_inference as cov19
 
+# Our helper funtions
 from helper_functions import *
 
+#For insets
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 
 def main():
     """
@@ -129,7 +132,7 @@ def main():
         ax.spines["right"].set_visible(False)
         ax.spines["top"].set_visible(False)
         ax.tick_params(labelbottom=False)
-        ax.set_xlim(datetime.datetime(2020, 3, 11), datetime.datetime(2020, 4, 15))
+        ax.set_xlim(datetime.datetime(2020, 3, 18), datetime.datetime(2020, 4, 15))
         ax.xaxis.set_major_locator(
             mpl.dates.WeekdayLocator(interval=1, byweekday=mpl.dates.WE)
         )
@@ -178,6 +181,8 @@ def plot_generation_duration(model, trace, gds, lim_y, axes=None):
     if not len(axes) == len(gds):
         raise ValueError("Shape missmatch axes and gds")
     clr = "tab:green"
+
+    insets = []
     """
     Plot different gd
     """
@@ -188,9 +193,15 @@ def plot_generation_duration(model, trace, gds, lim_y, axes=None):
         )
         y = RKI_R(y, window=4, gd=gd)
         cov19.plot._timeseries(
-            x=x, y=y, ax=ax, what="model", color=clr, label=f"gd={gd}"
+            x=x, y=y, ax=ax, what="model", color=clr, label=f"$g$={gd}"
         )
-        ax.legend()
+        ax.legend(loc=2)
+
+        #Insets
+        axin = inset_axes(ax, width="35%", height="50%", loc="upper right")
+        cov19.plot._timeseries(x=x,y=y,ax=axin,what="model",color=clr)
+        mark_inset(ax, axin, loc1=2, loc2=4, fc="None", ec="gray", lw=1, alpha=1, zorder=15)
+        insets.append(axin)
     """
     Format axes
     """
@@ -199,15 +210,38 @@ def plot_generation_duration(model, trace, gds, lim_y, axes=None):
         ax.spines["right"].set_visible(False)
         ax.spines["top"].set_visible(False)
         ax.tick_params(labelbottom=False)
-        ax.set_xlim(datetime.datetime(2020, 3, 11), datetime.datetime(2020, 4, 15))
+        ax.set_xlim(datetime.datetime(2020, 3, 18), datetime.datetime(2020, 4, 15))
         ax.xaxis.set_major_locator(
             mpl.dates.WeekdayLocator(interval=1, byweekday=mpl.dates.WE)
         )
         ax.hlines(1, x[0], x[-1], linestyles=":")
 
+    x_lims_insets = [
+        (datetime.datetime(2020, 3, 30),datetime.datetime(2020, 4, 8)),
+        (datetime.datetime(2020, 4, 1),datetime.datetime(2020, 4, 10)),
+        (datetime.datetime(2020, 4, 5),datetime.datetime(2020, 4, 13))
+        ]
+    y_lims_insets = [
+        (0.75, 1.1),
+        (0.75, 1.1),
+        (0.75, 1.1),
+    ]
+    for i, ax in enumerate(insets):
+        ax.tick_params(color='gray', labelcolor='black')
+        ax.set_ylim(y_lims_insets[i][0],y_lims_insets[i][1])
+        ax.set_xlim(x_lims_insets[i][0], x_lims_insets[i][1])
+        ax.hlines(1, x[0], x[-1], linestyles=":")
+        ax.tick_params(labelbottom=False)
+        ax.xaxis.set_major_locator(
+            mpl.dates.WeekdayLocator(interval=1, byweekday=mpl.dates.WE)
+        )
+
     axes[0].set_title(r"$R$ via RKI method (4 days)")
     axes[-1].set_xlabel("Time (days)")
     axes[-1].tick_params(labelbottom=True, labeltop=False)
+
+
+
     return axes
 
 
