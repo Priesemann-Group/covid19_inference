@@ -29,6 +29,8 @@ except ModuleNotFoundError:
 
 from helper_functions import *
 
+#For insets
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 
 def plot_generation_duration(model, trace, gds, lim_y, axes=None, **kwargs):
     """
@@ -59,6 +61,7 @@ def plot_generation_duration(model, trace, gds, lim_y, axes=None, **kwargs):
     """
     Plot different gd
     """
+    insets = []
     for i, gd in enumerate(gds):
         ax = axes[i]
         y, x = cov19.plot._get_array_from_trace_via_date(
@@ -66,13 +69,40 @@ def plot_generation_duration(model, trace, gds, lim_y, axes=None, **kwargs):
         )
         y = RKI_R(y, window=4, gd=gd)
         cov19.plot._timeseries(
-            x=x, y=y, ax=ax, what="model", label=f"gd={gd}", **kwargs
+            x=x, y=y, ax=ax, what="model", label=f"$g$={gd}", **kwargs
         )
         ax.hlines(1, x[0], x[-1], linestyles=":")
         ax.set_ylim(lim_y[i][0], lim_y[i][1])
         ax.legend(loc="center left")
         style_legend(ax)
 
+        #Insets
+        axin = inset_axes(ax, width="35%", height="50%", loc="upper right")
+        cov19.plot._timeseries(x=x,y=y,ax=axin,what="model", **kwargs)
+        mark_inset(ax, axin, loc1=2, loc2=4, fc="None", ec="gray", lw=1, alpha=1, zorder=15)
+        insets.append(axin)
+
+    x_lims_insets = [
+        (datetime.datetime(2020, 3, 30),datetime.datetime(2020, 4, 8)),
+        (datetime.datetime(2020, 4, 1),datetime.datetime(2020, 4, 10)),
+        (datetime.datetime(2020, 4, 3),datetime.datetime(2020, 4, 13))
+        ]
+    y_lims_insets = [
+        (0.75, 1.1),
+        (0.75, 1.1),
+        (0.75, 1.1),
+    ]
+    """
+    Format insets
+    """
+    for i, ax in enumerate(insets):
+        ax.tick_params(color='gray',bottom=False,labelbottom=False,labelsize=8,left=False,right=True,labelleft=False,labelright=True)
+        ax.set_ylim(y_lims_insets[i][0],y_lims_insets[i][1])
+        ax.set_xlim(x_lims_insets[i][0], x_lims_insets[i][1])
+        ax.hlines(1, x[0], x[-1], linestyles=":")
+        ax.xaxis.set_ticks_position('none')
+        ax.yaxis.set_label_position("right")
+        ax.yaxis.tick_right()
     return axes
 
 
@@ -181,7 +211,7 @@ if __name__ == "__main__":
         ax.spines["bottom"].set_visible(False)
         ax.axes.get_xaxis().set_visible(False)
         ax.tick_params(labelbottom=False)
-        ax.set_xlim(datetime.datetime(2020, 3, 11), datetime.datetime(2020, 4, 15))
+        ax.set_xlim(datetime.datetime(2020, 3, 18), datetime.datetime(2020, 4, 15))
         ax.xaxis.set_major_locator(
             mpl.dates.WeekdayLocator(interval=1, byweekday=mpl.dates.WE)
         )
@@ -197,3 +227,5 @@ if __name__ == "__main__":
     axes[-3].set_yticks([1, 2, 3])
     axes[-2].set_yticks([1, 3, 5])
     axes[-1].set_yticks([1, 5, 9, 13])
+
+
