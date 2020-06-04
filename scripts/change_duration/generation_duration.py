@@ -81,20 +81,20 @@ def plot_generation_duration(model, trace, gds, lim_y, axes=None, **kwargs):
         cov19.plot._timeseries(x=x,y=y,ax=axin,what="model", **kwargs)
         mark_inset(ax, axin, loc1=2, loc2=4, fc="None", ec="gray", lw=1, alpha=1, zorder=15)
         insets.append(axin)
-
+        
+    """
+    Format insets
+    """
     x_lims_insets = [
-        (datetime.datetime(2020, 3, 30),datetime.datetime(2020, 4, 8)),
-        (datetime.datetime(2020, 4, 1),datetime.datetime(2020, 4, 10)),
-        (datetime.datetime(2020, 4, 3),datetime.datetime(2020, 4, 13))
+        (datetime.datetime(2020, 3, 29),datetime.datetime(2020, 4, 6)),
+        (datetime.datetime(2020, 3, 29),datetime.datetime(2020, 4, 9)),
+        (datetime.datetime(2020, 4, 2),datetime.datetime(2020, 4, 12))
         ]
     y_lims_insets = [
         (0.75, 1.1),
         (0.75, 1.1),
         (0.75, 1.1),
     ]
-    """
-    Format insets
-    """
     for i, ax in enumerate(insets):
         ax.tick_params(color='gray',bottom=False,labelbottom=False,labelsize=8,left=False,right=True,labelleft=False,labelright=True)
         ax.set_ylim(y_lims_insets[i][0],y_lims_insets[i][1])
@@ -107,8 +107,8 @@ def plot_generation_duration(model, trace, gds, lim_y, axes=None, **kwargs):
 
 
 """
-Only run if this file is executed helps with import of plotting function defined above,
-but cant be run as iypthon notebook
+    Only run if this file is executed helps with import of plotting function defined above,
+    but cant be run as iypthon notebook
 """
 if __name__ == "__main__":
     """
@@ -195,11 +195,11 @@ if __name__ == "__main__":
         model=model,
         trace=trace,
         axes=axes[2:],
-        gds=[4, 7, 11],
+        gds=[2, 4, 8],
         lim_y=[
-            (0.5, 3.05),
-            (0.1, 5.9),
-            (-0.6, 14.9),
+            (0.5, 1.755),
+            (0.1, 3.05),
+            (-0.6, 7.05),
         ],  # generation duration (serial interval, roughly the incubation time)
         color="darkred",
     )
@@ -224,8 +224,8 @@ if __name__ == "__main__":
 
     axes[2].set_title("R via RKI method (4 day average)")
 
-    axes[-3].set_yticks([1, 2, 3])
-    axes[-2].set_yticks([1, 3, 5])
-    axes[-1].set_yticks([1, 5, 9, 13])
+    axes[-3].set_yticks([1.0, 1.5])
+    axes[-2].set_yticks([1.0, 2.0, 3.0])
+    axes[-1].set_yticks([1.0, 3.0, 5.0, 7.0])
 
 
