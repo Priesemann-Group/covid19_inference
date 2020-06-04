@@ -2,7 +2,7 @@
 # @Author:        Sebastian B. Mohr
 # @Email:         
 # @Created:       2020-06-04 13:20:46
-# @Last Modified: 2020-06-04 15:04:22
+# @Last Modified: 2020-06-04 15:12:23
 # ------------------------------------------------------------------------------ #
 
 
@@ -79,10 +79,11 @@ fig, axes = plt.subplots(2,1)
 
 cov19.plot._timeseries(x,λ_t,ax=axes[0],what="model",color="darkblue")
 cov19.plot._format_date_xticks(axes[0])
-
+axes[0].set_ylabel(r"$\lambda_t$")
 cov19.plot._timeseries(x,S,ax=axes[1],what="model",color="tab:red",label="S")
 cov19.plot._timeseries(x,E,ax=axes[1],what="model",color="tab:green",label="E")
 cov19.plot._timeseries(x,I,ax=axes[1],what="model",color="tab:blue",label="I")
 cov19.plot._timeseries(x,R,ax=axes[1],what="model",color="tab:orange",label="R")
 cov19.plot._format_date_xticks(axes[1])
 axes[1].legend()
+axes[1].set_ylabel(r"Cases")
