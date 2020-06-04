@@ -2,7 +2,7 @@
 # @Author:        Sebastian B. Mohr
 # @Email:
 # @Created:       2020-05-26 13:09:09
-# @Last Modified: 2020-06-04 15:00:03
+# @Last Modified: 2020-06-04 15:21:15
 # ------------------------------------------------------------------------------ #
 
 from .model import *
@@ -107,7 +107,7 @@ def SIR(lambda_t, model=None):
 
 
 @use_model_ctx
-def SEIR(lambda_t, model=None):
+def SEIR(lambda_t, epsilon=None, gamma=None, model=None):
     """
         Calculates the timeseries for the SEIR model by using Runge Kutta 4.
 
@@ -156,18 +156,22 @@ def SEIR(lambda_t, model=None):
     # Preliminar parameters
     # ------------------------------------------------------------------------------ #
     λ_t = lambda_t
-
     S_0 = model.initials["SEIR"]["S"]
     E_0 = model.initials["SEIR"]["E"]
     I_0 = model.initials["SEIR"]["I"]
     R_0 = model.initials["SEIR"]["R"]
-
     N = S_0 + E_0 + I_0 + R_0
 
-    # Time independent parameters
-    ε = model.initials["SEIR"]["epsilon"]
-    γ = model.initials["SEIR"]["gamma"]
+    if gamma is None:
+        γ = model.initials["SEIR"]["gamma"]
+    else:
+        γ = gamma
+    if epsilon is None:
+        ε = model.initials["SEIR"]["epsilon"]
+    else:
+        ε = epsilon
 
+    # Time array
     t = np.arange(start=0, stop=model.data_len, step=model.dt)
 
     # Array for state vectors, already filled for the time 0
