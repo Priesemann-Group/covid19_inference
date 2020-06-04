@@ -2,12 +2,17 @@
 # @Author:        Sebastian B. Mohr
 # @Email:         
 # @Created:       2020-05-26 12:32:52
-# @Last Modified: 2020-05-26 13:45:39
+# @Last Modified: 2020-06-04 13:49:34
 # ------------------------------------------------------------------------------ #
+import logging
 import numpy as np
+
 from scipy.stats import halfcauchy, rv_discrete, nbinom
 import pandas as pd
 import datetime
+log = logging.getLogger(__name__)
+
+#Dirty Hack to hold the model ctx
 ctx = []
 
 class DummyModel(object):
@@ -17,31 +22,30 @@ class DummyModel(object):
         data_begin,
         data_end,
         mu=0.13,
-        noise=False,
-        auto_generate=False,
+        dt = 0.001,
         seed=None,
         **initial_values
     ):
         """
-        Base class for the dummy data model.
-        generated or can be given via a dict.
+            Base class for the dummy data model.
+            generated or can be given via a dict.
 
-        Parameters
-        ----------
-        data_begin : datetime.datetime
-            Start date for the dataset
-        data_end : datetime.datetime
-            End date for the dataset
-        mu : number
-            Value for the recovery rate
-        noise : bool
-            Add random noise to the output
-        auto_generate : bool
-            Whether or not to generate a dataset on class init. Calls the :py:meth:`generate` method.
-        seed : number
-            Seed for the random number generation. Also accessible by `self.seed` later on. 
-        initial_values : dict
-            Kwargs for most of the initial values see :py:meth:`_update_initial`
+            Parameters
+            ----------
+            data_begin : datetime.datetime
+                Start date for the dataset
+            data_end : datetime.datetime
+                End date for the dataset
+            mu : number
+                Value for the recovery rate
+            noise : bool
+                Add random noise to the output
+            auto_generate : bool
+                Whether or not to generate a dataset on class init. Calls the :py:meth:`generate` method.
+            seed : number
+                Seed for the random number generation. Also accessible by `self.seed` later on. 
+            initial_values : dict
+                Kwargs for most of the initial values see :py:meth:`_update_initial`
         """
         if seed is not None:
             self.seed = seed
@@ -49,22 +53,108 @@ class DummyModel(object):
             self.seed = np.random.randint(1000000,9999999)
         np.random.seed(self.seed)
 
-        self.add_noise = noise
-        self.data_begin = data_begin
-        self.data_end = data_end
+        self._data_begin = data_begin
+        self._data_end = data_end
+        self._dt = dt
         self.mu = mu
 
-        self._update_initial(**initial_values)
+        #Generate initial values
+        self._initial(**initial_values)
 
+        #Append object (context) to a list (dirty hack to get easily later)
         ctx.append(self)
+
+
+
+    # ------------------------------------------------------------------------------ #
+    # Data dates
+    # ------------------------------------------------------------------------------ #
 
     @property
     def dates(self):
         return pd.date_range(self.data_begin, self.data_end)
 
     @property
+    def data_begin(self):
+        return self._data_begin
+    
+    @property
+    def data_end(self):
+        return self._data_end
+    
+    @property
     def data_len(self):
         return (self.data_end - self.data_begin).days
+
+
+    # ------------------------------------------------------------------------------ #
+    # Runge kutta 
+    # ------------------------------------------------------------------------------ #
+    @property
+    def dt(self):
+        return self._dt
+    
+
+    # ------------------------------------------------------------------------------ #
+    # Inital values
+    # ------------------------------------------------------------------------------ #
+
+    def _initial(self, **inp_init):
+        """
+            Generates the initial values with the seed given at :py:meth:`__init__`.
+
+            Parameters
+            ----------
+            
+        """        
+
+        def _generate_compartmental():
+            """
+            Genrate initial values for compartmental models
+            """
+            # ------------------------------------------------------------------------------ #
+            # SIR model
+            # ------------------------------------------------------------------------------ #
+            self.initials["SIR"] = dict()
+            if "S" in inp_init:
+                self.initials["SIR"]["S"] = inp_init.get("S")
+            else:
+                self.initials["SIR"]["S"] = 1000        
+
+            if "I" in inp_init:
+                self.initials["SIR"]["I"] = inp_init.get("I")
+            else:
+                self.initials["SIR"]["I"] = int(halfcauchy.rvs(loc=3))
+
+            if "R" in inp_init:
+                self.initials["SIR"]["R"] = inp_init.get("R")
+            else:
+                self.initials["SIR"]["R"] = 0
+            # ------------------------------------------------------------------------------ #
+            # SEIR model
+            # ------------------------------------------------------------------------------ #
+            self.initials["SEIR"] = dict()
+
+
+        def _generate_change_points():
+            if "lambda_0" in inp_init:
+                self.initials["lambda_0"] = inp_init.get("lambda_0")
+            else:
+                self.initials["lambda_0"] = np.random.uniform(0, 1)
+
+            if "change_points" in inp_init:
+                self.initials["change_points"] = inp_init.get("change_points")
+            else:
+                self.initials["change_points"] = None #No change points
+
+
+        self.initials = dict()
+        _generate_compartmental()
+        _generate_change_points()
+
+        return self.initials
+
+
 
     def _update_initial(self, **initial_values):
         """
@@ -95,7 +185,6 @@ class DummyModel(object):
                   lambda_t = np.random.uniform(0, 1)
                   change_points.append([date_random, lambda_t])
           return change_points
-
 
 
         self.initials = {}
@@ -174,15 +263,16 @@ class DummyModel(object):
     def get_context(cls):
         if len(ctx)>0:
             return ctx[-1]
-        print("Define a model first")
+        log.Error("Define a model first")
+
 def use_model_ctx(func):
     """
-        Decorator returns the given model or try to find it in the context if there was
-        none supplied.
+        Should be used as decorator which returns the
+        given model or tries to get the last used context if 
+        none is supplied.
     """
     def wrapper(*args,**kwargs):
         if "model" not in kwargs:
             kwargs["model"] = DummyModel.get_context()
-        print(kwargs)
         return func(*args,**kwargs)
     return wrapper

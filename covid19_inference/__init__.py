@@ -14,4 +14,4 @@ from . import model
 from .model import Cov19Model
 
 from ._dev_helper import create_example_instance
-from . import dummy_data
+from . import dummydata
