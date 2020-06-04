@@ -2,7 +2,7 @@
 # @Author:        Sebastian B. Mohr
 # @Email:         
 # @Created:       2020-06-04 15:48:54
-# @Last Modified: 2020-06-04 17:08:32
+# @Last Modified: 2020-06-04 17:59:13
 # ------------------------------------------------------------------------------ #
 
 
@@ -21,7 +21,7 @@ class ChangePoint(object):
 
     modulation_types = ["step","sigmoid"]
 
-    def __init__(self, lambda_before, lambda_after, date_begin, length, modulation="step"):
+    def __init__(self, lambda_before, lambda_after, date_begin, length, modulation="sigmoid"):
         assert isinstance(date_begin, datetime.datetime), f"date_begin_cp has to be datetime"
         assert isinstance(length, datetime.timedelta), f"len_cp has to be timedelta"
         assert modulation in self.modulation_types, f"Possible modulation types are {self.modulation_types}"
@@ -75,7 +75,7 @@ class ChangePoint(object):
         """
             Returns length of changepoint in microseconds
         """
-        return self._length/datetime.timedelta(seconds=1)
+        return self._length/datetime.timedelta(days=1)
 
 
     # ------------------------------------------------------------------------------ #
@@ -92,16 +92,13 @@ class ChangePoint(object):
                 Step size of the returned lambda_t array corresponding to the model resolution.
                 In days!
         """
-        dt = dt*86400 #Convert to seconds
 
         # 1. Create t array for the corresponding time range, choose microseconds as resolution
         t = np.arange(0,self.num_len,dt)
-
         if self.modulation == "step":
             lambda_t = self._step_func(t)
         elif self.modulation == "sigmoid":
             lambda_t = self._sigmoid_func(t)
-
         return lambda_t
 
     def _step_func(self,t):
@@ -133,13 +130,11 @@ class ChangePoint(object):
             """
             #Convert k value to seconds
             k_d = 1/self.date_len.days * 10#in days 
-            k_s = k_d/86400#
-
 
             L = y_2-y_1
             C = y_1
             x_0 = np.abs(x_1 - x_2)/2 + x_1
-            return L/(1+np.exp(-k_s*(x-x_0)))+C
+            return L/(1+np.exp(-k_d*(x-x_0)))+C
 
 
         if self.num_len == 0:

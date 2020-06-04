@@ -2,7 +2,7 @@
 # @Author:        Sebastian B. Mohr
 # @Email:
 # @Created:       2020-05-26 13:09:09
-# @Last Modified: 2020-06-04 15:21:15
+# @Last Modified: 2020-06-04 17:43:53
 # ------------------------------------------------------------------------------ #
 
 from .model import *
@@ -87,7 +87,6 @@ def SIR(lambda_t, model=None):
     N = S_0 + I_0 + R_0
 
     t = np.arange(start=0, stop=model.data_len, step=model.dt)
-
     # Array for state vectors, already filled for the time 0
     y_t = [np.array([S_0, I_0, R_0, λ_t[0]])]
 
@@ -173,7 +172,6 @@ def SEIR(lambda_t, epsilon=None, gamma=None, model=None):
 
     # Time array
     t = np.arange(start=0, stop=model.data_len, step=model.dt)
-
     # Array for state vectors, already filled for the time 0
     y_t = [np.array([S_0, E_0, I_0, R_0, λ_t[0]])]
 

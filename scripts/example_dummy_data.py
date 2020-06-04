@@ -2,7 +2,7 @@
 # @Author:        Sebastian B. Mohr
 # @Email:         
 # @Created:       2020-06-04 13:20:46
-# @Last Modified: 2020-06-04 15:12:23
+# @Last Modified: 2020-06-04 18:02:18
 # ------------------------------------------------------------------------------ #
 
 
@@ -25,43 +25,55 @@ except ModuleNotFoundError:
     sys.path.append("../")
     import covid19_inference as cov19
 
+from covid19_inference.dummydata.change_points import ChangePoint
 
 """
-    Model Params
+    ## Change points and model params
 """
-date_mild_dist_begin = datetime.datetime(2020, 3, 9)
-date_strong_dist_begin = datetime.datetime(2020, 3, 16)
-date_contact_ban_begin = datetime.datetime(2020, 3, 23)
+lambda_0 = 0.8
 
-change_points = [
-    [date_mild_dist_begin,0.6],
-    [date_strong_dist_begin,0.4],
-    [date_contact_ban_begin,0.2]]
+mild_dist = ChangePoint(
+    lambda_before=lambda_0,
+    lambda_after=0.6,
+    date_begin=datetime.datetime(2020, 3, 9),
+    length=datetime.timedelta(days=2))
+
+strong_dist = ChangePoint(
+    lambda_before=0.6,
+    lambda_after=0.4,
+    date_begin=datetime.datetime(2020, 3, 16),
+    length=datetime.timedelta(days=2))
+
+contact_ban = ChangePoint(
+    lambda_before=0.4,
+    lambda_after=0.2,
+    date_begin=datetime.datetime(2020, 3, 23),
+    length=datetime.timedelta(days=6))
+
+change_points = [mild_dist,strong_dist,contact_ban]
 
 
 params = dict(
     data_begin = datetime.datetime(2020,3,2),
     data_end = datetime.datetime(2020,4,8),
     mu = 0.13,
-    dt = 0.1, #Precicion of the timesteps in RK4
+    dt = 0.01, #Precicion of the timesteps in RK4
     seed = 101010,
-    lambda_0 = 0.6,
     change_points=change_points)
 
-
 """
-    Define model
+    ## Define and run model
 """
 model = cov19.dummydata.DummyModel(**params)
 
-#Create lambda_t with sigmoids
+#Create lambda_t with sigmoids automaticly gets model
 λ_t = cov19.dummydata.lambda_t_with_sigmoids()
 
 #Create SIR from lambda_t
 t, S, E, I, R = cov19.dummydata.SEIR(λ_t)
 
 """
-    Plotting
+    ## Plotting
 """
 
 #Create date_time array from t array
@@ -70,7 +82,6 @@ milliseconds = (model.data_end-model.data_begin) / datetime.timedelta(millisecon
 step_size = milliseconds/len(t)
 x = pd.date_range(model.data_begin,model.data_end,freq=f"{np.ceil(step_size)}ms")
 x = x[:-1]
-
 
 
 # Plot it

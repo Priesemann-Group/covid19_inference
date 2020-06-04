@@ -2,7 +2,7 @@
 # @Author:        Sebastian B. Mohr
 # @Email:         
 # @Created:       2020-05-26 12:32:52
-# @Last Modified: 2020-06-04 14:57:27
+# @Last Modified: 2020-06-04 18:02:11
 # ------------------------------------------------------------------------------ #
 import logging
 import numpy as np
@@ -167,11 +167,6 @@ class DummyModel(object):
 
 
         def _generate_change_points():
-            if "lambda_0" in inp_init:
-                self.initials["lambda_0"] = inp_init.get("lambda_0")
-            else:
-                self.initials["lambda_0"] = np.random.uniform(0, 1)
-
             if "change_points" in inp_init:
                 self.initials["change_points"] = inp_init.get("change_points")
             else:
