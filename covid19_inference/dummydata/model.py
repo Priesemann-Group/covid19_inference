@@ -2,7 +2,7 @@
 # @Author:        Sebastian B. Mohr
 # @Email:         
 # @Created:       2020-05-26 12:32:52
-# @Last Modified: 2020-06-04 13:49:34
+# @Last Modified: 2020-06-04 14:57:27
 # ------------------------------------------------------------------------------ #
 import logging
 import numpy as np
@@ -130,10 +130,40 @@ class DummyModel(object):
                 self.initials["SIR"]["R"] = inp_init.get("R")
             else:
                 self.initials["SIR"]["R"] = 0
+
             # ------------------------------------------------------------------------------ #
             # SEIR model
             # ------------------------------------------------------------------------------ #
             self.initials["SEIR"] = dict()
+            if "S" in inp_init:
+                self.initials["SEIR"]["S"] = inp_init.get("S")
+            else:
+                self.initials["SEIR"]["S"] = 1000        
+
+            if "E" in inp_init:
+                self.initials["SEIR"]["E"] = inp_init.get("E")
+            else:
+                self.initials["SEIR"]["E"] = 0
+
+            if "I" in inp_init:
+                self.initials["SEIR"]["I"] = inp_init.get("I")
+            else:
+                self.initials["SEIR"]["I"] = int(halfcauchy.rvs(loc=3))
+
+            if "R" in inp_init:
+                self.initials["SEIR"]["R"] = inp_init.get("R")
+            else:
+                self.initials["SEIR"]["R"] = 0
+
+            if "epsilon" in inp_init:
+                self.initials["SEIR"]["epsilon"] = inp_init.get("epsilon")
+            else:
+                self.initials["SEIR"]["epsilon"] = np.random.uniform(0, 1)
+
+            if "gamma" in inp_init:
+                self.initials["SEIR"]["gamma"] = inp_init.get("gamma")
+            else:
+                self.initials["SEIR"]["gamma"] = np.random.uniform(0, 1)
 
 
         def _generate_change_points():

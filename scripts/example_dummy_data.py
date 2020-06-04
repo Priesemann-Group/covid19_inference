@@ -2,7 +2,7 @@
 # @Author:        Sebastian B. Mohr
 # @Email:         
 # @Created:       2020-06-04 13:20:46
-# @Last Modified: 2020-06-04 14:30:53
+# @Last Modified: 2020-06-04 15:04:22
 # ------------------------------------------------------------------------------ #
 
 
@@ -43,7 +43,7 @@ params = dict(
     data_begin = datetime.datetime(2020,3,2),
     data_end = datetime.datetime(2020,4,8),
     mu = 0.13,
-    dt = 0.1,
+    dt = 0.1, #Precicion of the timesteps in RK4
     seed = 101010,
     lambda_0 = 0.6,
     change_points=change_points)
@@ -58,7 +58,7 @@ model = cov19.dummydata.DummyModel(**params)
 λ_t = cov19.dummydata.lambda_t_with_sigmoids()
 
 #Create SIR from lambda_t
-t, S, I, R = cov19.dummydata.SIR(λ_t)
+t, S, E, I, R = cov19.dummydata.SEIR(λ_t)
 
 """
     Plotting
@@ -77,10 +77,12 @@ x = x[:-1]
 
 fig, axes = plt.subplots(2,1)
 
-cov19.plot._timeseries(x,λ_t,ax=axes[0],what="model")
+cov19.plot._timeseries(x,λ_t,ax=axes[0],what="model",color="darkblue")
 cov19.plot._format_date_xticks(axes[0])
 
-cov19.plot._timeseries(x,S,ax=axes[1],what="model")
-cov19.plot._timeseries(x,I,ax=axes[1],what="model")
-cov19.plot._timeseries(x,R,ax=axes[1],what="model")
+cov19.plot._timeseries(x,S,ax=axes[1],what="model",color="tab:red",label="S")
+cov19.plot._timeseries(x,E,ax=axes[1],what="model",color="tab:green",label="E")
+cov19.plot._timeseries(x,I,ax=axes[1],what="model",color="tab:blue",label="I")
+cov19.plot._timeseries(x,R,ax=axes[1],what="model",color="tab:orange",label="R")
 cov19.plot._format_date_xticks(axes[1])
+axes[1].legend()
