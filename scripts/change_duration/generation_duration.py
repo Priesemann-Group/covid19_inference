@@ -81,7 +81,7 @@ def plot_generation_duration(model, trace, gds, lim_y, axes=None, **kwargs):
         cov19.plot._timeseries(x=x,y=y,ax=axin,what="model", **kwargs)
         mark_inset(ax, axin, loc1=2, loc2=4, fc="None", ec="gray", lw=1, alpha=1, zorder=15)
         insets.append(axin)
-        
+
     """
     Format insets
     """
@@ -168,7 +168,7 @@ if __name__ == "__main__":
     cov19.plot.rcParams.draw_ci_75 = False
     cov19.plot.rcParams.draw_ci_95 = False
 
-    fig, axes = plt.subplots(5, 1, figsize=(4, 5), constrained_layout=True,)
+    fig, axes = plt.subplots(5, 1, figsize=(4, 5), constrained_layout=False,)
 
     mu = trace["mu"][:, None]
     lambda_t, x = cov19.plot._get_array_from_trace_via_date(model, trace, "lambda_t")
@@ -227,5 +227,22 @@ if __name__ == "__main__":
     axes[-3].set_yticks([1.0, 1.5])
     axes[-2].set_yticks([1.0, 2.0, 3.0])
     axes[-1].set_yticks([1.0, 3.0, 5.0, 7.0])
+    axes[1].set_yticks([0,15000])
+    #Add letters
+    letter_kwargs = dict(x=-0.15, y=1.2, fontweight='bold',size="large")
+    axes[0].text(s="A", transform=axes[0].transAxes, **letter_kwargs)
+    axes[1].text(s="B", transform=axes[1].transAxes, **letter_kwargs)
+    axes[2].text(s="C", transform=axes[2].transAxes, **letter_kwargs)
+    axes[3].text(s="D", transform=axes[3].transAxes, **letter_kwargs)
+    axes[4].text(s="E", transform=axes[4].transAxes, **letter_kwargs)
+    fig.tight_layout()
 
-
+    plt.subplots_adjust(top=0.915,
+    bottom=0.084,
+    left=0.149,
+    right=0.897,
+    hspace=1.0,
+    wspace=0.2)
+    plt.savefig(
+    "r_different_generations.pdf", dpi=300, bbox_inches="tight", pad_inches=0.05,
+    )
