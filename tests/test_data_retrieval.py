@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-03 14:40:00
-# @Last Modified: 2020-05-14 18:18:11
+# @Last Modified: 2020-06-08 19:19:16
 # ------------------------------------------------------------------------------ #
 # failry rudimentary. todo:
 #   * go offline and check retrieval of local stuff
@@ -93,6 +93,23 @@ def test_owd():
     owd.get_new(
         "tests",
         country="Belgium",
+        data_begin=datetime.datetime(2020, 3, 15),
+        data_end=datetime.datetime(2020, 3, 25),
+    )
+
+def test_ft():
+    import covid19_inference as cov
+
+    ft = cov.data_retrieval.FINANCIAL_TIMES(False)
+    ft.download_all_available_data(force_download=True)
+
+    # Force load offline data
+    ft.download_all_available_data(force_local=True)
+    ft.download_all_available_data()
+
+    ft.get(
+        "excess_deaths",
+        country="Italy",
         data_begin=datetime.datetime(2020, 3, 15),
         data_end=datetime.datetime(2020, 3, 25),
     )

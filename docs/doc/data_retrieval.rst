@@ -38,6 +38,12 @@ Our World in Data
 .. autoclass:: covid19_inference.data_retrieval.OWD
 	:members:
 
+Financial times
+---------------
+
+.. autoclass:: covid19_inference.data_retrieval.FINANCIAL_TIMES
+	:members:
+
 Base Retrieval Class
 --------------------
 
