@@ -91,9 +91,9 @@ def plot_generation_duration(model, trace, gds, lim_y, axes=None, **kwargs):
         (datetime.datetime(2020, 4, 2),datetime.datetime(2020, 4, 12))
         ]
     y_lims_insets = [
-        (0.75, 1.1),
-        (0.75, 1.1),
-        (0.75, 1.1),
+        (0.7, 1.1),
+        (0.5, 1.1),
+        (0.5, 1.1),
     ]
     for i, ax in enumerate(insets):
         ax.tick_params(color='gray',bottom=False,labelbottom=False,labelsize=8,left=False,right=True,labelleft=False,labelright=True)
@@ -134,17 +134,22 @@ if __name__ == "__main__":
         diff_data_sim=16,
         N_population=83e6,
     )
-
-    # hard coded recovery rate and initial spreading rate, R ~ 3
+    # ------------------------------------------------------------------------------ #
+    # From R=3 to R=1.1
+    # ------------------------------------------------------------------------------ #
+    """
     mu_fixed = 0.13
-    lambda_old = 0.39
-    lambda_new = 0.15
-
-    # for SEIR other values are needed
-    # mu_fixed = 0.35
-    # lambda_old = 1.2
-    # lambda_new = 0.40
-
+    lambda_old = 0.39 #R=3
+    lambda_new = 0.143 #R=1.1
+    """
+    # ------------------------------------------------------------------------------ #
+    # From R=3 to R=0.9
+    # ------------------------------------------------------------------------------ #
+    
+    mu_fixed = 0.13
+    lambda_old = 0.39 #R=3
+    lambda_new = 0.13 #R=0.9
+    
     """
     Create dummy data with fixed parameters and
     run it to obtain a dataset which we later use as new cases obs.
@@ -244,5 +249,5 @@ if __name__ == "__main__":
     hspace=1.0,
     wspace=0.2)
     plt.savefig(
-    "r_different_generations.pdf", dpi=300, bbox_inches="tight", pad_inches=0.05,
+    "r_different_generations.pdf", dpi=300, bbox_inches="tight", pad_inches=0.05, transparent=True
     )

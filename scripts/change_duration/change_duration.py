@@ -229,6 +229,26 @@ def plot_daily_cases_and_r_smoothing(keys=None, linestyles=None):
         # ax.tick_params(labelbottom=True, labeltop=False)
 
 
+    #Add letters
+    letter_kwargs = dict(x=-0.15, y=1.2, fontweight='bold',size="large")
+    axes_r[0].text(s="A", transform=axes_r[0].transAxes, **letter_kwargs)
+    axes_r[1].text(s="B", transform=axes_r[1].transAxes, **letter_kwargs)
+    axes_r[2].text(s="C", transform=axes_r[2].transAxes, **letter_kwargs)
+    axes_r[3].text(s="D", transform=axes_r[3].transAxes, **letter_kwargs)
+    axes_r[4].text(s="E", transform=axes_r[4].transAxes, **letter_kwargs)
+    axes_r[5].text(s="F", transform=axes_r[5].transAxes, **letter_kwargs)
+
+    axes_delay[0].text(s="A", transform=axes_delay[0].transAxes, **letter_kwargs)
+    axes_delay[1].text(s="B", transform=axes_delay[1].transAxes, **letter_kwargs)
+    axes_delay[2].text(s="C", transform=axes_delay[2].transAxes, **letter_kwargs)
+    axes_delay[3].text(s="D", transform=axes_delay[3].transAxes, **letter_kwargs)
+
+
+    
+    fig_r.savefig("r_comparison.pdf",**save_kwargs)
+    fig_delay.savefig("r_left_right.pdf",**save_kwargs)
+
+
 def plot_rki_convention(key):
 
     fig, axes = plt.subplots(2, 1, figsize=(3, 3), constrained_layout=True,)
@@ -311,6 +331,16 @@ def plot_rki_convention(key):
         ax.set_xlabel("Time (days)")
         # ax.tick_params(labelbottom=True, labeltop=False)
 
+    letter_kwargs = dict(x=-0.15, y=1.1, fontweight='bold',size="large")
+    axes[0].text(s="A", transform=axes[0].transAxes, **letter_kwargs)
+    axes[1].text(s="B", transform=axes[1].transAxes, **letter_kwargs)
+    fig.savefig("rki_convention.pdf",**save_kwargs)
+
+"""
+Global save kwargs for matplotlib.savefig
+"""
+save_kwargs = dict(transparent=True,format='pdf',dpi=300)
+
 
 """
 Only run if this file is executed helps with import of plotting function defined above,
@@ -341,23 +371,39 @@ if __name__ == "__main__":
         N_population=83e6,
     )
 
-    # hard coded recovery rate and initial spreading rate, R ~ 3
+    # ------------------------------------------------------------------------------ #
+    # From R=3 to R=1.1
+    # ------------------------------------------------------------------------------ #
+    """
     mu_fixed = 0.13
-    lambda_old = 0.39
-    lambda_new = 0.15
+    lambda_old = 0.39 #R=3
+    lambda_new = 0.143 #R=1.1
+    """
 
-    # for SEIR other values would be needed
-    # mu_fixed = 0.35
-    # lambda_old = 1.2
-    # lambda_new = 0.40
-
+    # ------------------------------------------------------------------------------ #
+    # From R=3 to R=0.9
+    # ------------------------------------------------------------------------------ #
+    """
+    mu_fixed = 0.13
+    lambda_old = 0.39 #R=3
+    lambda_new = 0.117 #R=0.9
+    """
+    
+    # ------------------------------------------------------------------------------ #
+    # From R=3 to R=1
+    # ------------------------------------------------------------------------------ #
+    
+    mu_fixed = 0.13
+    lambda_old = 0.39 #R=3
+    lambda_new = 0.13 #R=0.9
+    
     """
     Create dummy data with fixed parameters and
     run it to obtain a dataset which we later use as new cases obs.
     """
     mod = dict()
     tr = dict()
-    for key, duration in zip(["a", "b", "c"], [1, 5, 9]):
+    for key, duration in zip(["a", "b", "c"], [1, 5, 7]):
         mod[key] = dummy_generator_SIR(
             params_model,
             cp_center=datetime.datetime(2020, 3, 23),
