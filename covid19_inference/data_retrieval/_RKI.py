@@ -245,6 +245,7 @@ class RKI(Retrieval):
         data_begin: datetime.datetime = None,
         data_end: datetime.datetime = None,
         date_type: str = "date",
+        age_group=None,
     ):
         """
         Gets all total confirmed cases for a region as dataframe with date index. Can be filtered with multiple arguments.
@@ -301,7 +302,7 @@ class RKI(Retrieval):
         # ------------------------------------------------------------------------------ #
         # Retrieve data and filter it
         # ------------------------------------------------------------------------------ #
-        df = self.filter(data_begin, data_end, value, date_type, level, filter_value)
+        df = self.filter(data_begin, data_end, value, date_type, level, filter_value, age_group)
         return df
 
     def get_new(
@@ -312,6 +313,7 @@ class RKI(Retrieval):
         data_begin: datetime.datetime = None,
         data_end: datetime.datetime = None,
         date_type: str = "date",
+        age_group=None,
     ):
         """
         Retrieves all new cases from the Robert Koch Institute dataset as a DataFrame with datetime index.
@@ -385,6 +387,7 @@ class RKI(Retrieval):
             date_type,
             level,
             filter_value,
+            age_group,
         )
         # Get difference to the days beforehand
         df = (
@@ -400,6 +403,7 @@ class RKI(Retrieval):
         date_type="date",
         level=None,
         value=None,
+        age_group=None,
     ):
         """
         Filters the obtained dataset for a given time period and returns an array ONLY containing only the desired variable.
@@ -423,10 +427,11 @@ class RKI(Retrieval):
                 "None"       : return data from all Germany (default)
                 "Bundesland" : a state
                 "Landkreis"  : a region
-        value : None, optional
+        value : str, optional
             string of the state/region
             e.g. "Sachsen"
-
+        age_group : str, optional
+            Chosen age group to get the possible combinations use `possible_age_groups`
         Returns
         -------
         : pd.DataFrame
@@ -458,9 +463,13 @@ class RKI(Retrieval):
                 "Invalid data_begin, data_end: has to be datetime.datetime object"
             )
 
-        # Keeps only the relevant data
-        df = self.data
-
+        if age_group is None: 
+            df = self.data
+        elif age_group in self.possible_age_groups():
+            df = self.data.loc[self.data["Altersgruppe"].isin([age_group])]
+        else:
+            raise ValueError(f"Age group not possible use one of {self.possible_age_groups()}")
+            
         if level is not None:
             df = df[df[level] == value][[date_type, variable]]
 
@@ -529,3 +538,8 @@ class RKI(Retrieval):
         df2.index = pd.to_datetime(df2.index)
         # Returns cumsum of variable
         return df2[begin_date:end_date].cumsum()
+    def possible_age_groups(self):
+        """
+        Returns the valid age groups in the dataset.
+        """
+        return self.data["Altersgruppe"].unique()
