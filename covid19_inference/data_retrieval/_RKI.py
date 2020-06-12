@@ -268,7 +268,8 @@ class RKI(Retrieval):
             last date, if no value is provided it will use the most recent possible date
         date_type : str, optional
             type of date to use: reported date 'date' (Meldedatum in the original dataset), or symptom date 'date_ref' (Refdatum in the original dataset)
-
+        age_group : str, optional
+            Choosen age group. To get the possible combinations use `possible_age_groups()`.
         Returns
         -------
         :pandas.DataFrame
@@ -336,7 +337,8 @@ class RKI(Retrieval):
             if none is given could yield errors
         data_end : datetime.datetime, optional
             last date for the returned data, if no value is given the most recent date in the dataset is used
-
+        age_group : str, optional
+            Choosen age group. To get the possible combinations use `possible_age_groups()`.
         Returns
         -------
         : pandas.DataFrame
@@ -431,7 +433,7 @@ class RKI(Retrieval):
             string of the state/region
             e.g. "Sachsen"
         age_group : str, optional
-            Chosen age group to get the possible combinations use `possible_age_groups`
+            Choosen age group. To get the possible combinations use `possible_age_groups()`.
         Returns
         -------
         : pd.DataFrame
