@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-21 08:57:53
-# @Last Modified: 2020-04-30 17:02:00
+# @Last Modified: 2020-05-20 10:48:23
 # ------------------------------------------------------------------------------ #
 # Let's have a dummy instance of model and trace so we can play around with the
 # interface and plotting.
@@ -13,9 +13,10 @@ import logging
 
 import numpy as np
 import pymc3 as pm
+import datetime
 
-from . import data_retrieval
 from .model import *
+from . import data_retrieval
 
 log = logging.getLogger(__name__)
 
@@ -38,8 +39,11 @@ def create_example_instance(num_change_points=3):
     date_begin_data = datetime.datetime(2020, 3, 10)
     date_end_data = datetime.datetime(2020, 3, 13)
 
-    new_cases_obs = jhu.get_new_confirmed(
-        country="Germany", begin_date=date_begin_data, end_date=date_end_data
+    new_cases_obs = jhu.get_new(
+        value="confirmed",
+        country="Germany",
+        data_begin=date_begin_data,
+        data_end=date_end_data,
     )
 
     diff_data_sim = 16  # should be significantly larger than the expected delay, in
@@ -85,11 +89,9 @@ def create_example_instance(num_change_points=3):
             pr_median_lambda_0=0.4, change_points_list=change_points
         )
 
-        new_I_t = SIR(lambda_t_log, pr_median_mu=1 / 8)
+        new_I_t = SIR(lambda_t_log, mu=0.13)
 
-        new_cases_inferred_raw = delay_cases(
-            new_I_t, pr_median_delay=10, pr_median_scale_delay=0.3
-        )
+        new_cases_inferred_raw = delay_cases(new_I_t)
 
         new_cases_inferred = week_modulation(new_cases_inferred_raw)
 
