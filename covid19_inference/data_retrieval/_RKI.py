@@ -472,6 +472,11 @@ class RKI(Retrieval):
         else:
             raise ValueError(f"Age group not possible use one of {self.possible_age_groups()}")
             
+        # If one uses Refdatum, only use data if isterkrakungsbeginn == 1
+
+        if date_type == "date_ref":
+            df = df.loc[df["IstErkrankungsbeginn"]==1]
+
         if level is not None:
             df = df[df[level] == value][[date_type, variable]]
 
