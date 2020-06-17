@@ -238,7 +238,7 @@ class Cov19Model(Model):
     """
 
     @property
-    def get_RVs(self):
+    def untransformed_freeRVs(self):
         """
             Returns the names of all free parameters of the model, usefull for plotting!
 
