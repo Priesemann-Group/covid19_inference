@@ -13,7 +13,7 @@ This is a Bayesian python toolbox for inference and forecast of the spread of th
 - [**Source code**](https://github.com/Priesemann-Group/covid19_inference)
 
 
-The latest stable version is [v0.1.7](https://github.com/Priesemann-Group/covid19_inference/tree/v0.1.7)!
+The latest stable version is [v0.1.8](https://github.com/Priesemann-Group/covid19_inference/tree/v0.1.8)!
 
 
 The research article [is available on arXiv](https://arxiv.org/abs/2004.01105) (**updated on April 13**).
