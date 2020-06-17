@@ -2,7 +2,7 @@
 # @Author:        Sebastian B. Mohr
 # @Email:         
 # @Created:       2020-06-04 13:20:46
-# @Last Modified: 2020-06-04 19:21:05
+# @Last Modified: 2020-06-17 10:32:50
 # ------------------------------------------------------------------------------ #
 
 
@@ -37,7 +37,7 @@ mild_dist = ChangePoint(
     lambda_after=0.6,
     date_begin=datetime.datetime(2020, 3, 9),
     length=datetime.timedelta(days=2))
-"""
+
 strong_dist = ChangePoint(
     lambda_before=0.6,
     lambda_after=0.4,
@@ -50,9 +50,8 @@ contact_ban = ChangePoint(
     lambda_after=0.2,
     date_begin=datetime.datetime(2020, 3, 23),
     length=datetime.timedelta(days=6))
-"""
-change_points = [mild_dist]
 
+change_points = [mild_dist,strong_dist,contact_ban]
 
 params = dict(
     data_begin = datetime.datetime(2020,3,2),
@@ -63,19 +62,17 @@ params = dict(
     I=100,
     change_points=change_points)
 
-"""
-    ## Define and run model
+""" ## Define and run model
 """
 model = cov19.dummydata.DummyModel(**params)
 
 #Create lambda_t with sigmoids automaticly gets model
-λ_t = cov19.dummydata.lambda_t_with_sigmoids()
+λ_t = cov19.dummydata.generate_lambda_t_from_model()
 
 #Create SIR from lambda_t
 t, S, E, I, R = cov19.dummydata.SEIR(λ_t,epsilon=1)
 
-"""
-    ## Plotting
+""" ## Plotting
 """
 
 #Create date_time array from t array

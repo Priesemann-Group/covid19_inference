@@ -2,7 +2,7 @@
 # @Author:        Sebastian B. Mohr
 # @Email:         
 # @Created:       2020-06-04 15:48:54
-# @Last Modified: 2020-06-04 17:59:13
+# @Last Modified: 2020-06-17 11:02:26
 # ------------------------------------------------------------------------------ #
 
 
@@ -129,7 +129,7 @@ class ChangePoint(object):
                 k is scaled with the inverse length of the change point
             """
             #Convert k value to seconds
-            k_d = 1/self.date_len.days * 10#in days 
+            k_d = 1/self.date_len.days * 15 #in days 
 
             L = y_2-y_1
             C = y_1

@@ -2,7 +2,7 @@
 # @Author:        Sebastian B. Mohr
 # @Email:
 # @Created:       2020-05-26 13:09:09
-# @Last Modified: 2020-06-04 17:43:53
+# @Last Modified: 2020-06-17 10:03:43
 # ------------------------------------------------------------------------------ #
 
 from .model import *
@@ -151,6 +151,7 @@ def SEIR(lambda_t, epsilon=None, gamma=None, model=None):
         dR = γ * I
         return np.array([dS, dE, dI, dR, 0])
 
+    log.info("SEIR")
     # ------------------------------------------------------------------------------ #
     # Preliminar parameters
     # ------------------------------------------------------------------------------ #
