@@ -79,7 +79,7 @@ def week_modulation(
         """
         modulation = np.zeros(shape_modulation[0])
         for i in range(shape_modulation[0]):
-            date_curr = model.data_begin + datetime.timedelta(days=i)
+            date_curr = model.sim_begin + datetime.timedelta(days=i)
             if date_curr.isoweekday() in weekend_days:
                 modulation[i] = 1
         return modulation
@@ -94,7 +94,7 @@ def week_modulation(
         """
         offset_rad = pm.VonMises(name_offset_modulation + "_rad", mu=0, kappa=0.01)
         offset = pm.Deterministic(name_offset_modulation, offset_rad / (2 * np.pi) * 7)
-        t = np.arange(shape_modulation[0]) - model.data_begin.weekday()  # Sunday @ zero
+        t = np.arange(shape_modulation[0]) - model.sim_begin.weekday()  # Sunday @ zero
         modulation = 1 - tt.abs_(tt.sin(t / 7 * np.pi + offset_rad / 2))
         return modulation
 
