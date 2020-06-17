@@ -228,9 +228,8 @@ def plot_daily_cases_and_r_smoothing(keys=None, linestyles=None):
         ax.set_xlabel("Time (days)")
         # ax.tick_params(labelbottom=True, labeltop=False)
 
-
-    #Add letters
-    letter_kwargs = dict(x=-0.15, y=1.2, fontweight='bold',size="large")
+    # Add letters
+    letter_kwargs = dict(x=-0.15, y=1.2, fontweight="bold", size="large")
     axes_r[0].text(s="A", transform=axes_r[0].transAxes, **letter_kwargs)
     axes_r[1].text(s="B", transform=axes_r[1].transAxes, **letter_kwargs)
     axes_r[2].text(s="C", transform=axes_r[2].transAxes, **letter_kwargs)
@@ -243,10 +242,8 @@ def plot_daily_cases_and_r_smoothing(keys=None, linestyles=None):
     axes_delay[2].text(s="C", transform=axes_delay[2].transAxes, **letter_kwargs)
     axes_delay[3].text(s="D", transform=axes_delay[3].transAxes, **letter_kwargs)
 
-
-    
-    fig_r.savefig("r_comparison.pdf",**save_kwargs)
-    fig_delay.savefig("r_left_right.pdf",**save_kwargs)
+    fig_r.savefig("r_comparison.pdf", **save_kwargs)
+    fig_delay.savefig("r_left_right.pdf", **save_kwargs)
 
 
 def plot_rki_convention(key):
@@ -331,15 +328,16 @@ def plot_rki_convention(key):
         ax.set_xlabel("Time (days)")
         # ax.tick_params(labelbottom=True, labeltop=False)
 
-    letter_kwargs = dict(x=-0.15, y=1.1, fontweight='bold',size="large")
+    letter_kwargs = dict(x=-0.15, y=1.1, fontweight="bold", size="large")
     axes[0].text(s="A", transform=axes[0].transAxes, **letter_kwargs)
     axes[1].text(s="B", transform=axes[1].transAxes, **letter_kwargs)
-    fig.savefig("rki_convention.pdf",**save_kwargs)
+    fig.savefig("rki_convention.pdf", **save_kwargs)
+
 
 """
 Global save kwargs for matplotlib.savefig
 """
-save_kwargs = dict(transparent=True,format='pdf',dpi=300)
+save_kwargs = dict(transparent=True, format="pdf", dpi=300)
 
 
 """
@@ -388,15 +386,15 @@ if __name__ == "__main__":
     lambda_old = 0.39 #R=3
     lambda_new = 0.117 #R=0.9
     """
-    
+
     # ------------------------------------------------------------------------------ #
     # From R=3 to R=1
     # ------------------------------------------------------------------------------ #
-    
+
     mu_fixed = 0.13
-    lambda_old = 0.39 #R=3
-    lambda_new = 0.13 #R=0.9
-    
+    lambda_old = 0.39  # R=3
+    lambda_new = 0.13  # R=0.9
+
     """
     Create dummy data with fixed parameters and
     run it to obtain a dataset which we later use as new cases obs.

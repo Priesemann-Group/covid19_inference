@@ -303,7 +303,9 @@ class RKI(Retrieval):
         # ------------------------------------------------------------------------------ #
         # Retrieve data and filter it
         # ------------------------------------------------------------------------------ #
-        df = self.filter(data_begin, data_end, value, date_type, level, filter_value, age_group)
+        df = self.filter(
+            data_begin, data_end, value, date_type, level, filter_value, age_group
+        )
         return df
 
     def get_new(
@@ -465,17 +467,19 @@ class RKI(Retrieval):
                 "Invalid data_begin, data_end: has to be datetime.datetime object"
             )
 
-        if age_group is None: 
+        if age_group is None:
             df = self.data
         elif age_group in self.possible_age_groups():
             df = self.data.loc[self.data["Altersgruppe"].isin([age_group])]
         else:
-            raise ValueError(f"Age group not possible use one of {self.possible_age_groups()}")
-            
+            raise ValueError(
+                f"Age group not possible use one of {self.possible_age_groups()}"
+            )
+
         # If one uses Refdatum, only use data if isterkrakungsbeginn == 1
 
         if date_type == "date_ref":
-            df = df.loc[df["IstErkrankungsbeginn"]==1]
+            df = df.loc[df["IstErkrankungsbeginn"] == 1]
 
         if level is not None:
             df = df[df[level] == value][[date_type, variable]]
@@ -545,6 +549,7 @@ class RKI(Retrieval):
         df2.index = pd.to_datetime(df2.index)
         # Returns cumsum of variable
         return df2[begin_date:end_date].cumsum()
+
     def possible_age_groups(self):
         """
         Returns the valid age groups in the dataset.

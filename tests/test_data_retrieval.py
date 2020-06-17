@@ -97,6 +97,7 @@ def test_owd():
         data_end=datetime.datetime(2020, 3, 25),
     )
 
+
 def test_ft():
     import covid19_inference as cov
 

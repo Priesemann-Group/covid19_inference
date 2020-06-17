@@ -124,7 +124,7 @@ class FINANCIAL_TIMES(Retrieval):
             df = self.data
             # datetime columns
             df["date"] = pd.to_datetime(df["date"])
-            df = df.rename(columns={"region": "state"}) # For consistency
+            df = df.rename(columns={"region": "state"})  # For consistency
             df = df.set_index("date")
             self.data = df
             return True
@@ -136,10 +136,11 @@ class FINANCIAL_TIMES(Retrieval):
     def get(
         self,
         value="excess_deaths",
-        country: str="Germany",
-        state: str=None,
-        data_begin: datetime.datetime=None,
-        data_end: datetime.datetime=None):
+        country: str = "Germany",
+        state: str = None,
+        data_begin: datetime.datetime = None,
+        data_end: datetime.datetime = None,
+    ):
         """
         Retrieves specific data from the dataset, can be filtered by date, country and state.
 
@@ -164,20 +165,29 @@ class FINANCIAL_TIMES(Retrieval):
         # ------------------------------------------------------------------------------ #
         # Default Parameters
         # ------------------------------------------------------------------------------ #
-        possible_values = ["deaths", "expected_deaths", "excess_deaths_pct", "excess_deaths"]
-        assert value in possible_values, f"Value '{value}' not possible! Use one from {possible_values}"
+        possible_values = [
+            "deaths",
+            "expected_deaths",
+            "excess_deaths_pct",
+            "excess_deaths",
+        ]
+        assert (
+            value in possible_values
+        ), f"Value '{value}' not possible! Use one from {possible_values}"
 
         if state is None:
-            state = country #somehow they publish the data like that ¯\_(ツ)_/¯ 
+            state = country  # somehow they publish the data like that ¯\_(ツ)_/¯
 
         possible_countries_states = self.get_possible_countries_states()
-        assert [country,state] in possible_countries_states, f"Country, state combination '[{country},{state}]' not possible! Check possible combinations by get_possible_countries_states()!"
+        assert [
+            country,
+            state,
+        ] in possible_countries_states, f"Country, state combination '[{country},{state}]' not possible! Check possible combinations by get_possible_countries_states()!"
 
         if data_begin is None:
             data_begin = self.__get_first_date()
         if data_end is None:
             data_end = self.__get_last_date()
-
 
         # ------------------------------------------------------------------------------ #
         # Filter the data
@@ -194,9 +204,8 @@ class FINANCIAL_TIMES(Retrieval):
 
         # Filter by date
         df = df[data_begin:data_end]
-        
-        return df
 
+        return df
 
     def get_possible_countries_states(self):
         """
@@ -206,8 +215,7 @@ class FINANCIAL_TIMES(Retrieval):
         -------
         : pandas.DataFrame
         """
-        return self.data[["country","state"]].drop_duplicates().to_numpy()
-
+        return self.data[["country", "state"]].drop_duplicates().to_numpy()
 
     def __get_first_date(self):
         return self.data.index.min()

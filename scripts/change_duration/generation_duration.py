@@ -29,8 +29,9 @@ except ModuleNotFoundError:
 
 from helper_functions import *
 
-#For insets
+# For insets
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
+
 
 def plot_generation_duration(model, trace, gds, lim_y, axes=None, **kwargs):
     """
@@ -76,31 +77,42 @@ def plot_generation_duration(model, trace, gds, lim_y, axes=None, **kwargs):
         ax.legend(loc="center left")
         style_legend(ax)
 
-        #Insets
+        # Insets
         axin = inset_axes(ax, width="35%", height="50%", loc="upper right")
-        cov19.plot._timeseries(x=x,y=y,ax=axin,what="model", **kwargs)
-        mark_inset(ax, axin, loc1=2, loc2=4, fc="None", ec="gray", lw=1, alpha=1, zorder=15)
+        cov19.plot._timeseries(x=x, y=y, ax=axin, what="model", **kwargs)
+        mark_inset(
+            ax, axin, loc1=2, loc2=4, fc="None", ec="gray", lw=1, alpha=1, zorder=15
+        )
         insets.append(axin)
 
     """
     Format insets
     """
     x_lims_insets = [
-        (datetime.datetime(2020, 3, 29),datetime.datetime(2020, 4, 6)),
-        (datetime.datetime(2020, 3, 29),datetime.datetime(2020, 4, 9)),
-        (datetime.datetime(2020, 4, 2),datetime.datetime(2020, 4, 12))
-        ]
+        (datetime.datetime(2020, 3, 29), datetime.datetime(2020, 4, 6)),
+        (datetime.datetime(2020, 3, 29), datetime.datetime(2020, 4, 9)),
+        (datetime.datetime(2020, 4, 2), datetime.datetime(2020, 4, 12)),
+    ]
     y_lims_insets = [
         (0.7, 1.1),
         (0.5, 1.1),
         (0.5, 1.1),
     ]
     for i, ax in enumerate(insets):
-        ax.tick_params(color='gray',bottom=False,labelbottom=False,labelsize=8,left=False,right=True,labelleft=False,labelright=True)
-        ax.set_ylim(y_lims_insets[i][0],y_lims_insets[i][1])
+        ax.tick_params(
+            color="gray",
+            bottom=False,
+            labelbottom=False,
+            labelsize=8,
+            left=False,
+            right=True,
+            labelleft=False,
+            labelright=True,
+        )
+        ax.set_ylim(y_lims_insets[i][0], y_lims_insets[i][1])
         ax.set_xlim(x_lims_insets[i][0], x_lims_insets[i][1])
         ax.hlines(1, x[0], x[-1], linestyles=":")
-        ax.xaxis.set_ticks_position('none')
+        ax.xaxis.set_ticks_position("none")
         ax.yaxis.set_label_position("right")
         ax.yaxis.tick_right()
     return axes
@@ -145,11 +157,11 @@ if __name__ == "__main__":
     # ------------------------------------------------------------------------------ #
     # From R=3 to R=0.9
     # ------------------------------------------------------------------------------ #
-    
+
     mu_fixed = 0.13
-    lambda_old = 0.39 #R=3
-    lambda_new = 0.13 #R=0.9
-    
+    lambda_old = 0.39  # R=3
+    lambda_new = 0.13  # R=0.9
+
     """
     Create dummy data with fixed parameters and
     run it to obtain a dataset which we later use as new cases obs.
@@ -232,9 +244,9 @@ if __name__ == "__main__":
     axes[-3].set_yticks([1.0, 1.5])
     axes[-2].set_yticks([1.0, 2.0, 3.0])
     axes[-1].set_yticks([1.0, 3.0, 5.0, 7.0])
-    axes[1].set_yticks([0,15000])
-    #Add letters
-    letter_kwargs = dict(x=-0.15, y=1.2, fontweight='bold',size="large")
+    axes[1].set_yticks([0, 15000])
+    # Add letters
+    letter_kwargs = dict(x=-0.15, y=1.2, fontweight="bold", size="large")
     axes[0].text(s="A", transform=axes[0].transAxes, **letter_kwargs)
     axes[1].text(s="B", transform=axes[1].transAxes, **letter_kwargs)
     axes[2].text(s="C", transform=axes[2].transAxes, **letter_kwargs)
@@ -242,12 +254,13 @@ if __name__ == "__main__":
     axes[4].text(s="E", transform=axes[4].transAxes, **letter_kwargs)
     fig.tight_layout()
 
-    plt.subplots_adjust(top=0.915,
-    bottom=0.084,
-    left=0.149,
-    right=0.897,
-    hspace=1.0,
-    wspace=0.2)
+    plt.subplots_adjust(
+        top=0.915, bottom=0.084, left=0.149, right=0.897, hspace=1.0, wspace=0.2
+    )
     plt.savefig(
-    "r_different_generations.pdf", dpi=300, bbox_inches="tight", pad_inches=0.05, transparent=True
+        "r_different_generations.pdf",
+        dpi=300,
+        bbox_inches="tight",
+        pad_inches=0.05,
+        transparent=True,
     )
