@@ -170,7 +170,7 @@ def delay_cases(
 
     # enable this function for custom data and data ranges
     if len_output_arr is None:
-        len_output_arr = model.data_len + model.fcast_len
+        len_output_arr = model.sim_len
     if diff_input_output is None:
         diff_input_output = model.diff_data_sim
     if len_input_arr is None:
@@ -293,6 +293,20 @@ def _interpolate(array, delay, delay_matrix):
     """
         smooth the array (if delay is no integer)
     """
-    interp_matrix = tt.maximum(1 - tt.abs_(delay_matrix - delay), 0)
-    interpolation = tt.dot(array, interp_matrix)
+    if array.ndim == 2:
+        interp_matrix = tt.maximum(
+            1 - tt.abs_(tt.shape_padaxis(delay_matrix, axis=-1) - delay), 0
+        )
+        mat_shuf = interp_matrix.dimshuffle((2, 0, 1))
+        array_shuf = array.dimshuffle((1, 0))
+        delayed_arr = tt.batched_dot(array_shuf, mat_shuf)
+        interpolation = delayed_arr.dimshuffle((1, 0))
+    elif array.ndim == 1:
+        interp_matrix = tt.maximum(1 - tt.abs_(delay_matrix - delay), 0)
+        interpolation = tt.dot(array, interp_matrix)
+    else:
+        raise RuntimeError(
+            "For some reason, wrong number of dimensions, shouldn't happen"
+        )
+
     return interpolation

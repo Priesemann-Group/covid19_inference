@@ -2,7 +2,7 @@
     # Non-hierarchical model using jhu data (no regions).
     Reproduces Dehning et al. arXiv:2004.01105 Figure 3
 
-    Runtime ~ 45 min
+    Runtime ~ 5 min
 
     In the new code we have implemented smoother transitions at the change points
     via sigmoids instead of the linear transient.

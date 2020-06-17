@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-20 18:50:13
-# @Last Modified: 2020-05-15 10:12:55
+# @Last Modified: 2020-06-03 09:43:49
 # ------------------------------------------------------------------------------ #
 # Callable in your scripts as e.g. `cov.plot.timeseries()`
 # Plot functions and helper classes
@@ -599,9 +599,10 @@ def _get_array_from_trace_via_date(
     """
 
     ref = model.sim_begin
-    # the variable `new_cases` and some others (?) have different bounds
-    if "new_cases" in var:
-        ref = model.data_begin
+    # the variable `new_cases` and some others (?) used to have different bounds
+    # 20-05-27: not anymore, we made things consistent. let's remove this at some point
+    # if "new_cases" in var:
+    # ref = model.data_begin
 
     if dates is None:
         if start is None:
@@ -958,7 +959,7 @@ def _math_for_varname(key):
     # change-point keys, give lower index
     if is_cp:
         # get cp index
-        res = res + f"_{_rx_cp_id(key)}"
+        res = res + r"_{" + _rx_cp_id(key) + "}"
 
     # hierarchical, give upper index
     if is_hc:
@@ -1218,7 +1219,10 @@ def _format_k(prec):
     """
 
     def inner(xval, tickpos):
-        return f"${xval/1_000:.{prec}f}\,$k"
+        if xval == 0:
+            return "0"
+        else:
+            return f"${xval/1_000:.{prec}f}\,$k"
 
     return inner
 

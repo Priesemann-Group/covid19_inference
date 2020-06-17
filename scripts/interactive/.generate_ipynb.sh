@@ -1,6 +1,6 @@
 #!/bin/bash
 echo "getting p2j"
-#pip install -U --quiet git+https://github.com/pSpitzner/python2jupyter.git > /dev/null
+pip install -U --quiet git+https://github.com/pSpitzner/python2jupyter.git > /dev/null
 
 it_dir="$(cd "$(dirname "$0")"; pwd -P)"
 py_dir=$(dirname "$it_dir")

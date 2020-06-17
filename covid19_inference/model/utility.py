@@ -115,6 +115,7 @@ def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2, model=None):
     return Y, X
 
 
+# utility.py
 def tt_lognormal(x, mu, sigma):
     """
     Calculates a lognormal pdf for integer spaced x input.
