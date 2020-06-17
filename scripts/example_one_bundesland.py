@@ -192,7 +192,7 @@ trace = pm.sample(model=this_model, tune=500, draws=1000, init="advi+adapt_diag"
 fig, axes = plt.subplots(6, 3, figsize=(6, 6.4))
 
 # Get the free Random Variables
-varnames = model.untransformed_freeRVs
+varnames = this_model.untransformed_freeRVs
 
 # Plot them
 for i, key in enumerate(
