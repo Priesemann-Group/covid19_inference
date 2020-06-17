@@ -233,6 +233,31 @@ class Cov19Model(Model):
         return (self.data_begin - self.sim_begin).days
 
 
+    """
+        Other helpfull properties
+    """
+
+    @property
+    def get_RVs(self):
+        """
+            Returns the names of all free parameters of the model, usefull for plotting!
+
+            Returns
+            -------
+            : list
+                all variable names
+        """
+
+        """
+            For every free random varibale in pymc3 with the _log__ suffix there exists
+            an Random Variable without logscale i.e. without _log__. There is no
+            easy function to return the names of these function that's why we
+            Get the names like that.
+        """
+        varnames = [str(x).replace("_log__", "") for x in self.free_RVs]
+        return varnames
+
+    
 def modelcontext(model):
     """
         return the given model or try to find it in the context if there was
