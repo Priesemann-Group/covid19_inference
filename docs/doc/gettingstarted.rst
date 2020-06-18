@@ -12,14 +12,14 @@ There exists three different possiblities to run the models:
 
 .. code-block:: console
 
-    git clone --branch v0.1.7 https://github.com/Priesemann-Group/covid19_inference
+    git clone --branch v0.1.8 https://github.com/Priesemann-Group/covid19_inference
 
 
 2. Install the module via pip
 
 .. code-block:: console
 
-    pip install git+https://github.com/Priesemann-Group/covid19_inference.git@v0.1.7
+    pip install git+https://github.com/Priesemann-Group/covid19_inference.git@v0.1.8
 
 
 3. Run the notebooks directly in Google Colab. At the top of the notebooks files
