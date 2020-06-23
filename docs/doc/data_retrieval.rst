@@ -44,6 +44,13 @@ Financial times
 .. autoclass:: covid19_inference.data_retrieval.FINANCIAL_TIMES
 	:members:
 
+Oxford COVID-19 Government Response Tracker
+-------------------------------------------
+
+.. autoclass:: covid19_inference.data_retrieval.OxCGRT
+	:members:
+
+
 Base Retrieval Class
 --------------------
 

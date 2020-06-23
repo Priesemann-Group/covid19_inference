@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-03 14:40:00
-# @Last Modified: 2020-06-08 19:19:16
+# @Last Modified: 2020-06-22 13:11:38
 # ------------------------------------------------------------------------------ #
 # failry rudimentary. todo:
 #   * go offline and check retrieval of local stuff
@@ -114,3 +114,14 @@ def test_ft():
         data_begin=datetime.datetime(2020, 3, 15),
         data_end=datetime.datetime(2020, 3, 25),
     )
+
+
+def test_oxcgrt():
+    import covid19_inference as cov
+
+    gov_pol = cov.data_retrieval.OxCGRT(False)
+    gov_pol.download_all_available_data(force_download=True)
+
+    # Force load offline data
+    gov_pol.download_all_available_data(force_local=True)
+    gov_pol.download_all_available_data()

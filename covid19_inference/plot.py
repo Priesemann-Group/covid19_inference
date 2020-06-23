@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-20 18:50:13
-# @Last Modified: 2020-06-03 09:43:49
+# @Last Modified: 2020-06-23 12:50:37
 # ------------------------------------------------------------------------------ #
 # Callable in your scripts as e.g. `cov.plot.timeseries()`
 # Plot functions and helper classes
@@ -444,7 +444,7 @@ def _timeseries(
 
         Returns
         -------
-            ax
+        ax
     """
 
     # ------------------------------------------------------------------------------ #
@@ -567,7 +567,7 @@ def _get_array_from_trace_via_date(
             get all data for a range from `start` to `end`. (both boundary
             dates included)
 
-        end :  datetime.datetime
+        end : datetime.datetime
 
         dates : list of datetime.datetime objects, optional
             the dates for which to get the data. Default: None, will return
@@ -578,9 +578,9 @@ def _get_array_from_trace_via_date(
         data : nd array, 3 dim
             the elements from the trace matching the dates.
             dimensions are as follows
-                0 samples, if no samples only one entry
-                1 data with time matching the returned `dates` (if compatible variable)
-                2 region, if no regions only one entry
+            0 samples, if no samples only one entry
+            1 data with time matching the returned `dates` (if compatible variable)
+            2 region, if no regions only one entry
 
         dates : pandas DatetimeIndex
             the matching dates. this is essnetially an array of dates than can be passed
@@ -588,14 +588,14 @@ def _get_array_from_trace_via_date(
 
         Example
         -------
-        ```
+        .. code-block::
+
             import covid19_inference as cov
             model, trace = cov.create_example_instance()
             y, x = cov.plot._get_array_from_trace_via_date(
                 model, trace, "lambda_t", model.data_begin, model.data_end
             )
             ax = cov.plot._timeseries(x, y[:,:,0], what="model")
-        ```
     """
 
     ref = model.sim_begin
@@ -675,9 +675,9 @@ def _new_cases_to_cum_cases(x, y, what, offset=0):
 
         Example
         -------
-        ```
+        .. code-block::
+
             cum_dates, cum_cases = _new_cases_to_cum_cases(new_dates, new_cases)
-        ```
     """
 
     # things from the trace have the 0-th dimension for samples. raw data does not
@@ -707,7 +707,12 @@ def _new_cases_to_cum_cases(x, y, what, offset=0):
 
 
 def _distribution(model, trace, key, ax=None, color=None, draw_prior=True):
+    """
+    TODO
+    ----
+    documentation
 
+    """
     # check if model was hierarchical
     # if model.is_hierarchical
     # or like this
@@ -1082,8 +1087,6 @@ def _add_mpl_rect_around_text(text_list, ax, x_padding=0.05, y_padding=0.05, **k
 # ------------------------------------------------------------------------------ #
 # Parameters, we have to do this first so we can have default arguments
 # ------------------------------------------------------------------------------ #
-
-
 def get_rcparams_default():
     """
         Get a Param (dict) of the default parameters.
@@ -1159,7 +1162,7 @@ def set_rcparams(par):
             Default : "#708090"
 
         Example
-        ------
+        -------
         ```
         pars = cov.plot.get_rcparams_default()
         pars["locale"]="de_DE"
@@ -1209,8 +1212,6 @@ class Param(dict):
 # ------------------------------------------------------------------------------ #
 # Formatting helpers
 # ------------------------------------------------------------------------------ #
-
-
 def _format_k(prec):
     """
         format yaxis 10_000 as 10 k.

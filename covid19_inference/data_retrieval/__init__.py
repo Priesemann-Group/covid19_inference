@@ -7,4 +7,6 @@ from ._RKI import *
 from ._RKI_situation_reports import *
 from ._OWD import *
 from ._Financial_Times import *
+from ._OxCGRT import *
+
 from .retrieval import set_data_dir, get_data_dir, backup_instances
