@@ -22,7 +22,7 @@ import pymc3 as pm
 try:
     import covid19_inference as cov19
 except ModuleNotFoundError:
-    sys.path.append("../../")
+    sys.path.append("../")
     import covid19_inference as cov19
 
 """## Data retrieval
@@ -193,6 +193,7 @@ fig, axes = plt.subplots(6, 3, figsize=(6, 6.4))
 
 # Get the free Random Variables
 varnames = this_model.untransformed_freeRVs
+print(varnames)
 
 # Plot them
 for i, key in enumerate(
