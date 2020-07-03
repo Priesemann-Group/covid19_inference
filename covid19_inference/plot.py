@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-20 18:50:13
-# @Last Modified: 2020-06-23 12:50:37
+# @Last Modified: 2020-07-03 14:27:08
 # ------------------------------------------------------------------------------ #
 # Callable in your scripts as e.g. `cov.plot.timeseries()`
 # Plot functions and helper classes
@@ -51,15 +51,15 @@ def timeseries_overview(
     forecast_heading=r"$\bf Forecasts\!:$",
     add_more_later=False,
 ):
-    """
+    r"""
         Create the time series overview similar to our paper.
         Dehning et al. arXiv:2004.01105
-        Contains $\lambda$, new cases, and cumulative cases.
+        Contains :math:`\lambda`, new cases, and cumulative cases.
 
         Parameters
         ----------
-        model : model instance
-
+        model : :class:`Cov19Model`
+            
         trace : trace instance
             needed for the data
 
@@ -71,9 +71,9 @@ def timeseries_overview(
             only used to set xrange in the end
         end : datetime.datetime
             only used to set xrange in the end
-        color : string
+        color : str
             main color to use, default from rcParam
-        save_to : string or None
+        save_to : str or None
             path where to save the figures. default: None, not saving figures
         annotate_constrained : bool
             show the unconstrained constrained annotation in lambda panel
@@ -83,9 +83,9 @@ def timeseries_overview(
             provide an array of existing axes (from previously calling this function)
             to add more traces. Data will not be added again. Ideally call this first
             with `add_more_later=True`
-        forecast_label : string
+        forecast_label : str
             legend label for the forecast, default: "Forecast"
-        forecast_heading : string
+        forecast_heading : str
             if `add_more_later`, how to label the forecast section.
             default: "$\bf Forecasts\!:$",
         add_more_later : bool
@@ -1095,7 +1095,7 @@ def get_rcparams_default():
     """
     par = Param(
         locale="en_US",
-        date_format="%b %-d",
+        date_format="%b %d",  # Removed - in %-d because of windows...
         date_show_minor_ticks=True,
         rasterization_zorder=-1,
         draw_ci_95=True,
@@ -1112,8 +1112,8 @@ def get_rcparams_default():
 
 def set_rcparams(par):
     """
-        Set the rcparameters used for plotting. provided instance of `Param` has to have
-        the following keys (attributes).
+        Sets the rcparameters used for plotting, provided instance of `Param` has to have
+        the following keys (attributes):
 
         Attributes
         ----------
@@ -1137,37 +1137,44 @@ def set_rcparams(par):
             For timeseries plots, indicate 95% Confidence interval via fill between.
             Default: True
 
-        draw_ci_75 : bool,
+        draw_ci_75 : bool
             For timeseries plots, indicate 75% Confidence interval via fill between.
             Default: False
 
-        draw_ci_50 : bool,
+        draw_ci_50 : bool
             For timeseries plots, indicate 50% Confidence interval via fill between.
             Default: False
 
-        color_model : str,
+        color_model : str
             Base color used for model plots, mpl compatible color code "C0", "#303030"
             Default : "tab:green"
 
-       color_data : str,
+        color_data : str
             Base color used for data
             Default : "tab:blue"
 
-        color_annot : str,
+        color_annot : str
             Color to use for annotations
             Default : "#646464"
 
-        color_prior : str,
+        color_prior : str
             Color to used for priors in distributions
             Default : "#708090"
 
         Example
         -------
-        ```
-        pars = cov.plot.get_rcparams_default()
-        pars["locale"]="de_DE"
-        cov.plot.set_rcparams(pars)
-        ```
+        .. code-block:: python
+
+            # Get default parameter
+            pars = cov.plot.get_rcparams_default()
+
+            # Change parameters
+            pars["locale"]="de_DE"
+            pars["color_data"]="tab:purple"
+
+            # Set parameters
+            cov.plot.set_rcparams(pars)
+        ..
     """
     for key in get_rcparams_default().keys():
         assert key in par.keys(), "Provide all keys that are in .get_rcparams_default()"
@@ -1188,13 +1195,14 @@ class Param(dict):
 
         Example
         -------
-        ```
-        foo = Param(lorem="ipsum")
-        print(foo.lorem)
-        >>> 'ipsum'
-        print(foo.does_not_exist is None)
-        >>> True
-        ```
+        .. code-block:: python
+
+            foo = Param(lorem="ipsum")
+            print(foo.lorem)
+            >>> 'ipsum'
+            print(foo.does_not_exist is None)
+            >>> True
+        ..
     """
 
     __getattr__ = dict.get
