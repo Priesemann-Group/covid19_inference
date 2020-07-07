@@ -10,3 +10,6 @@ from ._Financial_Times import *
 from ._OxCGRT import *
 
 from .retrieval import set_data_dir, get_data_dir, backup_instances
+
+
+from .countries import *
