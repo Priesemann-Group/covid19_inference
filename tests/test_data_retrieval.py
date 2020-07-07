@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-05-03 14:40:00
-# @Last Modified: 2020-06-22 13:11:38
+# @Last Modified: 2020-07-07 12:06:02
 # ------------------------------------------------------------------------------ #
 # failry rudimentary. todo:
 #   * go offline and check retrieval of local stuff
@@ -125,3 +125,18 @@ def test_oxcgrt():
     # Force load offline data
     gov_pol.download_all_available_data(force_local=True)
     gov_pol.download_all_available_data()
+
+
+def test_epistat():
+    import covid19_inference as cov
+
+    epi = cov.data_retrieval.countries.Belgium(False)
+    epi.download_all_available_data(force_download=True)
+
+    # Force load offline data
+    epi.download_all_available_data(force_local=True)
+    epi.download_all_available_data()
+
+    epi.get_new()
+
+    epi.get_total()

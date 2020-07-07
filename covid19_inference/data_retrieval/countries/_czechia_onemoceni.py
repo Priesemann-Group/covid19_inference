@@ -12,9 +12,9 @@ import urllib, json
 log = logging.getLogger(__name__)
 
 
-class Epistat_wiv_isp(Retrieval):
+class Czechia(Retrieval):
     """
-    This class can be used to retrieve and filter the dataset from the `Belgian EPISTAT Website <https://epistat.wiv-isp.be/covid/>`_.
+    This class can be used to retrieve and filter the dataset from the `Czech Republic Onemocnění aktuálně Website <https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19>`_.
 
     Features
         - download the full dataset
@@ -38,14 +38,9 @@ class Epistat_wiv_isp(Retrieval):
 
     @property
     def data(self):
-        if (
-            self.confirmed is None
-            or self.hospitalized is None
-            or self.deaths is None
-            or self.tests is None
-        ):
+        if self.confirmed is None or self.deaths is None or self.tests is None:
             return None
-        return (self.confirmed, self.hospitalized, self.deaths, self.tests)
+        return (self.confirmed, self.deaths, self.tests)
 
     def __init__(self, auto_download=False):
         """
@@ -66,16 +61,15 @@ class Epistat_wiv_isp(Retrieval):
         """
         A name mainly used for the Local Filename
         """
-        name = "Epistat"
+        name = "Czechia_onemocneni"
 
         """
         The url to the main dataset as csv, if none if supplied the fallback routines get used
         """
         url_csv = [
-            "https://epistat.sciensano.be/Data/COVID19BE_CASES_AGESEX.csv",  # Confirmed
-            "https://epistat.sciensano.be/Data/COVID19BE_HOSP.csv",  # Hospitilization
-            "https://epistat.sciensano.be/Data/COVID19BE_MORT.csv",  # Deaths
-            "https://epistat.sciensano.be/Data/COVID19BE_tests.csv",  # Tests
+            "https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/osoby.csv",  # Confirmed
+            "https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/umrti.csv",  # Deaths
+            "https://onemocneni-aktualne.mzcr.cz/api/v2/covid-19/testy.csv",  # Tests
         ]
 
         """
@@ -99,7 +93,6 @@ class Epistat_wiv_isp(Retrieval):
         Retrieval.__init__(self, name, url_csv, fallbacks, update_interval, **kwargs)
 
         self.confirmed = None
-        self.hospitilization = None
         self.deaths = None
         self.tests = None
 
@@ -145,8 +138,6 @@ class Epistat_wiv_isp(Retrieval):
         self,
         value="confirmed",
         age_group: str = None,
-        province: str = None,
-        region: str = None,
         data_begin: datetime.datetime = None,
         data_end: datetime.datetime = None,
     ):
@@ -159,17 +150,11 @@ class Epistat_wiv_isp(Retrieval):
         value: str
             Which data to return, possible values are
             - "confirmed",
-            - "hospitalized",
             - "deaths"
             - "tests"
             (default: "confirmed")
         age_group: str
-            Which age group to return, possible values are '40-49', '60-69', '50-59', '70-79', '10-19', '30-39', '20-29',
-            '0-9', nan, '80-89', '90+'
-        region : str, optional
-            name of the region in Belgium (the "Region" column), can be None
-        province : str, optional
-            name of the province (the "Province" column), can be None
+            Which age group to return, possible format: "number-number" inclusive i.e. [num1,num2]
         begin_date : datetime.datetime, optional
             intial date for the returned data, if no value is given the first date in the dataset is used
         end_date : datetime.datetime, optional
@@ -187,7 +172,6 @@ class Epistat_wiv_isp(Retrieval):
         # ------------------------------------------------------------------------------ #
         assert value in [
             "confirmed",
-            "hospitalized",
             "deaths",
             "tests",
         ], f"Value '{value}' not possible!"
@@ -206,19 +190,22 @@ class Epistat_wiv_isp(Retrieval):
 
         df = getattr(self, value)
 
-        # Select regions
-        if region is not None and "region" in df.columns:
-            df = df.loc[df["region"] == region]
-        if province is not None and "province" in df.columns:
-            df = df.loc[df["province"] == province]
+        # Check for tests since the data is structured another way
+        if value == "tests":
+            return df["new_tests"][data_begin:data_end]
+
+        # Drop all outside infections
+        df = df[df["infection abroad"] != 1.0]
 
         # Select age group
-        if age_group is not None and "age_group" in df.columns:
-            df = df.loc[df["age_group"] == age_group]
+        if age_group is not None:
+            # age_group to age
+            num1, num2 = age_group.split("-")
+            df = df[(df["age"] >= int(num1)) & (df["age"] <= int(num2))]
 
-        df = df.groupby("date").sum()
+        index_count = pd.Index(df.index).value_counts()
 
-        return df
+        return index_count.sort_index()
 
     def get_total(
         self,
@@ -274,7 +261,6 @@ class Epistat_wiv_isp(Retrieval):
             self._download_csvs_from_source(
                 [
                     get_data_dir() + self.name + "_confirmed" + ".csv.gz",
-                    get_data_dir() + self.name + "_hospitilization" + ".csv.gz",
                     get_data_dir() + self.name + "_deaths" + ".csv.gz",
                     get_data_dir() + self.name + "_tests" + ".csv.gz",
                 ],
@@ -293,15 +279,13 @@ class Epistat_wiv_isp(Retrieval):
         """
         filepaths = [
             get_data_dir() + self.name + "_confirmed" + ".csv.gz",
-            get_data_dir() + self.name + "_hospitilization" + ".csv.gz",
             get_data_dir() + self.name + "_deaths" + ".csv.gz",
             get_data_dir() + self.name + "_tests" + ".csv.gz",
         ]
         try:
             self.confirmed.to_csv(filepaths[0], compression="infer", index=False)
-            self.hospitilization.to_csv(filepaths[1], compression="infer", index=False)
-            self.deaths.to_csv(filepaths[2], compression="infer", index=False)
-            self.tests.to_csv(filepaths[3], compression="infer", index=False)
+            self.deaths.to_csv(filepaths[1], compression="infer", index=False)
+            self.tests.to_csv(filepaths[2], compression="infer", index=False)
             self._create_timestamp()
             log.info(f"Local backup to {filepaths} successful.")
             return True
@@ -312,9 +296,8 @@ class Epistat_wiv_isp(Retrieval):
 
     def _download_csvs_from_source(self, filepaths, **kwargs):
         self.confirmed = pd.read_csv(filepaths[0], **kwargs)
-        self.hospitilization = pd.read_csv(filepaths[1], **kwargs)
-        self.deaths = pd.read_csv(filepaths[2], **kwargs)
-        self.tests = pd.read_csv(filepaths[3], **kwargs)
+        self.deaths = pd.read_csv(filepaths[1], **kwargs)
+        self.tests = pd.read_csv(filepaths[2], **kwargs)
 
     def _fallback_local_backup(self):
         path_confirmed = (
@@ -325,15 +308,6 @@ class Epistat_wiv_isp(Retrieval):
             + "_fallback"
             + ".csv.gz"
         )
-        path_hospitilized = (
-            _data_dir_fallback
-            + "/"
-            + self.name
-            + "_hospitilization"
-            + "_fallback"
-            + ".csv.gz"
-        )
-
         path_deaths = (
             _data_dir_fallback + "/" + self.name + "_deaths" + "_fallback" + ".csv.gz"
         )
@@ -342,7 +316,6 @@ class Epistat_wiv_isp(Retrieval):
             _data_dir_fallback + "/" + self.name + "_tests" + "_fallback" + ".csv.gz"
         )
         self.confirmed = pd.read_csv(path_confirmed, **self.kwargs)
-        self.hospitalized = pd.read_csv(path_hospitilized, **self.kwargs)
         self.deaths = pd.read_csv(path_deaths, **self.kwargs)
         self.tests = pd.read_csv(path_tests, **self.kwargs)
 
@@ -358,28 +331,23 @@ class Epistat_wiv_isp(Retrieval):
 
         def helper(df):
             try:
-                df = df.rename(columns={"DATE": "date",})
+                df = df.rename(columns={"datum": "date",})
                 df["date"] = pd.to_datetime(df["date"])
                 df = df.set_index("date")
 
-                if "PROVINCE" in df.columns:
-                    df = df.rename(columns={"PROVINCE": "province"})
-                if "REGION" in df.columns:
-                    df = df.rename(columns={"REGION": "region"})
-                if "AGEGROUP" in df.columns:
-                    df = df.rename(columns={"AGEGROUP": "age_group"})
-                if "CASES" in df.columns:
-                    df = df.rename(columns={"CASES": "cases"})
-                if "DEATHS" in df.columns:
-                    df = df.rename(columns={"DEATHS": "deaths"})
-                if "TESTS" in df.columns:
-                    df = df.rename(columns={"TESTS": "tests"})
+                if "vek" in df.columns:
+                    df = df.rename(columns={"vek": "age"})
+                if "pohlavi" in df.columns:
+                    df = df.rename(columns={"pohlavi": "sex"})
+                if "prirustkovy_pocet_testu" in df.columns:
+                    df = df.rename(columns={"prirustkovy_pocet_testu": "new_tests"})
+                if "nakaza_v_zahranici" in df.columns:
+                    df = df.rename(columns={"nakaza_v_zahranici": "infection abroad"})
             except Exception as e:
                 log.warning(f"There was an error formating the data! {e}")
                 raise e
             return df.sort_index()
 
         self.confirmed = helper(self.confirmed)
-        self.hospitilization = helper(self.hospitilization)
         self.deaths = helper(self.deaths)
         self.tests = helper(self.tests)
