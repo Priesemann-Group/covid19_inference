@@ -12,7 +12,7 @@ import urllib, json
 log = logging.getLogger(__name__)
 
 
-class Epistat_wiv_isp(Retrieval):
+class Belgium(Retrieval):
     """
     This class can be used to retrieve and filter the dataset from the `Belgian EPISTAT Website <https://epistat.wiv-isp.be/covid/>`_.
 
@@ -66,7 +66,7 @@ class Epistat_wiv_isp(Retrieval):
         """
         A name mainly used for the Local Filename
         """
-        name = "Epistat"
+        name = "Belgium_epistat"
 
         """
         The url to the main dataset as csv, if none if supplied the fallback routines get used
@@ -99,7 +99,7 @@ class Epistat_wiv_isp(Retrieval):
         Retrieval.__init__(self, name, url_csv, fallbacks, update_interval, **kwargs)
 
         self.confirmed = None
-        self.hospitilization = None
+        self.hospitalized = None
         self.deaths = None
         self.tests = None
 
@@ -299,7 +299,7 @@ class Epistat_wiv_isp(Retrieval):
         ]
         try:
             self.confirmed.to_csv(filepaths[0], compression="infer", index=False)
-            self.hospitilization.to_csv(filepaths[1], compression="infer", index=False)
+            self.hospitalized.to_csv(filepaths[1], compression="infer", index=False)
             self.deaths.to_csv(filepaths[2], compression="infer", index=False)
             self.tests.to_csv(filepaths[3], compression="infer", index=False)
             self._create_timestamp()
@@ -312,7 +312,7 @@ class Epistat_wiv_isp(Retrieval):
 
     def _download_csvs_from_source(self, filepaths, **kwargs):
         self.confirmed = pd.read_csv(filepaths[0], **kwargs)
-        self.hospitilization = pd.read_csv(filepaths[1], **kwargs)
+        self.hospitalized = pd.read_csv(filepaths[1], **kwargs)
         self.deaths = pd.read_csv(filepaths[2], **kwargs)
         self.tests = pd.read_csv(filepaths[3], **kwargs)
 
@@ -380,6 +380,6 @@ class Epistat_wiv_isp(Retrieval):
             return df.sort_index()
 
         self.confirmed = helper(self.confirmed)
-        self.hospitilization = helper(self.hospitilization)
+        self.hospitalized = helper(self.hospitalized)
         self.deaths = helper(self.deaths)
         self.tests = helper(self.tests)
