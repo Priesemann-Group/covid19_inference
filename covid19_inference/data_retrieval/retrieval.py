@@ -325,7 +325,7 @@ class Retrieval:
 
         filepath = get_data_dir() + self.name + ".csv.gz"
         try:
-            self.data.to_csv(filepath, compression="infer", index=False)
+            self.data.to_csv(filepath, compression="infer", index=False, **self.kwargs)
             self._create_timestamp()
             log.info(f"Local backup to {filepath} successful.")
             return True

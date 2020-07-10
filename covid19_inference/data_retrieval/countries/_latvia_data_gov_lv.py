@@ -116,7 +116,6 @@ class Latvia(Retrieval):
         # 2 Save local
         # ------------------------------------------------------------------------------ #
         self._save_to_local() if not retrieved_local else None
-
         # ------------------------------------------------------------------------------ #
         # 3 Convert to useable format
         # ------------------------------------------------------------------------------ #
@@ -136,6 +135,7 @@ class Latvia(Retrieval):
         df["date"] = pd.to_datetime(df["date"], format="%Y.%m.%d.")
         df = df.set_index("date")
         df = df.replace("...", np.nan)
+        df = df.replace("…", np.nan)
         self.data = df.sort_index()
 
     def get_total(
@@ -234,8 +234,13 @@ class Latvia(Retrieval):
         if value == "tests":
             column = "tests"
 
+        df = self.data
+
         if age_group is None:
-            return self.data[column][data_begin:data_end]
+            df = df[column][data_begin:data_end]
+            df = pd.DataFrame(df)
+            df.columns = [("Latvia", "all age groups")]
+            return df
 
         if value != "confirmed":
             raise KeyError("Only confirmed as value possible if using age groups")
@@ -243,11 +248,19 @@ class Latvia(Retrieval):
         num1, num2 = age_group.split("-")
 
         if num1 == "80":
-            return self.data["ApstiprinatiVecGr_80GadiUnVairak"][data_begin:data_end]
+            df = df["ApstiprinatiVecGr_80GadiUnVairak"][data_begin:data_end]
+            df = pd.DataFrame(df)
+            df.columns = [("Latvia", age_group)]
+            return df
+        if int(num1) > 80:
+            return pd.DataFrame()
         else:
-            return self.data["ApstiprinatiVecGr_" + num1 + "-" + num2 + "Gadi"][
+            df = df["ApstiprinatiVecGr_" + num1 + "-" + num2 + "Gadi"][
                 data_begin:data_end
             ]
+            df = pd.DataFrame(df)
+            df.columns = [("Latvia", age_group)]
+            return df
 
     def __get_first_date(self):
         return self.data.index.min()

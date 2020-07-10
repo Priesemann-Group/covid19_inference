@@ -218,6 +218,7 @@ class Belgium(Retrieval):
 
         df = df.groupby("date").sum()
 
+        df.columns = [("Belgium", age_group)]
         return df
 
     def get_total(

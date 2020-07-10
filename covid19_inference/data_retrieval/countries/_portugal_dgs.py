@@ -194,23 +194,39 @@ class Portugal(Retrieval):
 
         if value == "confirmed":
             if num1 == "80":
-                return self.data[
-                    ["confirmados_80_plus_m", "confirmados_80_plus_f"]
-                ].sum(axis=1)[data_begin:data_end]
+                df = self.data[["confirmados_80_plus_m", "confirmados_80_plus_f"]].sum(
+                    axis=1
+                )[data_begin:data_end]
+                df = pd.DataFrame(df)
+                df.columns = [("Portugal", age_group)]
+                return df
+            if int(num1) > 80:
+                return pd.DataFrame()
             else:
-                return self.data[
+                df = self.data[
                     [f"confirmados_{num1}_{num2}_m", f"confirmados_{num1}_{num2}_f"]
                 ].sum(axis=1)[data_begin:data_end]
+                df = pd.DataFrame(df)
+                df.columns = [("Portugal", age_group)]
+                return df
 
         if value == "deaths":
             if num1 == "80":
-                return self.data[["obitos_80_plus_m", "obitos_80_plus_f"]].sum(axis=1)[
+                df = self.data[["obitos_80_plus_m", "obitos_80_plus_f"]].sum(axis=1)[
                     data_begin:data_end
                 ]
+                df = pd.DataFrame(df)
+                df.columns = [("Portugal", age_group)]
+                return df
+            if int(num1) > 80:
+                return pd.DataFrame()
             else:
-                return self.data[
+                df = self.data[
                     [f"obitos_{num1}_{num2}_m", f"obitos_{num1}_{num2}_f"]
                 ].sum(axis=1)[data_begin:data_end]
+                df = pd.DataFrame(df)
+                df.columns = [("Portugal", age_group)]
+                return df
 
     def get_new(
         self,
@@ -223,6 +239,11 @@ class Portugal(Retrieval):
             data_begin = self.__get_first_date()
         if data_end is None:
             data_end = self.__get_last_date()
+
+        # With age group
+        num1, num2 = age_group.split("-")
+        if int(num1) > 80:
+            return pd.DataFrame()
 
         df = self.get_total(
             value=value,

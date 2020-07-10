@@ -182,13 +182,19 @@ class Switzerland(Retrieval):
             column = "NewDeaths"
 
         if age_group is None:
-            return df[column].groupby("date").sum()[data_begin:data_end]
+            df = df[column].groupby("date").sum()[data_begin:data_end]
+            df = pd.DataFrame(df)
+            df.columns = [("Switzerland", "all age groups")]
+            return df
 
         # Age group
         num1, num2 = age_group.split("-")
         df = df[(df["AgeYear"] >= int(num1)) & (df["AgeYear"] <= int(num2))]
 
-        return df[column].groupby("date").sum()[data_begin:data_end]
+        df = df[column].groupby("date").sum()[data_begin:data_end]
+        df = pd.DataFrame(df)
+        df.columns = [("Switzerland", age_group)]
+        return df
 
     def get_total(
         self,

@@ -192,7 +192,9 @@ class Czechia(Retrieval):
 
         # Check for tests since the data is structured another way
         if value == "tests":
-            return df["new_tests"][data_begin:data_end]
+            df = df["new_tests"][data_begin:data_end]
+            df.columns = [("Czechia", "all age groups")]
+            return df
 
         # Drop all outside infections
         df = df[df["infection abroad"] != 1.0]
@@ -203,9 +205,11 @@ class Czechia(Retrieval):
             num1, num2 = age_group.split("-")
             df = df[(df["age"] >= int(num1)) & (df["age"] <= int(num2))]
 
-        index_count = pd.Index(df.index).value_counts()
-
-        return index_count.sort_index()
+        df = pd.Index(df.index).value_counts()
+        df = df.sort_index()
+        df = pd.DataFrame(df)
+        df.columns = [("Czechia", age_group)]
+        return df
 
     def get_total(
         self,
