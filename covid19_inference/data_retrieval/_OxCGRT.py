@@ -233,3 +233,38 @@ class OxCGRT(Retrieval):
                 value_before = value
 
         return change_points
+
+    def get_time_data(self, policy, country, data_begin=None, data_end=None):
+        """
+            Parameters
+            ----------
+            policy : str
+                The wanted policy.
+            country : str
+                Filter for country, use get_possible_countries() to get a list of possible ones.
+            data_begin : datetime.datetime, optional
+                intial date for the returned data, if no value is given the first date in the dataset is used,
+                if none is given could yield errors
+            data_end : datetime.datetime, optional
+                last date for the returned data, if no value is given the most recent date in the dataset is used
+
+            Returns
+            -------
+            :
+                Pandas dataframe with policy
+        """
+        if data_begin is None:
+            data_begin = self.__get_first_date()
+        if data_end is None:
+            data_end = self.__get_last_date()
+
+        # 1. Select by country
+        df = self.data[self.data["country"] == country]
+        df_t = df[policy].dropna(axis=0)
+        return df_t[data_begin:data_end]
+
+    def __get_first_date(self):
+        return self.data.index.min()
+
+    def __get_last_date(self):
+        return self.data.index.max()

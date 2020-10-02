@@ -4,3 +4,4 @@ from ._ireland_data_gov_ie import *
 from ._latvia_data_gov_lv import *
 from ._portugal_dgs import *
 from ._switzerland import *
+from ._france_data_gouv_fr import *
