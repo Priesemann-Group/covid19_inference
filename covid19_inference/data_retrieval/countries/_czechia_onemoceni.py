@@ -197,7 +197,8 @@ class Czechia(Retrieval):
             return df
 
         # Drop all outside infections
-        df = df[df["infection abroad"] != 1.0]
+        if value == "confirmed":
+            df = df[df["infection abroad"] != 1.0]
 
         # Select age group
         if age_group is not None:
