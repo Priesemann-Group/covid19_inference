@@ -172,7 +172,7 @@ class Netherlands(Retrieval):
         # ------------------------------------------------------------------------------ #
         if age_group is not None:
             df = self.data.loc[self.data["Agegroup"] == age_group]
-            header += +" " + age_group
+            header = header + " " + age_group
         else:
             df = self.data
 
