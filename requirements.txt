@@ -4,3 +4,4 @@ pymc3 == 3.8.*
 theano
 pandas
 pytest
+json

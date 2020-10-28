@@ -261,7 +261,8 @@ class OxCGRT(Retrieval):
         # 1. Select by country
         df = self.data[self.data["country"] == country]
         df_t = df[policy].dropna(axis=0)
-        return df_t[data_begin:data_end]
+        ix = pd.date_range(data_begin, data_end)
+        return df_t[data_begin:data_end].reindex(ix)
 
     def __get_first_date(self):
         return self.data.index.min()

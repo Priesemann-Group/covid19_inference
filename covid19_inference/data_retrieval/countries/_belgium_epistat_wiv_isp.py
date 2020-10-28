@@ -212,14 +212,18 @@ class Belgium(Retrieval):
         if province is not None and "province" in df.columns:
             df = df.loc[df["province"] == province]
 
+        if value == "tests":
+            df = df.drop(columns="TESTS_ALL_POS")
+            df = df.groupby("date").sum()
+            return df["TESTS_ALL"].asfreq("D", fill_value=0)[data_begin:data_end]
+
         # Select age group
         if age_group is not None and "age_group" in df.columns:
             df = df.loc[df["age_group"] == age_group]
 
         df = df.groupby("date").sum()
-
         df.columns = [("Belgium", age_group)]
-        return df
+        return df[("Belgium", age_group)].asfreq("D", fill_value=0)[data_begin:data_end]
 
     def get_total(
         self,
