@@ -261,7 +261,7 @@ class JHU(Retrieval):
 
         # If no date is given set to first and last dates in data
         if data_begin is None:
-            data_begin = self.__get_first_date()
+            data_begin = self.__get_first_date() + datetime.timedelta(days=1)
         if data_end is None:
             data_end = self.__get_last_date()
 

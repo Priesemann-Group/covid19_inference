@@ -2,7 +2,7 @@
 # @Author:        F. Paul Spitzner
 # @Email:         paul.spitzner@ds.mpg.de
 # @Created:       2020-04-20 18:50:13
-# @Last Modified: 2020-07-03 14:27:08
+# @Last Modified: 2020-11-24 13:00:10
 # ------------------------------------------------------------------------------ #
 # Callable in your scripts as e.g. `cov.plot.timeseries()`
 # Plot functions and helper classes
@@ -52,54 +52,54 @@ def timeseries_overview(
     add_more_later=False,
 ):
     r"""
-        Create the time series overview similar to our paper.
-        Dehning et al. arXiv:2004.01105
-        Contains :math:`\lambda`, new cases, and cumulative cases.
+    Create the time series overview similar to our paper.
+    Dehning et al. arXiv:2004.01105
+    Contains :math:`\lambda`, new cases, and cumulative cases.
 
-        Parameters
-        ----------
-        model : :class:`Cov19Model`
-            
-        trace : trace instance
-            needed for the data
+    Parameters
+    ----------
+    model : :class:`Cov19Model`
 
-        offset : int
-            offset that needs to be added to the (cumulative sum of) new cases at time
-            model.data_begin to arrive at cumulative cases
+    trace : trace instance
+        needed for the data
 
-        start : datetime.datetime
-            only used to set xrange in the end
-        end : datetime.datetime
-            only used to set xrange in the end
-        color : str
-            main color to use, default from rcParam
-        save_to : str or None
-            path where to save the figures. default: None, not saving figures
-        annotate_constrained : bool
-            show the unconstrained constrained annotation in lambda panel
-        annotate_watermark : bool
-            show our watermark
-        axes : np.array of mpl axes
-            provide an array of existing axes (from previously calling this function)
-            to add more traces. Data will not be added again. Ideally call this first
-            with `add_more_later=True`
-        forecast_label : str
-            legend label for the forecast, default: "Forecast"
-        forecast_heading : str
-            if `add_more_later`, how to label the forecast section.
-            default: "$\bf Forecasts\!:$",
-        add_more_later : bool
-            set this to true if you plan to add multiple models to the plot. changes the layout (and the color of the fit to past data)
+    offset : int
+        offset that needs to be added to the (cumulative sum of) new cases at time
+        model.data_begin to arrive at cumulative cases
 
-        Returns
-        -------
-            fig : mpl figure
-            axes : np array of mpl axeses (insets not included)
+    start : datetime.datetime
+        only used to set xrange in the end
+    end : datetime.datetime
+        only used to set xrange in the end
+    color : str
+        main color to use, default from rcParam
+    save_to : str or None
+        path where to save the figures. default: None, not saving figures
+    annotate_constrained : bool
+        show the unconstrained constrained annotation in lambda panel
+    annotate_watermark : bool
+        show our watermark
+    axes : np.array of mpl axes
+        provide an array of existing axes (from previously calling this function)
+        to add more traces. Data will not be added again. Ideally call this first
+        with `add_more_later=True`
+    forecast_label : str
+        legend label for the forecast, default: "Forecast"
+    forecast_heading : str
+        if `add_more_later`, how to label the forecast section.
+        default: "$\bf Forecasts\!:$",
+    add_more_later : bool
+        set this to true if you plan to add multiple models to the plot. changes the layout (and the color of the fit to past data)
 
-        TODO
-        ----
-        * Replace `offset` with an instance of data class that should yield the
-          cumulative cases. we should not to calculations here.
+    Returns
+    -------
+        fig : mpl figure
+        axes : np array of mpl axeses (insets not included)
+
+    TODO
+    ----
+    * Replace `offset` with an instance of data class that should yield the
+      cumulative cases. we should not to calculations here.
     """
 
     figsize = (6, 6)
@@ -235,12 +235,21 @@ def timeseries_overview(
         )
         # model fit
         _timeseries(
-            x=x_past, y=y_past, ax=ax, what="model", color=color_past, label="Fit",
+            x=x_past,
+            y=y_past,
+            ax=ax,
+            what="model",
+            color=color_past,
+            label="Fit",
         )
         if add_more_later:
             # dummy element to separate forecasts
             ax.plot(
-                [], [], "-", linewidth=0, label=forecast_heading,
+                [],
+                [],
+                "-",
+                linewidth=0,
+                label=forecast_heading,
             )
 
     # model fcast
@@ -297,12 +306,21 @@ def timeseries_overview(
         )
         # model fit
         _timeseries(
-            x=x_past, y=y_past, ax=ax, what="model", color=color_past, label="Fit",
+            x=x_past,
+            y=y_past,
+            ax=ax,
+            what="model",
+            color=color_past,
+            label="Fit",
         )
         if add_more_later:
             # dummy element to separate forecasts
             ax.plot(
-                [], [], "-", linewidth=0, label=forecast_heading,
+                [],
+                [],
+                "-",
+                linewidth=0,
+                label=forecast_heading,
             )
 
     # model fcast, needs to start one day later, too. use the end date we got before
@@ -394,10 +412,16 @@ def timeseries_overview(
     # plt.subplots_adjust(wspace=0.4, hspace=0.25)
     if save_to is not None:
         plt.savefig(
-            save_to + ".pdf", dpi=300, bbox_inches="tight", pad_inches=0.05,
+            save_to + ".pdf",
+            dpi=300,
+            bbox_inches="tight",
+            pad_inches=0.05,
         )
         plt.savefig(
-            save_to + ".png", dpi=300, bbox_inches="tight", pad_inches=0.05,
+            save_to + ".png",
+            dpi=300,
+            bbox_inches="tight",
+            pad_inches=0.05,
         )
 
     # add insets to returned axes. maybe not, general axes style would be applied
@@ -417,34 +441,34 @@ def _timeseries(
     **kwargs,
 ):
     """
-        low-level function to plot anything that has a date on the x-axis.
+    low-level function to plot anything that has a date on the x-axis.
 
-        Parameters
-        ----------
-        x : array of datetime.datetime
-            times for the x axis
+    Parameters
+    ----------
+    x : array of datetime.datetime
+        times for the x axis
 
-        y : array, 1d or 2d
-            data to plot. if 2d, we plot the CI as fill_between (if CI enabled in rc
-            params)
-            if 2d, then first dim is realization and second dim is time matching `x`
-            if 1d then first tim is time matching `x`
+    y : array, 1d or 2d
+        data to plot. if 2d, we plot the CI as fill_between (if CI enabled in rc
+        params)
+        if 2d, then first dim is realization and second dim is time matching `x`
+        if 1d then first tim is time matching `x`
 
-        ax : mpl axes element, optional
-            plot into an existing axes element. default: None
+    ax : mpl axes element, optional
+        plot into an existing axes element. default: None
 
-        what : str, optional
-            what type of data is provided in x. sets the style used for plotting:
-            * `data` for data points
-            * `fcast` for model forecast (prediction)
-            * `model` for model reproduction of data (past)
+    what : str, optional
+        what type of data is provided in x. sets the style used for plotting:
+        * `data` for data points
+        * `fcast` for model forecast (prediction)
+        * `model` for model reproduction of data (past)
 
-        kwargs : dict, optional
-            directly passed to plotting mpl.
+    kwargs : dict, optional
+        directly passed to plotting mpl.
 
-        Returns
-        -------
-        ax
+    Returns
+    -------
+    ax
     """
 
     # ------------------------------------------------------------------------------ #
@@ -551,51 +575,56 @@ def _timeseries(
 
 
 def _get_array_from_trace_via_date(
-    model, trace, var, start=None, end=None, dates=None,
+    model,
+    trace,
+    var,
+    start=None,
+    end=None,
+    dates=None,
 ):
     """
-        Parameters
-        ----------
-        model : model instance
+    Parameters
+    ----------
+    model : model instance
 
-        trace : trace instance
+    trace : trace instance
 
-        var : str
-            the variable name in the trace
+    var : str
+        the variable name in the trace
 
-        start : datetime.datetime
-            get all data for a range from `start` to `end`. (both boundary
-            dates included)
+    start : datetime.datetime
+        get all data for a range from `start` to `end`. (both boundary
+        dates included)
 
-        end : datetime.datetime
+    end : datetime.datetime
 
-        dates : list of datetime.datetime objects, optional
-            the dates for which to get the data. Default: None, will return
-            all available data.
+    dates : list of datetime.datetime objects, optional
+        the dates for which to get the data. Default: None, will return
+        all available data.
 
-        Returns
-        -------
-        data : nd array, 3 dim
-            the elements from the trace matching the dates.
-            dimensions are as follows
-            0 samples, if no samples only one entry
-            1 data with time matching the returned `dates` (if compatible variable)
-            2 region, if no regions only one entry
+    Returns
+    -------
+    data : nd array, 3 dim
+        the elements from the trace matching the dates.
+        dimensions are as follows
+        0 samples, if no samples only one entry
+        1 data with time matching the returned `dates` (if compatible variable)
+        2 region, if no regions only one entry
 
-        dates : pandas DatetimeIndex
-            the matching dates. this is essnetially an array of dates than can be passed
-            to matplotlib
+    dates : pandas DatetimeIndex
+        the matching dates. this is essnetially an array of dates than can be passed
+        to matplotlib
 
-        Example
-        -------
-        .. code-block::
+    Example
+    -------
+    .. code-block::
 
-            import covid19_inference as cov
-            model, trace = cov.create_example_instance()
-            y, x = cov.plot._get_array_from_trace_via_date(
-                model, trace, "lambda_t", model.data_begin, model.data_end
-            )
-            ax = cov.plot._timeseries(x, y[:,:,0], what="model")
+        import covid19_inference as cov
+        model, trace = cov.create_example_instance()
+        y, x = cov.plot._get_array_from_trace_via_date(
+            model, trace, "lambda_t", model.data_begin, model.data_end
+        )
+        ax = cov.plot._timeseries(x, y[:,:,0], what="model")
     """
 
     ref = model.sim_begin
@@ -643,41 +672,41 @@ def _get_array_from_trace_via_date(
 
 def _new_cases_to_cum_cases(x, y, what, offset=0):
     """
-        so this conversion got ugly really quickly.
-        need to check dimensionality of y
+    so this conversion got ugly really quickly.
+    need to check dimensionality of y
 
-        Parameters
-        ----------
-        x : pandas DatetimeIndex array
-            will be padded accordingly
+    Parameters
+    ----------
+    x : pandas DatetimeIndex array
+        will be padded accordingly
 
-        y : 1d or 2d numpy array
-            new cases matching dates in x.
-            if 1d, we assume raw data (no samples)
-            if 2d, we assume results from trace with 0th dim samples and 1st new cases
-            matching x
+    y : 1d or 2d numpy array
+        new cases matching dates in x.
+        if 1d, we assume raw data (no samples)
+        if 2d, we assume results from trace with 0th dim samples and 1st new cases
+        matching x
 
-        what : str
-            dirty workaround to differntiate between traces and raw data
-            "data" or "trace"
+    what : str
+        dirty workaround to differntiate between traces and raw data
+        "data" or "trace"
 
-        offset : int or array like
-            added to cum sum (should be the known cumulative case number at the
-            first date of provided in x)
+    offset : int or array like
+        added to cum sum (should be the known cumulative case number at the
+        first date of provided in x)
 
-        Returns
-        -------
-        x_cum : pandas DatetimeIndex array
-            dates of the cumulative cases
+    Returns
+    -------
+    x_cum : pandas DatetimeIndex array
+        dates of the cumulative cases
 
-        y_cum : nd array
-            cumulative cases matching x_cum and the dimension of input y
+    y_cum : nd array
+        cumulative cases matching x_cum and the dimension of input y
 
-        Example
-        -------
-        .. code-block::
+    Example
+    -------
+    .. code-block::
 
-            cum_dates, cum_cases = _new_cases_to_cum_cases(new_dates, new_cases)
+        cum_dates, cum_cases = _new_cases_to_cum_cases(new_dates, new_cases)
     """
 
     # things from the trace have the 0-th dimension for samples. raw data does not
@@ -819,7 +848,10 @@ def _distribution(model, trace, key, ax=None, color=None, draw_prior=True):
         )
         # align 0 index with the first day of the month
         data_shifted = data_shifted + 1
-        text_md, text_ci = _string_median_CI(data_shifted, prec=1,)
+        text_md, text_ci = _string_median_CI(
+            data_shifted,
+            prec=1,
+        )
     else:
         text_md, text_ci = _string_median_CI(data, prec=1)
 
@@ -849,7 +881,11 @@ def _distribution(model, trace, key, ax=None, color=None, draw_prior=True):
             zorder=101,
         )
         _add_mpl_rect_around_text(
-            [tel_md, tel_ci], ax, facecolor="white", alpha=0.5, zorder=99,
+            [tel_md, tel_ci],
+            ax,
+            facecolor="white",
+            alpha=0.5,
+            zorder=99,
         )
     except Exception as e:
         log.debug(f"unable to create inset with {key} value: {e}")
@@ -865,13 +901,13 @@ def _distribution(model, trace, key, ax=None, color=None, draw_prior=True):
 
 def _label_for_varname(key):
     """
-        get the label for trace variable names (e.g. placed on top of distributions)
+    get the label for trace variable names (e.g. placed on top of distributions)
 
-        default for unknown keys is the key itself
+    default for unknown keys is the key itself
 
-        TODO
-        ----
-        add more parameters
+    TODO
+    ----
+    add more parameters
     """
     res = key
 
@@ -893,14 +929,14 @@ def _label_for_varname(key):
 
 def _rx_cp_id(key):
     """
-        get the change_point index from a compatible variable name
+    get the change_point index from a compatible variable name
     """
     return re.search("_[0-9]+(_|$)", key).group().replace("_", "")
 
 
 def _rx_hc_id(key):
     """
-        get the L1 / L2 value of hierarchical variable name
+    get the L1 / L2 value of hierarchical variable name
     """
     if "_L1" in key:
         return 1
@@ -912,14 +948,14 @@ def _rx_hc_id(key):
 
 def _math_for_varname(key):
     """
-        get the math string for trace variable name, e.g. used to print the median
-        representation.
+    get the math string for trace variable name, e.g. used to print the median
+    representation.
 
-        default for unknown keys is "$x$"
+    default for unknown keys is "$x$"
 
-        TODO
-        ----
-        use regex
+    TODO
+    ----
+    use regex
     """
     # default
     res = "x"
@@ -982,16 +1018,16 @@ def _math_for_varname(key):
 
 def _days_to_mpl_dates(days, origin):
     """
-        convert days as number to matplotlib compatible date numbers.
-        this is not the same as pandas dateindices, but numpy operations work on them
+    convert days as number to matplotlib compatible date numbers.
+    this is not the same as pandas dateindices, but numpy operations work on them
 
-        Parameters
-        ----------
-        days : number, 1d array of numbers
-            the day number to convert, e.g. integer values >= 0, one day per int
+    Parameters
+    ----------
+    days : number, 1d array of numbers
+        the day number to convert, e.g. integer values >= 0, one day per int
 
-        origin : datetime.datetime
-            the date object corresponding to day 0
+    origin : datetime.datetime
+        the date object corresponding to day 0
     """
     try:
         return mpl.dates.date2num(
@@ -1003,12 +1039,12 @@ def _days_to_mpl_dates(days, origin):
 
 def _get_mpl_text_coordinates(text, ax):
     """
-        helper to get coordinates of a text object in the coordinates of the
-        axes element [0,1].
-        used for the rectangle backdrop.
+    helper to get coordinates of a text object in the coordinates of the
+    axes element [0,1].
+    used for the rectangle backdrop.
 
-        Returns:
-        x_min, x_max, y_min, y_max
+    Returns:
+    x_min, x_max, y_min, y_max
     """
     fig = ax.get_figure()
 
@@ -1041,14 +1077,14 @@ def _get_mpl_text_coordinates(text, ax):
 
 def _add_mpl_rect_around_text(text_list, ax, x_padding=0.05, y_padding=0.05, **kwargs):
     """
-        add a rectangle to the axes (behind the text)
+    add a rectangle to the axes (behind the text)
 
-        provide a list of text elements and possible options passed to
-        mpl.patches.Rectangle
-        e.g.
-        facecolor="grey",
-        alpha=0.2,
-        zorder=99,
+    provide a list of text elements and possible options passed to
+    mpl.patches.Rectangle
+    e.g.
+    facecolor="grey",
+    alpha=0.2,
+    zorder=99,
     """
 
     x_gmin = 1
@@ -1089,9 +1125,9 @@ def _add_mpl_rect_around_text(text_list, ax, x_padding=0.05, y_padding=0.05, **k
 # ------------------------------------------------------------------------------ #
 def get_rcparams_default():
     """
-        Get a Param (dict) of the default parameters.
-        Here we set our default values. Assigned once to module variable
-        `rcParamsDefault` on load.
+    Get a Param (dict) of the default parameters.
+    Here we set our default values. Assigned once to module variable
+    `rcParamsDefault` on load.
     """
     par = Param(
         locale="en_US",
@@ -1112,69 +1148,69 @@ def get_rcparams_default():
 
 def set_rcparams(par):
     """
-        Sets the rcparameters used for plotting, provided instance of `Param` has to have
-        the following keys (attributes):
+    Sets the rcparameters used for plotting, provided instance of `Param` has to have
+    the following keys (attributes):
 
-        Attributes
-        ----------
-        locale : str
-            region settings, passed to `setlocale()`. Default: "en_US"
+    Attributes
+    ----------
+    locale : str
+        region settings, passed to `setlocale()`. Default: "en_US"
 
-        date_format : str
-            Format the date on the x axis of time-like data (see https://strftime.org/)
-            example April 1 2020:
-            "%m/%d" 04/01, "%-d. %B" 1. April
-            Default "%b %-d", becomes April 1
+    date_format : str
+        Format the date on the x axis of time-like data (see https://strftime.org/)
+        example April 1 2020:
+        "%m/%d" 04/01, "%-d. %B" 1. April
+        Default "%b %-d", becomes April 1
 
-        date_show_minor_ticks : bool
-            whether to show the minor ticks (for every day). Default: True
+    date_show_minor_ticks : bool
+        whether to show the minor ticks (for every day). Default: True
 
-        rasterization_zorder : int or None
-            Rasterizes plotted content below this value, set to None to keep everything
-            a vector, Default: -1
+    rasterization_zorder : int or None
+        Rasterizes plotted content below this value, set to None to keep everything
+        a vector, Default: -1
 
-        draw_ci_95 : bool
-            For timeseries plots, indicate 95% Confidence interval via fill between.
-            Default: True
+    draw_ci_95 : bool
+        For timeseries plots, indicate 95% Confidence interval via fill between.
+        Default: True
 
-        draw_ci_75 : bool
-            For timeseries plots, indicate 75% Confidence interval via fill between.
-            Default: False
+    draw_ci_75 : bool
+        For timeseries plots, indicate 75% Confidence interval via fill between.
+        Default: False
 
-        draw_ci_50 : bool
-            For timeseries plots, indicate 50% Confidence interval via fill between.
-            Default: False
+    draw_ci_50 : bool
+        For timeseries plots, indicate 50% Confidence interval via fill between.
+        Default: False
 
-        color_model : str
-            Base color used for model plots, mpl compatible color code "C0", "#303030"
-            Default : "tab:green"
+    color_model : str
+        Base color used for model plots, mpl compatible color code "C0", "#303030"
+        Default : "tab:green"
 
-        color_data : str
-            Base color used for data
-            Default : "tab:blue"
+    color_data : str
+        Base color used for data
+        Default : "tab:blue"
 
-        color_annot : str
-            Color to use for annotations
-            Default : "#646464"
+    color_annot : str
+        Color to use for annotations
+        Default : "#646464"
 
-        color_prior : str
-            Color to used for priors in distributions
-            Default : "#708090"
+    color_prior : str
+        Color to used for priors in distributions
+        Default : "#708090"
 
-        Example
-        -------
-        .. code-block:: python
+    Example
+    -------
+    .. code-block:: python
 
-            # Get default parameter
-            pars = cov.plot.get_rcparams_default()
+        # Get default parameter
+        pars = cov.plot.get_rcparams_default()
 
-            # Change parameters
-            pars["locale"]="de_DE"
-            pars["color_data"]="tab:purple"
+        # Change parameters
+        pars["locale"]="de_DE"
+        pars["color_data"]="tab:purple"
 
-            # Set parameters
-            cov.plot.set_rcparams(pars)
-        ..
+        # Set parameters
+        cov.plot.set_rcparams(pars)
+    ..
     """
     for key in get_rcparams_default().keys():
         assert key in par.keys(), "Provide all keys that are in .get_rcparams_default()"
@@ -1185,24 +1221,24 @@ def set_rcparams(par):
 
 class Param(dict):
     """
-        Paramters Base Class (a tweaked dict)
+    Paramters Base Class (a tweaked dict)
 
-        We inherit from dict and also provide keys as attributes, mapped to `.get()` of
-        dict. This avoids the KeyError: if getting parameters via `.the_parname`, we
-        return None when the param does not exist.
+    We inherit from dict and also provide keys as attributes, mapped to `.get()` of
+    dict. This avoids the KeyError: if getting parameters via `.the_parname`, we
+    return None when the param does not exist.
 
-        Avoid using keys that have the same name as class functions etc.
+    Avoid using keys that have the same name as class functions etc.
 
-        Example
-        -------
-        .. code-block:: python
+    Example
+    -------
+    .. code-block:: python
 
-            foo = Param(lorem="ipsum")
-            print(foo.lorem)
-            >>> 'ipsum'
-            print(foo.does_not_exist is None)
-            >>> True
-        ..
+        foo = Param(lorem="ipsum")
+        print(foo.lorem)
+        >>> 'ipsum'
+        print(foo.does_not_exist is None)
+        >>> True
+    ..
     """
 
     __getattr__ = dict.get
@@ -1222,9 +1258,9 @@ class Param(dict):
 # ------------------------------------------------------------------------------ #
 def _format_k(prec):
     """
-        format yaxis 10_000 as 10 k.
-        _format_k(0)(1200, 1000.0) gives "1 k"
-        _format_k(1)(1200, 1000.0) gives "1.2 k"
+    format yaxis 10_000 as 10 k.
+    _format_k(0)(1200, 1000.0) gives "1 k"
+    _format_k(1)(1200, 1000.0) gives "1.2 k"
     """
 
     def inner(xval, tickpos):
@@ -1265,9 +1301,9 @@ def _string_median_CI(arr, prec=2):
     return f"{med}", f"[{perc1}, {perc2}]"
 
 
-def _add_watermark(ax, mark="Dehning et al. arXiv:2004.01105"):
+def _add_watermark(ax, mark="Dehning et al. 10.1126/science.abb9789"):
     """
-        Add our arxive url to an axes as (upper right) title
+    Add our arxive url to an axes as (upper right) title
     """
 
     # fig.text(
