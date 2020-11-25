@@ -285,7 +285,7 @@ class Belgium(Retrieval):
                 ],
                 **self.kwargs,
             )
-            log.info(f"Successfully loaded data from local")
+            f"Successfully loaded {self.name + '_*.csv.gz'} from {get_data_dir()}, skipping download."
             return True
         except Exception as e:
             log.info(f"Failed to load local files! {e} Trying fallbacks!")

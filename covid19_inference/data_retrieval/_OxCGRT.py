@@ -52,7 +52,7 @@ class OxCGRT(Retrieval):
         """
         Kwargs for pandas read csv
         """
-        kwargs = {}  # Surpress warning
+        kwargs = {"low_memory": False}  # Surpress warning
 
         """
         If the local file is older than the update_interval it gets updated once the

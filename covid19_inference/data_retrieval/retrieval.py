@@ -303,7 +303,9 @@ class Retrieval:
         finally:
             # We save it to the local files
             # self.data._save_to_local()
-            log.info(f"Successfully downloaded new files.")
+            log.info(
+                f"Successfully downloaded {self.name + '.csv.gz'} to {get_data_dir()}."
+            )
 
     def _local_helper(self):
         # If we can use a local file we construct the path from the given local name
@@ -311,7 +313,9 @@ class Retrieval:
             self._download_csv_from_source(
                 get_data_dir() + self.name + ".csv.gz", **self.kwargs
             )
-            log.info(f"Successfully loaded data from local")
+            log.info(
+                f"Successfully loaded {self.name + '.csv.gz'} from {get_data_dir()}, skipping download."
+            )
             return True
         except Exception as e:
             log.info(f"Failed to load local files! {e} Trying fallbacks!")
