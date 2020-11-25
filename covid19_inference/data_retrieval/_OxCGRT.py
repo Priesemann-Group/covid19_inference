@@ -52,7 +52,7 @@ class OxCGRT(Retrieval):
         """
         Kwargs for pandas read csv
         """
-        kwargs = {"low_memory": False}  # Surpress warning
+        kwargs = {}  # Surpress warning
 
         """
         If the local file is older than the update_interval it gets updated once the
@@ -94,7 +94,7 @@ class OxCGRT(Retrieval):
         # ------------------------------------------------------------------------------ #
         retrieved_local = False
         if self._timestamp_local_old(force_local) or force_download:
-            self._download_helper(**self.kwargs)
+            self._download_helper(**self.kwargs, low_memory=False)
         else:
             retrieved_local = self._local_helper()
 
