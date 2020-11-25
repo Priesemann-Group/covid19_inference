@@ -220,7 +220,7 @@ class Retrieval:
         :bool
             True if the retrieval was a success, False if it failed
         """
-        self.data = pd.read_csv(filepath, **kwargs)
+        self.data = pd.read_csv(filepath, low_memory=False, **kwargs)
         return True
 
     def _fallback_handler(self):

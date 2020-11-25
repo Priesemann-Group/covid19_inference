@@ -94,7 +94,7 @@ class OxCGRT(Retrieval):
         # ------------------------------------------------------------------------------ #
         retrieved_local = False
         if self._timestamp_local_old(force_local) or force_download:
-            self._download_helper(**self.kwargs, low_memory=False)
+            self._download_helper(**self.kwargs)
         else:
             retrieved_local = self._local_helper()
 
