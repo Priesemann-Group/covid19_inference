@@ -31,5 +31,5 @@ setup(
     long_description_content_type="text/markdown",
     python_requires=">=3.6.0",
     version=verstr,
-    install_requires=["pymc3", "matplotlib", "numpy", "pandas", "theano",],
+    install_requires=["pymc3", "matplotlib", "numpy", "pandas","requests"],
 )

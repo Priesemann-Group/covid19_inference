@@ -97,7 +97,7 @@ class GOOGLE(Retrieval):
         # ------------------------------------------------------------------------------ #
         retrieved_local = False
         if self._timestamp_local_old(force_local) or force_download:
-            self._download_helper(**self.kwargs)
+            self._download_helper()
         else:
             retrieved_local = self._local_helper()
 

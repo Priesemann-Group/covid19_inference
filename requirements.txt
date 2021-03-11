@@ -1,7 +1,6 @@
 numpy
 matplotlib
-pymc3 == 3.8.*
-theano
+pymc3
 pandas
 pytest
-json
+requests
