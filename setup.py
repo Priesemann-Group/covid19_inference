@@ -22,7 +22,7 @@ else:
 
 setup(
     name="covid19_inference",
-    author="Jonas Dehning, Johannes Zierenberg, F. Paul Spitzner, Michael Wibral, Joao Pinheiro Neto, Michael Wilczek, Viola Priesemann",
+    author="Jonas Dehning, Johannes Zierenberg, F. Paul Spitzner, Michael Wibral, Joao Pinheiro Neto, Michael Wilczek, Sebastian B. Mohr, Viola Priesemann",
     author_email="jonas.dehning@ds.mpg.de",
     packages=find_namespace_packages(),
     url="https://github.com/Priesemann-Group/covid19_inference",
@@ -31,5 +31,5 @@ setup(
     long_description_content_type="text/markdown",
     python_requires=">=3.6.0",
     version=verstr,
-    install_requires=["pymc3", "matplotlib", "numpy", "pandas","requests"],
+    install_requires=["pymc3", "matplotlib", "numpy", "pandas", "requests"],
 )
