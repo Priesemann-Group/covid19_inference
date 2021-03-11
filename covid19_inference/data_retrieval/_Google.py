@@ -55,7 +55,7 @@ class GOOGLE(Retrieval):
         """
         Kwargs for pandas read csv
         """
-        kwargs = {"low_memory": False}  # Surpress warning
+        # kwargs = {"low_memory": False}  # Surpress warning
 
         """
         If the local file is older than the update_interval it gets updated once the
@@ -70,7 +70,6 @@ class GOOGLE(Retrieval):
             url_csv,
             [_data_dir_fallback + "/" + name + "_fallback.csv.gz"],
             update_interval,
-            **kwargs,
         )
 
         if auto_download:
