@@ -13,11 +13,11 @@ This is a Bayesian python toolbox for inference and forecast of the spread of th
 - [**Source code**](https://github.com/Priesemann-Group/covid19_inference)
 
 
-The latest stable version is [v0.1.8](https://github.com/Priesemann-Group/covid19_inference/tree/v0.1.8)!
+The latest stable version is [v0.2.0](https://github.com/Priesemann-Group/covid19_inference/tree/v0.2.0)!
 
 
-The research article [is available on arXiv](https://arxiv.org/abs/2004.01105) (**updated on April 13**).
-The code used to produce the figures is available in the other repository [here](https://github.com/Priesemann-Group/covid19_inference_forecast)
+The research article [is available on arXiv](https://arxiv.org/abs/2004.01105) (**updated on April 13 2020**).
+The code used to produce the figures is available in the other repository [here](https://github.com/Priesemann-Group/covid19_inference_forecast).
 
 
 If you are interested in our efforts and like to help us feel free to contact us. **We are looking for support** to help us with analyzing other countries and to extend to an hierarchical regional model.
@@ -25,3 +25,9 @@ If you are interested in our efforts and like to help us feel free to contact us
 ### Please take notice of our [disclaimer](DISCLAIMER.md).
 
 
+### Installation:
+
+Can be installed from pypi with
+```
+pip install covid19_inference
+```
