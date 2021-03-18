@@ -97,7 +97,11 @@ with cov19.Cov19Model(**params_model) as this_model:
     # necessary to use it, one can simply remove it and use the default argument for
     # pr_I_begin in cov19.model.SIR
     prior_I = cov19.model.uncorrelated_prior_I(
-        lambda_t_log=lambda_t_log, mu=mu, pr_median_delay=pr_delay
+        lambda_t_log=lambda_t_log,
+        mu=mu,
+        pr_median_delay=pr_delay,
+        pr_sigma_I_begin=2,
+        n_data_points_used=5,
     )
 
     # Use lambda_t_log and mu as parameters for the SIR model.
@@ -109,7 +113,8 @@ with cov19.Cov19Model(**params_model) as this_model:
         cases=new_cases,
         name_cases="delayed_cases",
         pr_mean_of_median=pr_delay,
-        pr_median_of_width=0.1,
+        pr_sigma_of_median=0.2,
+        pr_median_of_width=0.3,
     )
 
     # Modulate the inferred cases by a abs(sin(x)) function, to account for weekend effects
