@@ -504,19 +504,19 @@ def _timeseries(
     # kwargs
     # ------------------------------------------------------------------------------ #
 
-    if what is "data":
+    if what == "data":
         if "color" not in kwargs:
             kwargs = dict(kwargs, color=rcParams["color_data"])
         if "marker" not in kwargs:
             kwargs = dict(kwargs, marker="d")
         if "ls" not in kwargs and "linestyle" not in kwargs:
             kwargs = dict(kwargs, ls="None")
-    elif what is "fcast":
+    elif what == "fcast":
         if "color" not in kwargs:
             kwargs = dict(kwargs, color=rcParams["color_model"])
         if "ls" not in kwargs and "linestyle" not in kwargs:
             kwargs = dict(kwargs, ls="--")
-    elif what is "model":
+    elif what == "model":
         if "color" not in kwargs:
             kwargs = dict(kwargs, color=rcParams["color_model"])
         if "ls" not in kwargs and "linestyle" not in kwargs:
