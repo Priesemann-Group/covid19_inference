@@ -6,8 +6,9 @@ import logging
 logging.basicConfig(level=logging.INFO, format="%(levelname)-8s [%(name)s] %(message)s")
 log = logging.getLogger(__name__)
 
-# import filelock
-# filelock.logger().setLevel("WARNING")
+import filelock
+
+filelock.logger().setLevel("WARNING")
 
 # from .data_retrieval import GOOGLE
 from . import data_retrieval
