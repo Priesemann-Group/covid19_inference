@@ -4,3 +4,4 @@ pymc3
 pandas
 pytest
 requests
+numpyro

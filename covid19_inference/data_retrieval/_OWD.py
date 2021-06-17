@@ -151,7 +151,8 @@ class OWD(Retrieval):
                 Which data to return, possible values are
                 - "confirmed",
                 - "tests",
-                - "deaths"
+                - "deaths",
+                - "vacination"
                 (default: "confirmed")
             country : str
                 name of the country
@@ -165,8 +166,10 @@ class OWD(Retrieval):
             : pandas.DataFrame
                 table with new cases and the date as index
         """
-        if value not in ["confirmed", "deaths", "tests"]:
-            log.warning("Valid values are 'confirmed' and 'deaths'")
+        if value not in ["confirmed", "deaths", "tests", "vacinations"]:
+            log.warning(
+                "Valid values are 'confirmed', 'tests', 'vacinations' and 'deaths'"
+            )
             raise ValueError("No valid value given! " + value)
         if value == "confirmed":
             filter_value = "total_cases"
@@ -174,6 +177,8 @@ class OWD(Retrieval):
             filter_value = "total_deaths"
         if value == "tests":
             filter_value = "total_tests"
+        if value == "vacinations":
+            filter_value = "total_vaccinations"
         return self._filter(
             value=filter_value,
             country=country,
@@ -206,8 +211,10 @@ class OWD(Retrieval):
             : pandas.DataFrame
                 table with new cases and the date as index
         """
-        if value not in ["confirmed", "deaths", "tests"]:
-            log.warning("Valid values are 'confirmed' and 'deaths'")
+        if value not in ["confirmed", "deaths", "tests", "vacinations"]:
+            log.warning(
+                "Valid values are 'confirmed', 'tests', 'vacinations' and 'deaths'"
+            )
             raise ValueError("No valid value given! " + value)
         if value == "confirmed":
             filter_value = "new_cases"
@@ -215,6 +222,8 @@ class OWD(Retrieval):
             filter_value = "new_deaths"
         if value == "tests":
             filter_value = "new_tests"
+        if value == "vacinations":
+            filter_value = "new_vaccinations"
         return self._filter(
             value=filter_value,
             country=country,

@@ -1,4 +1,5 @@
 from setuptools import setup, find_namespace_packages
+from pip.req import parse_requirements
 import re
 
 # read the contents of your README file
@@ -31,5 +32,5 @@ setup(
     long_description_content_type="text/markdown",
     python_requires=">=3.6.0",
     version=verstr,
-    install_requires=["pymc3", "matplotlib", "numpy", "pandas", "requests"],
+    install_requires=parse_requirements('requirements.txt', session='hack'),
 )
