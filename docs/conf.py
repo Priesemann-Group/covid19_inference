@@ -189,12 +189,12 @@ latex_elements = {
 # -- Extension configuration -------------------------------------------------
 
 intersphinx_mapping = {
-    "python": ("http://docs.python.org/3", None),
-    "numpy": ("http://docs.scipy.org/doc/numpy", None),
-    "scipy": ("http://docs.scipy.org/doc/scipy/reference", None),
-    "matplotlib": ("http://matplotlib.sourceforge.net", None),
+    "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://docs.scipy.org/doc/numpy", None),
+    "scipy": ("https://docs.scipy.org/doc/scipy/reference", None),
+    "matplotlib": ("https://matplotlib.org/stable/", None),
     "pymc3": ("https://docs.pymc.io", None),
-    "theano": ("http://deeplearning.net/software/theano/", None),
+    "theano": ("https://theano-pymc.readthedocs.io/en/stable/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
 }
 
