@@ -1,5 +1,4 @@
 from setuptools import setup, find_namespace_packages
-from pip.req import parse_requirements
 import re
 
 # read the contents of your README file
@@ -20,6 +19,13 @@ else:
         verstr = mo.group(1)
     else:
         raise RuntimeError("unable to find version in covid19_inference/_version.py")
+
+
+def parse_requirements(filename):
+    """load requirements from a pip requirements file"""
+    lineiter = (line.strip() for line in open(filename))
+    return [line for line in lineiter if line and not line.startswith("#")]
+
 
 setup(
     name="covid19_inference",
