@@ -32,5 +32,5 @@ setup(
     long_description_content_type="text/markdown",
     python_requires=">=3.6.0",
     version=verstr,
-    install_requires=parse_requirements('requirements.txt', session='hack'),
+    install_requires=parse_requirements("requirements.txt", session="hack"),
 )
