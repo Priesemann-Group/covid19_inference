@@ -438,6 +438,7 @@ def _timeseries(
     draw_ci_95=None,
     draw_ci_75=None,
     draw_ci_50=None,
+    date_format=True,
     **kwargs,
 ):
     """
@@ -462,6 +463,9 @@ def _timeseries(
         * `data` for data points
         * `fcast` for model forecast (prediction)
         * `model` for model reproduction of data (past)
+
+    date_format: bool, optional
+        Automatic converting of index to dates default:True
 
     kwargs : dict, optional
         directly passed to plotting mpl.
@@ -569,7 +573,8 @@ def _timeseries(
     # ------------------------------------------------------------------------------ #
     # formatting
     # ------------------------------------------------------------------------------ #
-    _format_date_xticks(ax)
+    if date_format:
+        _format_date_xticks(ax)
 
     return ax
 
