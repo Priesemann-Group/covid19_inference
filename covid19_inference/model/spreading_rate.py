@@ -26,6 +26,7 @@ def lambda_t_with_sigmoids(
     pr_sigma_lambda_0=0.5,
     model=None,
     name_lambda_t="lambda_t",
+    hierarchical=None,
 ):
     """
         Builds a time dependent spreading rate :math:`\lambda_t` with change points. The change points are marked by
@@ -53,7 +54,11 @@ def lambda_t_with_sigmoids(
 
     # ?Get change points random variable?
     lambda_log_list, tr_time_list, tr_len_list = _make_change_point_RVs(
-        change_points_list, pr_median_lambda_0, pr_sigma_lambda_0, model=model
+        change_points_list,
+        pr_median_lambda_0,
+        pr_sigma_lambda_0,
+        model=model,
+        hierarchical=hierarchical,
     )
 
     # Build the time-dependent spreading rate
@@ -158,7 +163,11 @@ def lambda_t_with_linear_interp(
 
 
 def _make_change_point_RVs(
-    change_points_list, pr_median_lambda_0, pr_sigma_lambda_0=1, model=None
+    change_points_list,
+    pr_median_lambda_0,
+    pr_sigma_lambda_0=1,
+    model=None,
+    hierarchical=None,
 ):
     """
 
@@ -178,7 +187,7 @@ def _make_change_point_RVs(
         Add a way to name the changepoints
     """
 
-    def hierarchical():
+    def hierarchical_mod():
         lambda_0_hc_L2_log, lambda_0_hc_L1_log = ut.hierarchical_normal(
             name_L1="lambda_0_hc_L1_log_",
             name_L2="lambda_0_hc_L2_log",
@@ -187,31 +196,47 @@ def _make_change_point_RVs(
             pr_sigma=pr_sigma_lambda_0,
             error_cauchy=False,
         )
-
+        lambda_L1_log_list = []
         pm.Deterministic("lambda_0_hc_L2", tt.exp(lambda_0_hc_L2_log))
         pm.Deterministic("lambda_0_hc_L1", tt.exp(lambda_0_hc_L1_log))
         lambda_log_list.append(lambda_0_hc_L2_log)
+        lambda_L1_log_list.append(lambda_0_hc_L1_log)
 
         # Create lambda_log list
         for i, cp in enumerate(change_points_list):
             if cp["relative_to_previous"]:
-                pr_mean_lambda = lambda_log_list[-1] + tt.log(
-                    cp["pr_factor_to_previous"]
+
+                (
+                    factor_lambda_cp_hc_L2_log,
+                    factor_lambda_cp_hc_L1_log,
+                ) = ut.hierarchical_normal(
+                    name_L1=f"factor_lambda_{i + 1}_hc_L1_log",
+                    name_L2=f"factor_lambda_{i + 1}_hc_L2_log",
+                    name_sigma=f"sigma_lambda_{i + 1}_hc_L1",
+                    pr_mean=tt.log(cp["pr_factor_to_previous"]),
+                    pr_sigma=cp["pr_sigma_lambda"],
+                    error_cauchy=False,
                 )
+                lambda_cp_hc_L2_log = lambda_log_list[-1] + factor_lambda_cp_hc_L2_log
+                lambda_cp_hc_L1_log = (
+                    lambda_L1_log_list[-1] + factor_lambda_cp_hc_L2_log
+                )
+
             else:
                 pr_mean_lambda = np.log(cp["pr_median_lambda"])
 
-            lambda_cp_hc_L2_log, lambda_cp_hc_L1_log = ut.hierarchical_normal(
-                name_L1=f"lambda_{i + 1}_hc_L1_log",
-                name_L2=f"lambda_{i + 1}_hc_L2_log",
-                name_sigma=f"sigma_lambda_{i + 1}_hc_L1",
-                pr_mean=pr_mean_lambda,
-                pr_sigma=cp["pr_sigma_lambda"],
-                error_cauchy=False,
-            )
+                lambda_cp_hc_L2_log, lambda_cp_hc_L1_log = ut.hierarchical_normal(
+                    name_L1=f"lambda_{i + 1}_hc_L1_log",
+                    name_L2=f"lambda_{i + 1}_hc_L2_log",
+                    name_sigma=f"sigma_lambda_{i + 1}_hc_L1",
+                    pr_mean=pr_mean_lambda,
+                    pr_sigma=cp["pr_sigma_lambda"],
+                    error_cauchy=False,
+                )
             pm.Deterministic(f"lambda_{i + 1}_hc_L2", tt.exp(lambda_cp_hc_L2_log))
             pm.Deterministic(f"lambda_{i + 1}_hc_L1", tt.exp(lambda_cp_hc_L1_log))
             lambda_log_list.append(lambda_cp_hc_L2_log)
+            lambda_L1_log_list.append(lambda_cp_hc_L1_log)
 
         # Create transient time list
         dt_before = model.sim_begin
@@ -251,7 +276,7 @@ def _make_change_point_RVs(
                 pm.Deterministic(f"transient_len_{i + 1}", tt.exp(tr_len_L2_log))
         tr_len_list.append(tt.exp(tr_len_L2_log))
 
-    def non_hierachical():
+    def non_hierarchical_mod():
         lambda_0_log = pm.Normal(
             name="lambda_0_log_", mu=np.log(pr_median_lambda_0), sigma=pr_sigma_lambda_0
         )
@@ -323,10 +348,12 @@ def _make_change_point_RVs(
     tr_time_list = []
     tr_len_list = []
 
-    if model.is_hierarchical:
-        hierarchical()
+    if hierarchical is None:
+        hierarchical = model.is_hierarchical
+    if hierarchical:
+        hierarchical_mod()
     else:
-        non_hierachical()
+        non_hierarchical_mod()
 
     return lambda_log_list, tr_time_list, tr_len_list
 

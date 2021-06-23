@@ -235,21 +235,12 @@ def timeseries_overview(
         )
         # model fit
         _timeseries(
-            x=x_past,
-            y=y_past,
-            ax=ax,
-            what="model",
-            color=color_past,
-            label="Fit",
+            x=x_past, y=y_past, ax=ax, what="model", color=color_past, label="Fit",
         )
         if add_more_later:
             # dummy element to separate forecasts
             ax.plot(
-                [],
-                [],
-                "-",
-                linewidth=0,
-                label=forecast_heading,
+                [], [], "-", linewidth=0, label=forecast_heading,
             )
 
     # model fcast
@@ -306,21 +297,12 @@ def timeseries_overview(
         )
         # model fit
         _timeseries(
-            x=x_past,
-            y=y_past,
-            ax=ax,
-            what="model",
-            color=color_past,
-            label="Fit",
+            x=x_past, y=y_past, ax=ax, what="model", color=color_past, label="Fit",
         )
         if add_more_later:
             # dummy element to separate forecasts
             ax.plot(
-                [],
-                [],
-                "-",
-                linewidth=0,
-                label=forecast_heading,
+                [], [], "-", linewidth=0, label=forecast_heading,
             )
 
     # model fcast, needs to start one day later, too. use the end date we got before
@@ -412,16 +394,10 @@ def timeseries_overview(
     # plt.subplots_adjust(wspace=0.4, hspace=0.25)
     if save_to is not None:
         plt.savefig(
-            save_to + ".pdf",
-            dpi=300,
-            bbox_inches="tight",
-            pad_inches=0.05,
+            save_to + ".pdf", dpi=300, bbox_inches="tight", pad_inches=0.05,
         )
         plt.savefig(
-            save_to + ".png",
-            dpi=300,
-            bbox_inches="tight",
-            pad_inches=0.05,
+            save_to + ".png", dpi=300, bbox_inches="tight", pad_inches=0.05,
         )
 
     # add insets to returned axes. maybe not, general axes style would be applied
@@ -580,12 +556,7 @@ def _timeseries(
 
 
 def _get_array_from_trace_via_date(
-    model,
-    trace,
-    var,
-    start=None,
-    end=None,
-    dates=None,
+    model, trace, var, start=None, end=None, dates=None,
 ):
     """
     Parameters
@@ -853,10 +824,7 @@ def _distribution(model, trace, key, ax=None, color=None, draw_prior=True):
         )
         # align 0 index with the first day of the month
         data_shifted = data_shifted + 1
-        text_md, text_ci = _string_median_CI(
-            data_shifted,
-            prec=1,
-        )
+        text_md, text_ci = _string_median_CI(data_shifted, prec=1,)
     else:
         text_md, text_ci = _string_median_CI(data, prec=1)
 
@@ -886,11 +854,7 @@ def _distribution(model, trace, key, ax=None, color=None, draw_prior=True):
             zorder=101,
         )
         _add_mpl_rect_around_text(
-            [tel_md, tel_ci],
-            ax,
-            facecolor="white",
-            alpha=0.5,
-            zorder=99,
+            [tel_md, tel_ci], ax, facecolor="white", alpha=0.5, zorder=99,
         )
     except Exception as e:
         log.debug(f"unable to create inset with {key} value: {e}")
