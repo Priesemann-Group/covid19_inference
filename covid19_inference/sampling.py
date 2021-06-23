@@ -1,5 +1,6 @@
 import random
 import logging
+import warnings
 
 import pymc3 as pm
 import arviz as az
@@ -78,43 +79,60 @@ def robust_sample(
     trace_az : trace as arviz object
 
     """
-    trace_tuning = pm.sample(
-        model=model,
-        tune=tune,
-        draws=0,
-        chains=tuning_chains,
-        return_inferencedata=False,
-        discard_tuned_samples=False,
-        **kwargs,
-    )
-    trace_tuning_az = az.from_pymc3(trace_tuning, model=model, save_warmup=True)
-    if args_start_points is None:
-        args_start_points = {}
-    start_points, logl_starting_points = get_start_points(
-        trace_tuning, trace_tuning_az, **args_start_points
-    )
-    num_start_points = len(start_points)
-
-    if num_start_points < final_chains:
-        log.warning(
-            "Not enough chains converged to minimum, we recommend increasing the number of tuning chains"
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore", message=".*invalid value encountered in double_scalars.*"
         )
-        start_points = random.choices(start_points, k=final_chains - num_start_points)
-    elif num_start_points > final_chains:
-        p = np.exp(logl_starting_points - max(logl_starting_points))
-        start_points = np.random.choice(
-            start_points, size=final_chains, p=p / np.sum(p), replace=False,
+        warnings.filterwarnings(
+            "ignore", message=".*Tuning samples will be included in the returned.*"
         )
+        warnings.filterwarnings(
+            "ignore", message=".*Tuning was enabled throughout the whole trace.*"
+        )
+        warnings.filterwarnings("ignore", message=".*Mean of empty slice.*")
+        warnings.filterwarnings(
+            "ignore",
+            message=".*The number of samples is too small to check convergence reliably.*",
+        )
+        trace_tuning = pm.sample(
+            model=model,
+            tune=tune,
+            draws=0,
+            chains=tuning_chains,
+            return_inferencedata=False,
+            discard_tuned_samples=False,
+            **kwargs,
+        )
+        trace_tuning_az = az.from_pymc3(trace_tuning, model=model, save_warmup=True)
+        if args_start_points is None:
+            args_start_points = {}
+        start_points, logl_starting_points = get_start_points(
+            trace_tuning, trace_tuning_az, **args_start_points
+        )
+        num_start_points = len(start_points)
 
-    trace = pm.sample(
-        model=model,
-        tune=tune // 3,
-        draws=draws,
-        chains=final_chains,
-        start=start_points,
-        return_inferencedata=False,
-        discard_tuned_samples=False,
-        **kwargs,
-    )
-    trace_az = az.from_pymc3(trace, model=model, save_warmup=True)
+        if num_start_points < final_chains:
+            log.warning(
+                "Not enough chains converged to minimum, we recommend increasing the number of tuning chains"
+            )
+            start_points = random.choices(
+                start_points, k=final_chains - num_start_points
+            )
+        elif num_start_points > final_chains:
+            p = np.exp(logl_starting_points - max(logl_starting_points))
+            start_points = np.random.choice(
+                start_points, size=final_chains, p=p / np.sum(p), replace=False,
+            )
+
+        trace = pm.sample(
+            model=model,
+            tune=tune // 3,
+            draws=draws,
+            chains=final_chains,
+            start=start_points,
+            return_inferencedata=False,
+            discard_tuned_samples=False,
+            **kwargs,
+        )
+        trace_az = az.from_pymc3(trace, model=model, save_warmup=True)
     return trace, trace_az
