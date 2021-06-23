@@ -1,6 +1,7 @@
 numpy
 matplotlib
-pymc3
+pymc3==3.11.2
+arviz
 pandas
 pytest
 requests

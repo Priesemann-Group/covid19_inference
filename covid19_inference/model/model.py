@@ -232,7 +232,6 @@ class Cov19Model(Model):
     def diff_data_sim(self):
         return (self.data_begin - self.sim_begin).days
 
-
     """
         Other helpfull properties
     """
@@ -257,7 +256,7 @@ class Cov19Model(Model):
         varnames = [str(x).replace("_log__", "") for x in self.free_RVs]
         return varnames
 
-    
+
 def modelcontext(model):
     """
         return the given model or try to find it in the context if there was
