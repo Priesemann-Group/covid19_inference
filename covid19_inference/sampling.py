@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 def get_start_points(trace, trace_az, frames_start=None, SD_chain_logl=2.5):
     r"""
     Returns the starting points such that the chains deviate at most SD_chain_logl
-    standard deviations from the chain with the highest likelihood
+    standard deviations from the chain with the highest likelihood.
     Parameters
     ----------
     trace : multitrace object
@@ -25,6 +25,8 @@ def get_start_points(trace, trace_az, frames_start=None, SD_chain_logl=2.5):
     -------
     start_points :
         A list of starting points
+    logl_mean :
+        The mean log-likelihood of the starting points
     """
     logl = trace_az.warmup_sample_stats["lp"]
     n_tune = logl.shape[1]
@@ -42,14 +44,8 @@ def get_start_points(trace, trace_az, frames_start=None, SD_chain_logl=2.5):
     for i, keep_chain in enumerate(keep_chains):
         if keep_chain:
             start_points.append(trace.point(-1, chain=i))
-    # order by logl:
-    start_points = [
-        p
-        for _, p in sorted(
-            zip(logl_mean[keep_chains], start_points), key=lambda pair: pair[0]
-        )
-    ]
-    return start_points
+
+    return start_points, logl_mean[keep_chains]
 
 
 def robust_sample(
@@ -57,8 +53,8 @@ def robust_sample(
 ):
     r"""
     Samples the model by starting more chains than needed (tuning chains) and using only
-    a reduced number final_chains for the final sampling.
-
+    a reduced number final_chains for the final sampling. The final chains are randomly
+    chosen weighted by their likelihood.
     Parameters
     ----------
     model : :class:`Cov19Model`
@@ -94,16 +90,22 @@ def robust_sample(
     trace_tuning_az = az.from_pymc3(trace_tuning, model=model, save_warmup=True)
     if args_start_points is None:
         args_start_points = {}
-    start_points = get_start_points(trace_tuning, trace_tuning_az, **args_start_points)
+    start_points, logl_starting_points = get_start_points(
+        trace_tuning, trace_tuning_az, **args_start_points
+    )
     num_start_points = len(start_points)
 
     if num_start_points < final_chains:
         log.warning(
             "Not enough chains converged to minimum, we recommend increasing the number of tuning chains"
         )
-        start_points += random.choices(start_points, final_chains - num_start_points)
+        start_points = random.choices(start_points, k=final_chains - num_start_points)
     elif num_start_points > final_chains:
-        start_points = start_points[:final_chains]
+        start_points = random.choices(
+            start_points,
+            k=final_chains,
+            weights=np.exp(logl_starting_points - max(logl_starting_points)),
+        )
 
     trace = pm.sample(
         model=model,
