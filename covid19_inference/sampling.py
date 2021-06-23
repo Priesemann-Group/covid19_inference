@@ -5,7 +5,21 @@ import arviz as az
 import numpy as np
 
 
-def get_start_points(trace_az, frames_start=None, SD_chain_logl=2.5):
+def get_start_points(trace, trace_az, frames_start=None, SD_chain_logl=2.5):
+    r"""
+    Returns the starting points such that the chains deviate at most SD_chain_logl
+    standard deviations from the
+    Parameters
+    ----------
+    trace
+    trace_az
+    frames_start
+    SD_chain_logl
+
+    Returns
+    -------
+
+    """
     logl = trace_az.warmup_sample_stats["lp"]
     n_tune = logl.shape[1]
     n_chains = logl.shape[0]
@@ -21,7 +35,7 @@ def get_start_points(trace_az, frames_start=None, SD_chain_logl=2.5):
     start_points = []
     for i, keep_chain in enumerate(keep_chains):
         if keep_chain:
-            start_points.append(trace_az.point(-1, chain=i))
+            start_points.append(trace.point(-1, chain=i))
     # order by logl:
     start_points = [
         p
