@@ -8,17 +8,20 @@ import numpy as np
 def get_start_points(trace, trace_az, frames_start=None, SD_chain_logl=2.5):
     r"""
     Returns the starting points such that the chains deviate at most SD_chain_logl
-    standard deviations from the
+    standard deviations from the chain with the highest likelihood
     Parameters
     ----------
-    trace
-    trace_az
-    frames_start
-    SD_chain_logl
-
+    trace : multitrace object
+    trace_az : arviz trace object
+    frames_start : int
+        Which frames to use for calculating the mean likelihood and its standard deviation.
+        By default it is set to the last third of the tuning samples
+    SD_chain_logl : float
+        The number of standard deviations. 2.5 as default
     Returns
     -------
-
+    start_points :
+        A list of starting points
     """
     logl = trace_az.warmup_sample_stats["lp"]
     n_tune = logl.shape[1]
