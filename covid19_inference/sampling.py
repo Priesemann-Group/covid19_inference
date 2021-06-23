@@ -88,7 +88,7 @@ def robust_sample(
     trace_tuning_az = az.from_pymc3(trace_tuning, model=model, save_warmup=True)
     if args_start_points is None:
         args_start_points = {}
-    start_points = get_start_points(trace_tuning_az, **args_start_points)
+    start_points = get_start_points(trace_tuning, trace_tuning_az, **args_start_points)
     num_start_points = len(start_points)
 
     if num_start_points < final_chains:
