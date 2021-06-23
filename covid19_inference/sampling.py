@@ -101,11 +101,9 @@ def robust_sample(
         )
         start_points = random.choices(start_points, k=final_chains - num_start_points)
     elif num_start_points > final_chains:
+        p = np.exp(logl_starting_points - max(logl_starting_points))
         start_points = np.random.choice(
-            start_points,
-            size=final_chains,
-            p=np.exp(logl_starting_points - max(logl_starting_points)),
-            replace=False,
+            start_points, size=final_chains, p=p / np.sum(p), replace=False,
         )
 
     trace = pm.sample(
