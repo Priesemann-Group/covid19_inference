@@ -51,7 +51,9 @@ def lambda_t_with_sigmoids(
     log.info("Lambda_t with sigmoids")
     # Get our default mode context
     model = modelcontext(model)
-
+    hierarchical = (
+        model.is_hierarchical if model.is_hierarchical is None else hierarchical
+    )
     # ?Get change points random variable?
     lambda_log_list, tr_time_list, tr_len_list = _make_change_point_RVs(
         change_points_list,
@@ -75,8 +77,8 @@ def lambda_t_with_sigmoids(
         t = np.arange(model.sim_shape[0])
 
         # If the model is hierarchical repeatly add the t array to itself to match the shape
-        if model.is_hierarchical:
-            t = np.repeat(t[:, None], model.sim_shape[1], axis=-1)
+        if len(model.shape_of_regions) == 1:
+            t = np.repeat(t[:, None], model.shape_of_regions, axis=-1)
 
         # Applies standart sigmoid nonlinearity
         lambda_t = tt.nnet.sigmoid((t - tr_time) / tr_len * 4) * (
@@ -278,7 +280,10 @@ def _make_change_point_RVs(
 
     def non_hierarchical_mod():
         lambda_0_log = pm.Normal(
-            name="lambda_0_log_", mu=np.log(pr_median_lambda_0), sigma=pr_sigma_lambda_0
+            name="lambda_0_log_",
+            mu=np.log(pr_median_lambda_0),
+            sigma=pr_sigma_lambda_0,
+            shape=model.shape_of_regions,
         )
         pm.Deterministic("lambda_0", tt.exp(lambda_0_log))
         lambda_log_list.append(lambda_0_log)
@@ -295,6 +300,7 @@ def _make_change_point_RVs(
                 name=f"lambda_{i + 1}_log_",
                 mu=pr_mean_lambda,
                 sigma=cp["pr_sigma_lambda"],
+                shape=model.shape_of_regions,
             )
             pm.Deterministic(f"lambda_{i + 1}", tt.exp(lambda_cp_log))
             lambda_log_list.append(lambda_cp_log)
@@ -311,6 +317,7 @@ def _make_change_point_RVs(
                 name=f"transient_day_{i + 1}",
                 mu=prior_mean,
                 sigma=cp["pr_sigma_date_transient"],
+                shape=model.shape_of_regions,
             )
             tr_time_list.append(tr_time)
             dt_before = dt_begin_transient
@@ -321,6 +328,7 @@ def _make_change_point_RVs(
                 name=f"transient_len_{i + 1}_log_",
                 mu=np.log(cp["pr_median_transient_len"]),
                 sigma=cp["pr_sigma_transient_len"],
+                shape=model.shape_of_regions,
             )
             pm.Deterministic(f"transient_len_{i + 1}", tt.exp(tr_len_log))
             tr_len_list.append(tt.exp(tr_len_log))
