@@ -77,7 +77,7 @@ def lambda_t_with_sigmoids(
         t = np.arange(model.sim_shape[0])
 
         # If the model is hierarchical repeatly add the t array to itself to match the shape
-        if len(model.shape_of_regions) == 1:
+        if model.shape_of_regions:
             t = np.repeat(t[:, None], model.shape_of_regions, axis=-1)
 
         # Applies standart sigmoid nonlinearity
