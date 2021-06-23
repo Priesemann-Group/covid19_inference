@@ -24,6 +24,7 @@
 
     doc/model
     doc/data_retrieval
+    doc/sampling
     doc/plotting
     doc/output_parameters
 

@@ -81,6 +81,7 @@ autodoc_mock_imports = [
     "theano",
     "pandas",
     "filelock",
+    "arviz",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -197,6 +198,7 @@ intersphinx_mapping = {
     "pymc3": ("https://docs.pymc.io", None),
     "theano": ("https://theano-pymc.readthedocs.io/en/stable/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
+    "arviz": ("https://arviz-devs.github.io/arviz/", None),
 }
 
 imgmath_image_format = "svg"

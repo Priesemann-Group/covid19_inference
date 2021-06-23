@@ -15,5 +15,7 @@ from . import data_retrieval
 from . import plot
 from . import model
 from .model import Cov19Model
+from .sampling import robust_sample
+from . import sampling
 
 from ._dev_helper import create_example_instance
