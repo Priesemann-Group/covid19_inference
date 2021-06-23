@@ -54,7 +54,7 @@ def robust_sample(
     r"""
     Samples the model by starting more chains than needed (tuning chains) and using only
     a reduced number final_chains for the final sampling. The final chains are randomly
-    chosen weighted by their likelihood.
+    chosen (without replacement) weighted by their likelihood.
     Parameters
     ----------
     model : :class:`Cov19Model`
@@ -101,10 +101,11 @@ def robust_sample(
         )
         start_points = random.choices(start_points, k=final_chains - num_start_points)
     elif num_start_points > final_chains:
-        start_points = random.choices(
+        start_points = np.random.choice(
             start_points,
-            k=final_chains,
-            weights=np.exp(logl_starting_points - max(logl_starting_points)),
+            size=final_chains,
+            p=np.exp(logl_starting_points - max(logl_starting_points)),
+            replace=False,
         )
 
     trace = pm.sample(
