@@ -1,8 +1,11 @@
 import random
+import logging
 
 import pymc3 as pm
 import arviz as az
 import numpy as np
+
+log = logging.getLogger(__name__)
 
 
 def get_start_points(trace, trace_az, frames_start=None, SD_chain_logl=2.5):
@@ -33,7 +36,7 @@ def get_start_points(trace, trace_az, frames_start=None, SD_chain_logl=2.5):
     max_idx = np.argmax(logl_mean)
     logl_thr = logl_mean[max_idx] - logl_std[max_idx] * SD_chain_logl
     keep_chains = logl_mean >= logl_thr
-    print(f"Num chains kept: {np.sum(keep_chains)}/{n_chains}")
+    log.info(f"Num chains kept: {np.sum(keep_chains)}/{n_chains}")
 
     start_points = []
     for i, keep_chain in enumerate(keep_chains):
@@ -95,7 +98,7 @@ def robust_sample(
     num_start_points = len(start_points)
 
     if num_start_points < final_chains:
-        print(
+        log.warning(
             "Not enough chains converged to minimum, we recommend increasing the number of tuning chains"
         )
         start_points += random.choices(start_points, final_chains - num_start_points)
