@@ -55,6 +55,9 @@ class Cov19Model(Model):
             suffix appended to the name of random variables saved in the trace
         model :
             specify a model, if this one should expand another
+        shifted_cases : bool
+            when enabled (True), interprets short intervals of zero cases as days,
+            where no reporting happens and adds model cases to next non-zero-case day
 
         Attributes
         ----------
@@ -109,11 +112,23 @@ class Cov19Model(Model):
         N_population,
         name="",
         model=None,
+        shifted_cases=True,
     ):
 
         super().__init__(name=name, model=model)
 
+        if shifted_cases:
+            # find short intervals of 0 entries and set to NaN
+            no_cases = new_cases_obs==0
+            no_cases_blob,n_blob = ndi.label(no_cases)
+            for i in range(n_blob):
+                if (no_cases_blob==(i+1)).sum() < 4:
+                    new_cases_obs[no_cases_blob==i+1] = np.NaN
+
+        new_cases_obs[new_cases_obs<0] = 0   # set negative values to 0 (dirty fix, but better than nothing...)
+
         # first dim time, second might be state
+        self.shifted_cases = shifted_cases
         self.new_cases_obs = np.array(new_cases_obs)
         self.sim_ndim = new_cases_obs.ndim
         self.N_population = N_population

@@ -404,7 +404,7 @@ def uncorrelated_prior_I(
     lambda_t = tt.exp(lambda_t_log)
 
     delay = round(pr_median_delay)
-    num_new_I_ref = np.mean(model.new_cases_obs[:n_data_points_used], axis=0)
+    num_new_I_ref = np.nansum(model.new_cases_obs[:n_data_points_used], axis=0)/model.data_len
     days_diff = model.diff_data_sim - delay + 3
     I_ref = num_new_I_ref / lambda_t[days_diff]
     I0_ref = I_ref / (1 + lambda_t[days_diff // 2] - mu) ** days_diff

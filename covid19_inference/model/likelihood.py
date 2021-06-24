@@ -69,7 +69,7 @@ def student_t_likelihood(
             The model on which we want to add the distribution
 
         data_obs : array
-            The data that is observed. By default it is ``model.new_cases_ob``
+            The data that is observed. By default it is ``model.new_cases_obs``
 
 
         Returns
@@ -91,19 +91,29 @@ def student_t_likelihood(
     if data_obs is None:
         data_obs = model.new_cases_obs
 
+    if model.shifted_cases:
+        # shift cases from weekends or such to the next day, where cases are reported
+        new_cases = 0
+        for i,cases_obs in enumerate(data_obs):
+            new_cases += cases[i+model.diff_data_sim]
+            if not np.isnan(cases_obs):
+                cases = tt.set_subtensor(cases[i+model.diff_data_sim],new_cases)
+                new_cases = 0
+
     sigma_obs = pm.HalfCauchy(
         name_sigma_obs, beta=pr_beta_sigma_obs, shape=model.shape_of_regions
     )
 
+    cases = cases[model.diff_data_sim : model.data_len + model.diff_data_sim][~np.isnan(data_obs)]
+
     pm.StudentT(
         name=name_student_t,
         nu=nu,
-        mu=cases[model.diff_data_sim : model.data_len + model.diff_data_sim],
+        mu=cases,
         sigma=tt.abs_(
-            cases[model.diff_data_sim : model.data_len + model.diff_data_sim]
-            + offset_sigma
+            cases + offset_sigma
         )
         ** 0.5
         * sigma_obs,  # offset and tt.abs to avoid nans
-        observed=data_obs,
+        observed=data_obs[~np.isnan(data_obs)],
     )

@@ -689,7 +689,7 @@ def _new_cases_to_cum_cases(x, y, what, offset=0):
     if what == "trace":
         y_cum = np.cumsum(y, axis=1) + offset
     elif what == "data":
-        y_cum = np.cumsum(y, axis=0) + offset
+        y_cum = np.nancumsum(y, axis=0) + offset
     else:
         raise ValueError
 
