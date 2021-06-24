@@ -7,6 +7,7 @@ import logging
 import theano
 import theano.tensor as tt
 import numpy as np
+from scipy import ndimage as ndi
 import pymc3 as pm
 
 from .model import *
@@ -92,28 +93,36 @@ def student_t_likelihood(
         data_obs = model.new_cases_obs
 
     if model.shifted_cases:
-        # shift cases from weekends or such to the next day, where cases are reported
-        new_cases = 0
-        for i,cases_obs in enumerate(data_obs):
-            new_cases += cases[i+model.diff_data_sim]
-            if not np.isnan(cases_obs):
-                cases = tt.set_subtensor(cases[i+model.diff_data_sim],new_cases)
-                new_cases = 0
+
+        no_cases = data_obs==0
+        for c,cases_obs_c in enumerate(data_obs.T):
+            # find short intervals of 0 entries and set to NaN
+            no_cases_blob,n_blob = ndi.label(no_cases[:,c])
+            for i in range(n_blob):
+                if (no_cases_blob==(i+1)).sum() < 10:
+                    data_obs[no_cases_blob==i+1,c] = np.NaN
+
+            # shift cases from weekends or such to the next day, where cases are reported
+            new_cases = 0
+            for i,cases_obs in enumerate(cases_obs_c):
+                new_cases += cases[i+model.diff_data_sim][c]
+                if not np.isnan(cases_obs):
+                    cases_i = tt.set_subtensor(cases[i+model.diff_data_sim][c],new_cases)
+                    cases = tt.set_subtensor(cases[i+model.diff_data_sim],cases_i)
+                    new_cases = 0
+
+    cases = cases[model.diff_data_sim : model.data_len + model.diff_data_sim]
+    # theano.printing.Print(f'cases')(cases)
 
     sigma_obs = pm.HalfCauchy(
         name_sigma_obs, beta=pr_beta_sigma_obs, shape=model.shape_of_regions
     )
-
-    cases = cases[model.diff_data_sim : model.data_len + model.diff_data_sim][~np.isnan(data_obs)]
+    sigma = tt.abs_(cases + offset_sigma) ** 0.5 * sigma_obs # offset and tt.abs to avoid nans
 
     pm.StudentT(
         name=name_student_t,
         nu=nu,
-        mu=cases,
-        sigma=tt.abs_(
-            cases + offset_sigma
-        )
-        ** 0.5
-        * sigma_obs,  # offset and tt.abs to avoid nans
+        mu=cases[~np.isnan(data_obs)],
+        sigma=sigma[~np.isnan(data_obs)],
         observed=data_obs[~np.isnan(data_obs)],
     )
