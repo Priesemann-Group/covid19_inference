@@ -115,9 +115,7 @@ def robust_sample(
             log.warning(
                 "Not enough chains converged to minimum, we recommend increasing the number of tuning chains"
             )
-            start_points = random.choices(
-                start_points, k=final_chains - num_start_points
-            )
+            start_points = random.choices(start_points, k=final_chains)
         elif num_start_points > final_chains:
             p = np.exp(logl_starting_points - max(logl_starting_points))
             start_points = np.random.choice(
