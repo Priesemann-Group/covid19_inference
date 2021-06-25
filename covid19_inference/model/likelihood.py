@@ -103,13 +103,18 @@ def student_t_likelihood(
                     data_obs[no_cases_blob==i+1,c] = np.NaN
 
             # shift cases from weekends or such to the next day, where cases are reported
-            new_cases = 0
-            for i,cases_obs in enumerate(cases_obs_c):
-                new_cases += cases[i+model.diff_data_sim][c]
-                if not np.isnan(cases_obs):
-                    cases_i = tt.set_subtensor(cases[i+model.diff_data_sim][c],new_cases)
-                    cases = tt.set_subtensor(cases[i+model.diff_data_sim],cases_i)
-                    new_cases = 0
+            if n_blob > 0:
+                new_cases = 0
+                update = False
+                for i,cases_obs in enumerate(cases_obs_c):
+                    new_cases += cases[i+model.diff_data_sim][c]
+                    if np.isnan(cases_obs):
+                        update = True
+                    elif update:
+                        cases_i = tt.set_subtensor(cases[i+model.diff_data_sim][c],new_cases)
+                        cases = tt.set_subtensor(cases[i+model.diff_data_sim],cases_i)
+                        new_cases = 0
+                        update = False
 
     cases = cases[model.diff_data_sim : model.data_len + model.diff_data_sim]
     # theano.printing.Print(f'cases')(cases)
