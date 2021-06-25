@@ -27,6 +27,7 @@ def lambda_t_with_sigmoids(
     model=None,
     name_lambda_t="lambda_t",
     hierarchical=None,
+    sigma_lambda_cp=None,
 ):
     """
         Builds a time dependent spreading rate :math:`\lambda_t` with change points. The change points are marked by
@@ -61,6 +62,7 @@ def lambda_t_with_sigmoids(
         pr_sigma_lambda_0,
         model=model,
         hierarchical=hierarchical,
+        sigma_lambda_cp=sigma_lambda_cp,
     )
 
     # Build the time-dependent spreading rate
@@ -170,6 +172,7 @@ def _make_change_point_RVs(
     pr_sigma_lambda_0=1,
     model=None,
     hierarchical=None,
+    sigma_lambda_cp=None,
 ):
     """
 
@@ -296,12 +299,23 @@ def _make_change_point_RVs(
                 )
             else:
                 pr_mean_lambda = np.log(cp["pr_median_lambda"])
-            lambda_cp_log = pm.Normal(
-                name=f"lambda_{i + 1}_log_",
-                mu=pr_mean_lambda,
-                sigma=cp["pr_sigma_lambda"],
-                shape=model.shape_of_regions,
-            )
+            if sigma_lambda_cp is not None:
+                lambda_cp_log = (
+                    pm.Normal(
+                        name=f"lambda_{i + 1}_log_",
+                        mu=pr_mean_lambda,
+                        sigma=1.0,
+                        shape=model.shape_of_regions,
+                    )
+                    * sigma_lambda_cp
+                )
+            else:
+                lambda_cp_log = pm.Normal(
+                    name=f"lambda_{i + 1}_log_",
+                    mu=pr_mean_lambda,
+                    sigma=cp["pr_sigma_lambda"],
+                    shape=model.shape_of_regions,
+                )
             pm.Deterministic(f"lambda_{i + 1}", tt.exp(lambda_cp_log))
             lambda_log_list.append(lambda_cp_log)
 
