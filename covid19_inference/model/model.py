@@ -117,13 +117,15 @@ class Cov19Model(Model):
 
         super().__init__(name=name, model=model)
 
-        new_cases_obs[new_cases_obs<0] = 0   # set negative values to 0 (dirty fix, but better than nothing...)
+        new_cases_obs[
+            new_cases_obs < 0
+        ] = 0  # set negative values to 0 (dirty fix, but better than nothing...)
         if len(new_cases_obs.shape) < 2:
-            new_cases_obs = new_cases_obs[:,np.newaxis]
+            new_cases_obs = new_cases_obs[:, np.newaxis]
 
         # first dim time, second might be state
         self.shifted_cases = shifted_cases
-        self.new_cases_obs = np.array(new_cases_obs,dtype=np.dtype(float))
+        self.new_cases_obs = np.array(new_cases_obs, dtype=np.dtype(float))
         self.sim_ndim = new_cases_obs.ndim
         self.N_population = N_population
 
