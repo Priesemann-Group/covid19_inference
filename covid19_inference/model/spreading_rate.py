@@ -297,19 +297,26 @@ def _make_change_point_RVs(
                 pr_mean_lambda = lambda_log_list[-1] + tt.log(
                     cp["pr_factor_to_previous"]
                 )
-            else:
-                pr_mean_lambda = np.log(cp["pr_median_lambda"])
-            if sigma_lambda_cp is not None:
-                lambda_cp_log = (
-                    pm.Normal(
+                if sigma_lambda_cp is not None:
+                    lambda_cp_log = (
+                        pm.Normal(
+                            name=f"lambda_{i + 1}_log_",
+                            mu=pr_mean_lambda,
+                            sigma=1.0,
+                            shape=model.shape_of_regions,
+                        )
+                        - pr_mean_lambda
+                    ) * sigma_lambda_cp + pr_mean_lambda
+
+                else:
+                    lambda_cp_log = pm.Normal(
                         name=f"lambda_{i + 1}_log_",
                         mu=pr_mean_lambda,
-                        sigma=1.0,
+                        sigma=cp["pr_sigma_lambda"],
                         shape=model.shape_of_regions,
                     )
-                    * sigma_lambda_cp
-                )
             else:
+                pr_mean_lambda = np.log(cp["pr_median_lambda"])
                 lambda_cp_log = pm.Normal(
                     name=f"lambda_{i + 1}_log_",
                     mu=pr_mean_lambda,

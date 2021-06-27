@@ -50,7 +50,14 @@ def get_start_points(trace, trace_az, frames_start=None, SD_chain_logl=2.5):
 
 
 def robust_sample(
-    model, tune, draws, tuning_chains, final_chains, args_start_points=None, **kwargs
+    model,
+    tune,
+    draws,
+    tuning_chains,
+    final_chains,
+    return_tuning=False,
+    args_start_points=None,
+    **kwargs,
 ):
     r"""
     Samples the model by starting more chains than needed (tuning chains) and using only
@@ -133,4 +140,7 @@ def robust_sample(
             **kwargs,
         )
         trace_az = az.from_pymc3(trace, model=model, save_warmup=True)
-    return trace, trace_az
+    if return_tuning:
+        return trace, trace_az, trace_tuning, trace_tuning_az
+    else:
+        return trace, trace_az
