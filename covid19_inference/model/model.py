@@ -120,8 +120,6 @@ class Cov19Model(Model):
         new_cases_obs[
             new_cases_obs < 0
         ] = 0  # set negative values to 0 (dirty fix, but better than nothing...)
-        if len(new_cases_obs.shape) < 2:
-            new_cases_obs = new_cases_obs[:, np.newaxis]
 
         # first dim time, second might be state
         self.shifted_cases = shifted_cases

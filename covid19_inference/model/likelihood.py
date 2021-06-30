@@ -95,27 +95,51 @@ def student_t_likelihood(
     if model.shifted_cases:
 
         no_cases = data_obs == 0
-        for c, cases_obs_c in enumerate(data_obs.T):
+        print(data_obs)
+        if len(data_obs.shape)>1:
+
+            for c, cases_obs_c in enumerate(data_obs.T):
+                # find short intervals of 0 entries and set to NaN
+                no_cases_blob, n_blob = ndi.label(no_cases[:, c])
+                for i in range(n_blob):
+                    if (no_cases_blob == (i + 1)).sum() < 10:
+                        data_obs[no_cases_blob == i + 1, c] = np.NaN
+
+                # shift cases from weekends or such to the next day, where cases are reported
+                if n_blob > 0:
+                    new_cases = 0
+                    update = False
+                    for i, cases_obs in enumerate(cases_obs_c):
+                        new_cases += cases[i + model.diff_data_sim][c]
+                        if np.isnan(cases_obs):
+                            update = True
+                        elif update:
+                            cases_i = tt.set_subtensor(
+                                cases[i + model.diff_data_sim][c], new_cases
+                            )
+                            cases = tt.set_subtensor(
+                                cases[i + model.diff_data_sim], cases_i
+                            )
+                            new_cases = 0
+                            update = False
+        else:
             # find short intervals of 0 entries and set to NaN
-            no_cases_blob, n_blob = ndi.label(no_cases[:, c])
+            no_cases_blob, n_blob = ndi.label(no_cases)
             for i in range(n_blob):
                 if (no_cases_blob == (i + 1)).sum() < 10:
-                    data_obs[no_cases_blob == i + 1, c] = np.NaN
+                    data_obs[no_cases_blob == i + 1] = np.NaN
 
             # shift cases from weekends or such to the next day, where cases are reported
             if n_blob > 0:
                 new_cases = 0
                 update = False
-                for i, cases_obs in enumerate(cases_obs_c):
-                    new_cases += cases[i + model.diff_data_sim][c]
+                for i, cases_obs in enumerate(data_obs):
+                    new_cases += cases[i + model.diff_data_sim]
                     if np.isnan(cases_obs):
                         update = True
                     elif update:
-                        cases_i = tt.set_subtensor(
-                            cases[i + model.diff_data_sim][c], new_cases
-                        )
                         cases = tt.set_subtensor(
-                            cases[i + model.diff_data_sim], cases_i
+                            cases[i + model.diff_data_sim], new_cases
                         )
                         new_cases = 0
                         update = False
