@@ -1,5 +1,5 @@
 from .model import Cov19Model
-from .compartmental_models import SIR, SEIR, uncorrelated_prior_I
+from .compartmental_models import SIR, SEIR, kernelized_spread, uncorrelated_prior_I
 from .delay import delay_cases
 from .spreading_rate import lambda_t_with_sigmoids, lambda_t_with_linear_interp
 from .likelihood import student_t_likelihood
