@@ -96,7 +96,7 @@ def student_t_likelihood(
 
         no_cases = data_obs == 0
         print(data_obs)
-        if len(data_obs.shape)>1:
+        if len(data_obs.shape) > 1:
 
             for c, cases_obs_c in enumerate(data_obs.T):
                 # find short intervals of 0 entries and set to NaN

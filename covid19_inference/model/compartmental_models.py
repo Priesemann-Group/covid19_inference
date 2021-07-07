@@ -350,6 +350,7 @@ def SEIR(
     else:
         return new_I_t
 
+
 def kernelized_spread(
     lambda_t_log,
     name_new_I_t="new_I_t",
@@ -502,21 +503,7 @@ def kernelized_spread(
 
     # Runs kernelized spread model:
     def next_day(
-        lambda_t,
-        S_t,
-        nE1,
-        nE2,
-        nE3,
-        nE4,
-        nE5,
-        nE6,
-        nE7,
-        nE8,
-        nE9,
-        nE10,
-        _,
-        beta,
-        N,
+        lambda_t, S_t, nE1, nE2, nE3, nE4, nE5, nE6, nE7, nE8, nE9, nE10, _, beta, N,
     ):
         new_I_t = (
             beta[0] * nE1
@@ -617,13 +604,37 @@ def uncorrelated_prior_I(
     num_new_I_ref = (
         np.nansum(model.new_cases_obs[:n_data_points_used], axis=0) / model.data_len
     )
+    """
     days_diff = model.diff_data_sim - delay + 3
-    I_ref = num_new_I_ref / lambda_t[days_diff]
-    I0_ref = I_ref / (1 + lambda_t[days_diff // 2] - mu) ** days_diff
-    I_begin = I0_ref * tt.exp(
-        pm.Normal(
-            name=name_I_begin_ratio_log, mu=0, sigma=pr_sigma_I_begin, shape=num_regions
-        )
+    # I_ref = num_new_I_ref / lambda_t[days_diff]
+    # I0_ref = I_ref / (1 + lambda_t[days_diff // 2] - mu) ** days_diff
+    I0_ref = (
+        num_new_I_ref / (1 + lambda_t[days_diff // 2] - mu) ** days_diff / lambda_t[0]
     )
+    """
+    I0_ref = num_new_I_ref / lambda_t[0]
+    diff_I_begin_L2_log, diff_I_begin_L1_log = ut.hierarchical_normal(
+        name_L1=f"{name_I_begin_ratio_log}_L1",
+        name_L2=f"{name_I_begin_ratio_log}_L2",
+        name_sigma=f"sigma_{name_I_begin_ratio_log}_L1",
+        pr_mean=0,
+        pr_sigma=pr_sigma_I_begin // 2,
+        error_cauchy=False,
+    )
+    I_begin = I0_ref * tt.exp(diff_I_begin_L2_log)
+    # diff_I_begin_L2_log, diff_I_begin_L1_log = ut.hierarchical_normal(
+    #    name_L1=f"{name_I_begin_ratio_log}_L1",
+    #    name_L2=f"{name_I_begin_ratio_log}_L2",
+    #    name_sigma=f"sigma_{name_I_begin_ratio_log}_L1",
+    #    pr_mean=0,
+    #    pr_sigma=pr_sigma_I_begin // 2,
+    #    error_cauchy=False,
+    # )
+
+    # I_begin = I0_ref * tt.exp(diff_I_begin_L2_log)
+
+    # I_begin = pm.Lognormal(
+    #   name_I_begin_ratio_log, mu=tt.log(I0_ref), sigma=2.5, shape=num_regions
+    # )
     pm.Deterministic(name_I_begin, I_begin)
     return I_begin

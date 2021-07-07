@@ -119,6 +119,16 @@ def delay_cases(
     model = modelcontext(model)
 
     # log normal distributed delays (the median values)
+
+    delay_log = pm.Normal(
+        name=f"{name_delay}_log",
+        mu=np.log(pr_mean_of_median),
+        sigma=pr_sigma_of_median,
+        shape=model.shape_of_regions,
+    )
+    pm.Deterministic(f"{name_delay}", np.exp(delay_log))
+
+    """
     if not model.is_hierarchical:
         delay_log = pm.Normal(
             name=f"{name_delay}_log",
@@ -139,7 +149,7 @@ def delay_cases(
         pm.Deterministic(f"{name_delay}_hc_L2", np.exp(delay_L2_log))
         pm.Deterministic(f"{name_delay}_hc_L1", np.exp(delay_L1_log))
         delay_log = delay_L2_log
-
+    """
     # We may also have a distribution of the width (of the kernel of delays) within
     # each sample/trace.
     if pr_sigma_of_width is None:
@@ -147,6 +157,15 @@ def delay_cases(
         width_log = np.log(pr_median_of_width)
     else:
         # Alternatively, put a prior distribution on the witdh, too
+        width_log = pm.Normal(
+            name=f"{name_width}_log",
+            mu=np.log(pr_median_of_width),
+            sigma=pr_sigma_of_width,
+            shape=model.shape_of_regions,
+        )
+        pm.Deterministic(f"{name_width}", tt.exp(width_log))
+
+        """
         if not model.is_hierarchical:
             width_log = pm.Normal(
                 name=f"{name_width}_log",
@@ -167,6 +186,7 @@ def delay_cases(
             pm.Deterministic(f"{name_width}_hc_L2", tt.exp(width_L2_log))
             pm.Deterministic(f"{name_width}_hc_L1", tt.exp(width_L1_log))
             width_log = width_L2_log
+        """
 
     # enable this function for custom data and data ranges
     if len_output_arr is None:

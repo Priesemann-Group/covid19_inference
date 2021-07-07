@@ -131,7 +131,7 @@ def robust_sample(
 
         trace = pm.sample(
             model=model,
-            tune=tune // 3,
+            tune=tune,
             draws=draws,
             chains=final_chains,
             start=start_points,

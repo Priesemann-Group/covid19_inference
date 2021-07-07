@@ -28,6 +28,7 @@ def lambda_t_with_sigmoids(
     name_lambda_t="lambda_t",
     hierarchical=None,
     sigma_lambda_cp=None,
+    sigma_lambda_week_cp=None,
 ):
     """
         Builds a time dependent spreading rate :math:`\lambda_t` with change points. The change points are marked by
@@ -63,6 +64,7 @@ def lambda_t_with_sigmoids(
         model=model,
         hierarchical=hierarchical,
         sigma_lambda_cp=sigma_lambda_cp,
+        sigma_lambda_week_cp=sigma_lambda_week_cp,
     )
 
     # Build the time-dependent spreading rate
@@ -91,6 +93,9 @@ def lambda_t_with_sigmoids(
         lambda_log_t_list.append(lambda_t)
 
     # Sum up all lambda values from the list
+    for i, lambda_t in enumerate(lambda_log_t_list):
+        pm.Deterministic(f"lambda_t_part_{i}", lambda_t)
+
     lambda_t_log = sum(lambda_log_t_list)
 
     # Create responding lambda_t pymc3 variable with given name (from parameters)
@@ -173,6 +178,7 @@ def _make_change_point_RVs(
     model=None,
     hierarchical=None,
     sigma_lambda_cp=None,
+    sigma_lambda_week_cp=None,
 ):
     """
 
@@ -210,22 +216,47 @@ def _make_change_point_RVs(
         # Create lambda_log list
         for i, cp in enumerate(change_points_list):
             if cp["relative_to_previous"]:
-
-                (
-                    factor_lambda_cp_hc_L2_log,
-                    factor_lambda_cp_hc_L1_log,
-                ) = ut.hierarchical_normal(
-                    name_L1=f"factor_lambda_{i + 1}_hc_L1_log",
-                    name_L2=f"factor_lambda_{i + 1}_hc_L2_log",
-                    name_sigma=f"sigma_lambda_{i + 1}_hc_L1",
-                    pr_mean=tt.log(cp["pr_factor_to_previous"]),
-                    pr_sigma=cp["pr_sigma_lambda"],
-                    error_cauchy=False,
-                )
-                lambda_cp_hc_L2_log = lambda_log_list[-1] + factor_lambda_cp_hc_L2_log
-                lambda_cp_hc_L1_log = (
-                    lambda_L1_log_list[-1] + factor_lambda_cp_hc_L2_log
-                )
+                if sigma_lambda_cp is None:
+                    (
+                        factor_lambda_cp_hc_L2_log,
+                        factor_lambda_cp_hc_L1_log,
+                    ) = ut.hierarchical_normal(
+                        name_L1=f"factor_lambda_{i + 1}_hc_L1_log",
+                        name_L2=f"factor_lambda_{i + 1}_hc_L2_log",
+                        name_sigma=f"sigma_lambda_{i + 1}_hc_L1",
+                        pr_mean=tt.log(cp["pr_factor_to_previous"]),
+                        pr_sigma=cp["pr_sigma_lambda"],
+                        error_cauchy=False,
+                    )
+                    lambda_cp_hc_L2_log = (
+                        lambda_log_list[-1] + factor_lambda_cp_hc_L2_log
+                    )
+                    lambda_cp_hc_L1_log = (
+                        lambda_L1_log_list[-1] + factor_lambda_cp_hc_L2_log
+                    )
+                else:
+                    if sigma_lambda_week_cp is None:
+                        raise RuntimeError("sigma_lambda_week_cp needs also to be set")
+                    factor_lambda_week_log = (
+                        pm.Normal(
+                            name=f"diff_lambda_w_raw_{i+1}", mu=0, sigma=1.0, shape=()
+                        )
+                    ) * sigma_lambda_week_cp
+                    lambda_cp_hc_L1_log = (
+                        lambda_L1_log_list[-1] + factor_lambda_week_log
+                    )
+                    pr_mean_lambda = lambda_log_list[-1] + factor_lambda_week_log
+                    lambda_cp_hc_L2_log = (
+                        (
+                            pm.Normal(
+                                name=f"diff_lambda_cw_raw_{i + 1}",
+                                mu=pr_mean_lambda,
+                                sigma=1.0,
+                                shape=model.shape_of_regions,
+                            )
+                        )
+                        - pr_mean_lambda
+                    ) * sigma_lambda_cp + pr_mean_lambda
 
             else:
                 pr_mean_lambda = np.log(cp["pr_median_lambda"])
@@ -279,7 +310,7 @@ def _make_change_point_RVs(
                 pm.Deterministic(f"transient_len_{i + 1}_hc_L2", tt.exp(tr_len_L2_log))
             else:
                 pm.Deterministic(f"transient_len_{i + 1}", tt.exp(tr_len_L2_log))
-        tr_len_list.append(tt.exp(tr_len_L2_log))
+            tr_len_list.append(tt.exp(tr_len_L2_log))
 
     def non_hierarchical_mod():
         lambda_0_log = pm.Normal(
@@ -299,11 +330,13 @@ def _make_change_point_RVs(
                 )
                 if sigma_lambda_cp is not None:
                     lambda_cp_log = (
-                        pm.Normal(
-                            name=f"lambda_{i + 1}_log_",
-                            mu=pr_mean_lambda,
-                            sigma=1.0,
-                            shape=model.shape_of_regions,
+                        (
+                            pm.Normal(
+                                name=f"lambda_{i + 1}_log_",
+                                mu=pr_mean_lambda,
+                                sigma=1.0,
+                                shape=model.shape_of_regions,
+                            )
                         )
                         - pr_mean_lambda
                     ) * sigma_lambda_cp + pr_mean_lambda
