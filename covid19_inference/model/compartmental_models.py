@@ -711,3 +711,109 @@ def uncorrelated_prior_E(
 
     pm.Deterministic(name_E_begin, new_E_begin)
     return new_E_begin
+
+
+def SIR_variants(
+    lambda_t_log,
+    mu,
+    f,
+    pr_I_begin = 100,
+    name_new_I_tv="new_I_tv",
+    name_I_begin="I_begin",
+    name_I_tv="I_tv",
+    name_S_t="S_t",
+    model=None,
+    return_all=False,
+    num_variants=5,
+):
+    r"""
+    
+    Parameters
+    ----------
+    lambda_t_log : :class:`~theano.tensor.TensorVariable`
+        time series of the logarithm of the spreading rate. Shape: (time)
+    mu : :class:`~theano.tensor.TensorVariable`
+        the recovery rate :math:`\mu`, typically a random variable.
+    pr_I_begin : float or array_like or :class:`~theano.tensor.Variable`
+        Prior beta of the Half-Cauchy distribution of :math:`I(0)`.
+        if type is ``tt.Constant``, I_begin will not be inferred by pymc3.
+    model : :class:`Cov19Model`
+        if none, it is retrieved from the context
+        
+    Returns
+    ------------------
+    new_I_t : :class:`~theano.tensor.TensorVariable`
+        time series of the number daily newly infected persons.
+    I_t : :class:`~theano.tensor.TensorVariable`
+        time series of the infected (if return_all set to True)
+    S_t : :class:`~theano.tensor.TensorVariable`
+        time series of the susceptible (if return_all set to True)
+    """
+    
+    log.info("SIR with variants")
+    model = modelcontext(model)
+    
+    # Prior distributions of starting populations (infectious, susceptibles)
+    if isinstance(pr_I_begin, tt.Variable):
+        I_begin = pr_I_begin
+    else:
+        I_begin = pm.HalfCauchy(
+            name=name_I_begin, beta=pr_I_begin, shape=num_variants
+        )
+    
+    # Total number of people in population
+    N = model.N_population
+
+    # Initial compartment Suceptible
+    S_begin = N-I_begin.sum()
+    
+    lambda_t = tt.exp(lambda_t_log)
+    
+    # Set prior for Influx phi
+    Phi = pm.HalfCauchy("Phi",0.01, shape=(model.sim_len, num_variants))
+    
+    
+    def next_day(lambda_t, Phi, S_t, I_tv, _, mu, f, N):
+        # Variants SIR
+        """
+        lambda_t.tag.test_value = 1.5
+        I_tv.tag.test_value = [50,50,50,50,50]
+        S_t.tag.test_value = 5000
+        f.tag.test_value = [1,1,1,1,1]
+        """
+        
+        new_I_tv = f * I_tv * lambda_t * S_t / N
+        new_I_tv += new_I_tv * Phi
+        
+        # Update new compartments
+        I_tv = I_tv + new_I_tv - mu * I_tv
+        S_t = S_t - new_I_tv.sum()
+        
+        
+        # for stability
+        I_tv = tt.clip(I_tv, -1, N)
+        S_t = tt.clip(S_t, 0, N)
+        return S_t, I_tv, new_I_tv
+    
+    # theano scan returns two tuples, first one containing a time series of
+    # what we give in outputs_info : S, I, new_I
+    new_I_0 = tt.zeros_like(I_begin)
+    outputs, _ = theano.scan(
+        fn=next_day,
+        sequences=[lambda_t,Phi],
+        outputs_info=[S_begin, I_begin, new_I_0],
+        non_sequences=[mu, f, N],
+    )
+    S_t, I_tv, new_I_tv = outputs
+    pm.Deterministic(name_new_I_tv, new_I_tv)
+    if name_S_t is not None:
+        pm.Deterministic(name_S_t, S_t)
+    if name_I_tv is not None:
+        pm.Deterministic(name_I_tv, I_tv)
+    
+    
+    
+    if return_all:
+        return new_I_tv, I_tv, S_t
+    else:
+        return new_I_tv

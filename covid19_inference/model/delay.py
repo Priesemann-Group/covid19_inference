@@ -28,6 +28,7 @@ def delay_cases(
     len_input_arr=None,
     len_output_arr=None,
     diff_input_output=None,
+    num_variants = None,
 ):
     """
         Convolves the input by a lognormal distribution, in order to model a delay:
@@ -108,6 +109,9 @@ def delay_cases(
             Number of days the returned array begins later then the input. Should be
             significantly larger than the median delay. By default it is set to the
             ``model.diff_data_sim``.
+        num_variants : int
+            If you are not using the hierachical model but still want to apply a delay
+            to multidimensional casenumbers. This is the shape of your last dimension.
 
         Returns
         -------
@@ -196,6 +200,17 @@ def delay_cases(
     if len_input_arr is None:
         len_input_arr = model.sim_len
 
+    # It is possible, that the input is multidimensional even tho the model
+    # is not hierachical! Thus we need to stack the delay_log and width_log
+    # depending on the give input shape
+    if cases.ndim == 2 and not model.is_hierarchical:
+        if num_variants is None:
+            raise RuntimeError(
+                "Please pass num_variants to delay function."
+            )
+        delay_log = tt.stack([delay_log]*num_variants,axis=0)
+        width_log = tt.stack([width_log]*num_variants,axis=0)
+        
     # delay the input cases
     delayed_cases = _delay_lognormal(
         input_arr=cases,

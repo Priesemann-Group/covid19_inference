@@ -29,6 +29,7 @@ def lambda_t_with_sigmoids(
     hierarchical=None,
     sigma_lambda_cp=None,
     sigma_lambda_week_cp=None,
+    prefix_lambdas = "",
 ):
     """
         Builds a time dependent spreading rate :math:`\lambda_t` with change points. The change points are marked by
@@ -65,6 +66,7 @@ def lambda_t_with_sigmoids(
         hierarchical=hierarchical,
         sigma_lambda_cp=sigma_lambda_cp,
         sigma_lambda_week_cp=sigma_lambda_week_cp,
+        prefix_lambdas=prefix_lambdas,
     )
 
     # Build the time-dependent spreading rate
@@ -179,6 +181,7 @@ def _make_change_point_RVs(
     hierarchical=None,
     sigma_lambda_cp=None,
     sigma_lambda_week_cp=None,
+    prefix_lambdas="",
 ):
     """
 
@@ -314,12 +317,12 @@ def _make_change_point_RVs(
 
     def non_hierarchical_mod():
         lambda_0_log = pm.Normal(
-            name="lambda_0_log_",
+            name=f"{prefix_lambdas}lambda_0_log_",
             mu=np.log(pr_median_lambda_0),
             sigma=pr_sigma_lambda_0,
             shape=model.shape_of_regions,
         )
-        pm.Deterministic("lambda_0", tt.exp(lambda_0_log))
+        pm.Deterministic(f"{prefix_lambdas}lambda_0", tt.exp(lambda_0_log))
         lambda_log_list.append(lambda_0_log)
 
         # Create lambda_log list
@@ -330,20 +333,18 @@ def _make_change_point_RVs(
                 )
                 if sigma_lambda_cp is not None:
                     lambda_cp_log = (
-                        (
-                            pm.Normal(
-                                name=f"lambda_{i + 1}_log_",
-                                mu=pr_mean_lambda,
-                                sigma=1.0,
-                                shape=model.shape_of_regions,
-                            )
+                        pm.Normal(
+                            name=f"{prefix_lambdas}lambda_{i + 1}_log_",
+                            mu=pr_mean_lambda,
+                            sigma=1.0,
+                            shape=model.shape_of_regions,
                         )
                         - pr_mean_lambda
                     ) * sigma_lambda_cp + pr_mean_lambda
 
                 else:
                     lambda_cp_log = pm.Normal(
-                        name=f"lambda_{i + 1}_log_",
+                        name=f"{prefix_lambdas}lambda_{i + 1}_log_",
                         mu=pr_mean_lambda,
                         sigma=cp["pr_sigma_lambda"],
                         shape=model.shape_of_regions,
@@ -351,12 +352,12 @@ def _make_change_point_RVs(
             else:
                 pr_mean_lambda = np.log(cp["pr_median_lambda"])
                 lambda_cp_log = pm.Normal(
-                    name=f"lambda_{i + 1}_log_",
+                    name=f"{prefix_lambdas}lambda_{i + 1}_log_",
                     mu=pr_mean_lambda,
                     sigma=cp["pr_sigma_lambda"],
                     shape=model.shape_of_regions,
                 )
-            pm.Deterministic(f"lambda_{i + 1}", tt.exp(lambda_cp_log))
+            pm.Deterministic(f"{prefix_lambdas}lambda_{i + 1}", tt.exp(lambda_cp_log))
             lambda_log_list.append(lambda_cp_log)
 
         # Create transient time list
@@ -368,7 +369,7 @@ def _make_change_point_RVs(
 
             prior_mean = (dt_begin_transient - model.sim_begin).days
             tr_time = pm.Normal(
-                name=f"transient_day_{i + 1}",
+                name=f"{prefix_lambdas}transient_day_{i + 1}",
                 mu=prior_mean,
                 sigma=cp["pr_sigma_date_transient"],
                 shape=model.shape_of_regions,
@@ -379,12 +380,12 @@ def _make_change_point_RVs(
         # Create transient length list
         for i, cp in enumerate(change_points_list):
             tr_len_log = pm.Normal(
-                name=f"transient_len_{i + 1}_log_",
+                name=f"{prefix_lambdas}transient_len_{i + 1}_log_",
                 mu=np.log(cp["pr_median_transient_len"]),
                 sigma=cp["pr_sigma_transient_len"],
                 shape=model.shape_of_regions,
             )
-            pm.Deterministic(f"transient_len_{i + 1}", tt.exp(tr_len_log))
+            pm.Deterministic(f"{prefix_lambdas}transient_len_{i + 1}", tt.exp(tr_len_log))
             tr_len_list.append(tt.exp(tr_len_log))
 
     # ------------------------------------------------------------------------------ #

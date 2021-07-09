@@ -5,6 +5,7 @@ from .compartmental_models import (
     kernelized_spread,
     uncorrelated_prior_I,
     uncorrelated_prior_E,
+    SIR_variants,
 )
 from .delay import delay_cases
 from .spreading_rate import lambda_t_with_sigmoids, lambda_t_with_linear_interp
