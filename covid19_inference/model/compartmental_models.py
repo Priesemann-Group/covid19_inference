@@ -638,3 +638,76 @@ def uncorrelated_prior_I(
     # )
     pm.Deterministic(name_I_begin, I_begin)
     return I_begin
+
+
+def uncorrelated_prior_E(
+    name_E_begin="I_begin",
+    name_E_begin_ratio_log="I_begin_ratio_log",
+    pr_sigma_E_begin=2,
+    n_data_points_used=5,
+    model=None,
+    len_time=11,
+):
+    r"""
+        Builds the prior for I begin  by solving the SIR differential from the first
+        data backwards. This decorrelates the I_begin from the lambda_t at the
+        beginning, allowing a more efficient sampling. The example_one_bundesland runs
+        about 30\% faster with this prior, instead of a HalfCauchy.
+
+        Parameters
+        ----------
+        lambda_t_log : TYPE
+            Description
+        mu : TYPE
+            Description
+        pr_median_delay : TYPE
+            Description
+        name_I_begin : str, optional
+            Description
+        name_I_begin_ratio_log : str, optional
+            Description
+        pr_sigma_I_begin : int, optional
+            Description
+        n_data_points_used : int, optional
+            Description
+        model : :class:`Cov19Model`
+            if none, it is retrieved from the context
+        lambda_t_log : :class:`~theano.tensor.TensorVariable`
+        mu : :class:`~theano.tensor.TensorVariable`
+        pr_median_delay : float
+        pr_sigma_I_begin : float
+        n_data_points_used : int
+
+        Returns
+        ------------------
+        I_begin: :class:`~theano.tensor.TensorVariable`
+
+    """
+    log.info("Uncorrelated prior_E")
+    model = modelcontext(model)
+
+    num_regions = () if model.sim_ndim == 1 else model.sim_shape[1]
+
+    num_new_E_ref = (
+        np.nansum(model.new_cases_obs[:n_data_points_used], axis=0) / model.data_len
+    )
+
+    diff_E_begin_L1_log = pm.Normal(
+        f"{name_E_begin_ratio_log}_L1", mu=0, sigma=pr_sigma_E_begin, shape=len_time
+    )
+    sigma_E_begi_log = pm.HalfNormal(
+        f"sigma_{name_E_begin_ratio_log}_L1", pr_sigma_E_begin, shape=len_time
+    )
+    diff_E_begin_L2_log = (
+        pm.Normal(
+            f"{name_E_begin_ratio_log}_L2_raw",
+            mu=0,
+            sigma=1,
+            shape=(len_time, num_regions),
+        )
+    ) * sigma_E_begi_log[:, None] + diff_E_begin_L1_log[:, None]
+
+    new_E_begin = num_new_E_ref * tt.exp(diff_E_begin_L2_log)
+
+    pm.Deterministic(name_E_begin, new_E_begin)
+    return new_E_begin
