@@ -29,27 +29,27 @@ def lambda_t_with_sigmoids(
     hierarchical=None,
     sigma_lambda_cp=None,
     sigma_lambda_week_cp=None,
-    prefix_lambdas = "",
+    prefix_lambdas="",
 ):
     """
-        Builds a time dependent spreading rate :math:`\lambda_t` with change points. The change points are marked by
-        a transient with a sigmoidal shape, with at
+    Builds a time dependent spreading rate :math:`\lambda_t` with change points. The change points are marked by
+    a transient with a sigmoidal shape, with at
 
-        Parameters
-        ----------
-        change_points_list
-        pr_median_lambda_0
-        pr_sigma_lambda_0
-        model : :class:`Cov19Model`
-            if none, it is retrieved from the context
+    Parameters
+    ----------
+    change_points_list
+    pr_median_lambda_0
+    pr_sigma_lambda_0
+    model : :class:`Cov19Model`
+        if none, it is retrieved from the context
 
-        Returns
-        -------
-        lambda_t_log
+    Returns
+    -------
+    lambda_t_log
 
-        TODO
-        ----
-        Documentation on this
+    TODO
+    ----
+    Documentation on this
     """
     log.info("Lambda_t with sigmoids")
     # Get our default mode context
@@ -96,7 +96,7 @@ def lambda_t_with_sigmoids(
 
     # Sum up all lambda values from the list
     for i, lambda_t in enumerate(lambda_log_t_list):
-        pm.Deterministic(f"lambda_t_part_{i}", lambda_t)
+        pm.Deterministic(f"{prefix_lambdas}lambda_t_part_{i}", lambda_t)
 
     lambda_t_log = sum(lambda_log_t_list)
 
@@ -114,21 +114,21 @@ def lambda_t_with_linear_interp(
     name_lambda_t="lambda_t",
 ):
     """
-        Parameters
-        ----------
-        change_points_list
-        pr_median_lambda_0
-        pr_sigma_lambda_0
-        model : :class:`Cov19Model`
-            if none, it is retrieved from the context
+    Parameters
+    ----------
+    change_points_list
+    pr_median_lambda_0
+    pr_sigma_lambda_0
+    model : :class:`Cov19Model`
+        if none, it is retrieved from the context
 
-        Returns
-        -------
-        lambda_t_log
+    Returns
+    -------
+    lambda_t_log
 
-        TODO
-        ----
-        Documentation on this
+    TODO
+    ----
+    Documentation on this
     """
     log.info("Lambda_t linear in lin-space")
     # Get our default mode context
@@ -385,7 +385,9 @@ def _make_change_point_RVs(
                 sigma=cp["pr_sigma_transient_len"],
                 shape=model.shape_of_regions,
             )
-            pm.Deterministic(f"{prefix_lambdas}transient_len_{i + 1}", tt.exp(tr_len_log))
+            pm.Deterministic(
+                f"{prefix_lambdas}transient_len_{i + 1}", tt.exp(tr_len_log)
+            )
             tr_len_list.append(tt.exp(tr_len_log))
 
     # ------------------------------------------------------------------------------ #
@@ -423,30 +425,30 @@ def _make_change_point_RVs(
 
 def _smooth_step_function(start_val, end_val, t_begin, t_end, t_total):
     """
-        Instead of going from start_val to end_val in one step, make the change a
-        gradual linear slope.
+    Instead of going from start_val to end_val in one step, make the change a
+    gradual linear slope.
 
-        Parameters
-        ----------
-            start_val : number
-                Starting value
+    Parameters
+    ----------
+        start_val : number
+            Starting value
 
-            end_val : number
-                Target value
+        end_val : number
+            Target value
 
-            t_begin : number or array (theano)
-                Time point (inbetween 0 and t_total) where start_val is placed
+        t_begin : number or array (theano)
+            Time point (inbetween 0 and t_total) where start_val is placed
 
-            t_end : number or array (theano)
-                Time point (inbetween 0 and t_total) where end_val is placed
+        t_end : number or array (theano)
+            Time point (inbetween 0 and t_total) where end_val is placed
 
-            t_total : integer
-                Total number of time points
+        t_total : integer
+            Total number of time points
 
-        Returns
-        -------
-            : theano vector
-                vector of length t_total with the values of the parameterised f(t)
+    Returns
+    -------
+        : theano vector
+            vector of length t_total with the values of the parameterised f(t)
     """
     t = np.arange(t_total)
 
