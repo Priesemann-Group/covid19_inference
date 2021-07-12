@@ -95,7 +95,6 @@ def student_t_likelihood(
     if model.shifted_cases:
 
         no_cases = data_obs == 0
-        print(data_obs)
         if len(data_obs.shape) > 1:
 
             for c, cases_obs_c in enumerate(data_obs.T):

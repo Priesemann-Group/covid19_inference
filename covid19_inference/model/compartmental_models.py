@@ -503,21 +503,7 @@ def kernelized_spread(
 
     # Runs kernelized spread model:
     def next_day(
-        lambda_t,
-        S_t,
-        nE1,
-        nE2,
-        nE3,
-        nE4,
-        nE5,
-        nE6,
-        nE7,
-        nE8,
-        nE9,
-        nE10,
-        _,
-        beta,
-        N,
+        lambda_t, S_t, nE1, nE2, nE3, nE4, nE5, nE6, nE7, nE8, nE9, nE10, _, beta, N,
     ):
         new_I_t = (
             beta[0] * nE1
@@ -941,9 +927,7 @@ def kernelized_spread_variants(
         new_E_begin = pr_new_E_begin
     else:
         new_E_begin = pm.HalfCauchy(
-            name=name_new_E_begin,
-            beta=pr_new_E_begin,
-            shape=(11, num_variants),
+            name=name_new_E_begin, beta=pr_new_E_begin, shape=(11, num_variants),
         )
 
     if pr_sigma_median_incubation is None:
@@ -962,7 +946,6 @@ def kernelized_spread_variants(
     N = model.N_population
 
     # Starting suceptible pool
-    # S_begin = N - pm.math.sum(new_E_begin, axis=[0,-1])
     S_begin = N - new_E_begin.sum().sum()
 
     lambda_t = tt.exp(lambda_t_log)
@@ -970,7 +953,7 @@ def kernelized_spread_variants(
     new_I_0 = tt.zeros(num_variants)
 
     # Choose transition rates (E to I) according to incubation period distribution
-    x = np.arange(1, 11)
+    x = np.arange(1, 11)[:, None]
 
     beta = ut.tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
 
@@ -1014,6 +997,7 @@ def kernelized_spread_variants(
 
         return S_t, new_E_tv, new_I_tv
 
+    print("Version 13")
     # theano scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, E's, new_I
     outputs, _ = theano.scan(
@@ -1025,6 +1009,7 @@ def kernelized_spread_variants(
             new_I_0,
         ],
         non_sequences=[beta, f, N],
+        # mode="DebugMode",
     )
 
     # Unzip outputs
