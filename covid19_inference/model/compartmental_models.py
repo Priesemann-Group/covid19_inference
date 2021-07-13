@@ -788,9 +788,12 @@ def SIR_variants(
         Phi = pm.HalfNormal("Phi", 0.01, shape=(model.sim_len, num_variants))
     else:
         loop_phi = False
-        Phi = pm.HalfNormal("Phi_raw", 0.005, shape=(model.sim_len, num_variants))*PhiScale[:,None]
-        pm.Deterministic("Phi",Phi)
-        
+        Phi = (
+            pm.HalfNormal("Phi_raw", 0.005, shape=(model.sim_len, num_variants))
+            * PhiScale[:, None]
+        )
+        pm.Deterministic("Phi", Phi)
+
     def next_day(lambda_t, Phi, S_t, I_tv, _, mu, f, N):
         # Variants SIR
         """
@@ -799,13 +802,13 @@ def SIR_variants(
         S_t.tag.test_value = 5000
         f.tag.test_value = [1,1,1,1,1]
         """
-        
+
         new_I_tv = f * I_tv * lambda_t * S_t / N
         if loop_phi:
-            new_I_tv += Phi*new_I_tv
+            new_I_tv += Phi * new_I_tv
         else:
             new_I_tv += Phi
-            
+
         # Update new compartments
         I_tv = I_tv + new_I_tv - mu * I_tv
         S_t = S_t - new_I_tv.sum()
@@ -971,8 +974,11 @@ def kernelized_spread_variants(
         Phi = pm.HalfNormal("Phi", 0.01, shape=(model.sim_len, num_variants))
     else:
         loop_phi = False
-        Phi = pm.HalfNormal("Phi_raw", 0.005, shape=(model.sim_len, num_variants))*PhiScale[:,None]
-        pm.Deterministic("Phi",Phi)
+        Phi = (
+            pm.HalfNormal("Phi_raw", 0.005, shape=(model.sim_len, num_variants))
+            * PhiScale[:, None]
+        )
+        pm.Deterministic("Phi", Phi)
 
     # Total number of people in population
     N = model.N_population
@@ -1024,7 +1030,7 @@ def kernelized_spread_variants(
         if loop_phi:
             new_I_tv += new_I_tv * Phi
         else:
-             new_I_tv += Phi
+            new_I_tv += Phi
         new_E_tv = f * new_I_tv * S_t * lambda_t / N
 
         S_t = S_t - new_E_tv.sum()
@@ -1032,7 +1038,6 @@ def kernelized_spread_variants(
 
         return S_t, new_E_tv, new_I_tv
 
-    print("Version 13")
     # theano scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, E's, new_I
     outputs, _ = theano.scan(
