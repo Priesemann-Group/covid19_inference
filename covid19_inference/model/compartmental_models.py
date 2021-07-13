@@ -730,21 +730,30 @@ def SIR_variants(
     model=None,
     return_all=False,
     num_variants=5,
+    PhiScale=None,
 ):
     r"""
 
     Parameters
     ----------
     lambda_t_log : :class:`~theano.tensor.TensorVariable`
-        time series of the logarithm of the spreading rate. Shape: (time)
+        Time series of the logarithm of the spreading rate. Shape: (time)
     mu : :class:`~theano.tensor.TensorVariable`
-        the recovery rate :math:`\mu`, typically a random variable.
+        The recovery rate :math:`\mu`, typically a random variable.
+    f : :class:`~theano.tensor.TensorVariable`
+        TODO
     pr_I_begin : float or array_like or :class:`~theano.tensor.Variable`
         Prior beta of the Half-Cauchy distribution of :math:`I(0)`.
         if type is ``tt.Constant``, I_begin will not be inferred by pymc3.
     model : :class:`Cov19Model`
         if none, it is retrieved from the context
-
+    num_variants : number,
+        The number of input variants, corresponding to the shape of f.
+    PhiScale : array
+        The scaling of influx, should be the same shape as [length of sim],
+        can also be [length of sim, variants]. If None the numer of current cases 
+        is taken as scaling.
+        
     Returns
     ------------------
     new_I_t : :class:`~theano.tensor.TensorVariable`
@@ -773,8 +782,15 @@ def SIR_variants(
     lambda_t = tt.exp(lambda_t_log)
 
     # Set prior for Influx phi
-    Phi = pm.HalfCauchy("Phi", 0.01, shape=(model.sim_len, num_variants))
-
+    if PhiScale is None:
+        # See loop
+        loop_phi = True
+        Phi = pm.HalfNormal("Phi", 0.01, shape=(model.sim_len, num_variants))
+    else:
+        loop_phi = False
+        Phi = pm.HalfNormal("Phi_raw", 0.005, shape=(model.sim_len, num_variants))*PhiScale[:,None]
+        pm.Deterministic("Phi",Phi)
+        
     def next_day(lambda_t, Phi, S_t, I_tv, _, mu, f, N):
         # Variants SIR
         """
@@ -783,10 +799,13 @@ def SIR_variants(
         S_t.tag.test_value = 5000
         f.tag.test_value = [1,1,1,1,1]
         """
-
+        
         new_I_tv = f * I_tv * lambda_t * S_t / N
-        new_I_tv += new_I_tv * Phi
-
+        if loop_phi:
+            new_I_tv += Phi*new_I_tv
+        else:
+            new_I_tv += Phi
+            
         # Update new compartments
         I_tv = I_tv + new_I_tv - mu * I_tv
         S_t = S_t - new_I_tv.sum()
@@ -833,6 +852,7 @@ def kernelized_spread_variants(
     sigma_incubation=0.4,
     model=None,
     return_all=False,
+    PhiScale=None,
 ):
     r"""
     Implements a model similar to the susceptible-exposed-infected-recovered model.
@@ -901,6 +921,11 @@ def kernelized_spread_variants(
     return_all : bool
         if True, returns ``name_new_I_t``, ``name_new_E_t``,  ``name_I_t``,
         ``name_S_t`` otherwise returns only ``name_new_I_t``
+        
+    PhiScale : array
+        The scaling of influx, should be the same shape as [length of sim],
+        can also be [length of sim, variants]. If None the numer of current cases 
+        is taken as scaling.
 
     Returns
     -------
@@ -940,7 +965,14 @@ def kernelized_spread_variants(
         )
 
     # Set prior for Influx phi
-    Phi = pm.HalfCauchy("Phi", 0.01, shape=(model.sim_len, num_variants))
+    if PhiScale is None:
+        # See loop
+        loop_phi = True
+        Phi = pm.HalfNormal("Phi", 0.01, shape=(model.sim_len, num_variants))
+    else:
+        loop_phi = False
+        Phi = pm.HalfNormal("Phi_raw", 0.005, shape=(model.sim_len, num_variants))*PhiScale[:,None]
+        pm.Deterministic("Phi",Phi)
 
     # Total number of people in population
     N = model.N_population
@@ -989,7 +1021,10 @@ def kernelized_spread_variants(
             + beta[8] * nE9
             + beta[9] * nE10
         )
-        new_I_tv += new_I_tv * Phi
+        if loop_phi:
+            new_I_tv += new_I_tv * Phi
+        else:
+             new_I_tv += Phi
         new_E_tv = f * new_I_tv * S_t * lambda_t / N
 
         S_t = S_t - new_E_tv.sum()
