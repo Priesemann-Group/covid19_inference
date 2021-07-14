@@ -279,41 +279,79 @@ def _make_change_point_RVs(
 
         # Create transient time list
         dt_before = model.sim_begin
-        for i, cp in enumerate(change_points_list):
-            dt_begin_transient = cp["pr_mean_date_transient"]
-            if dt_before is not None and dt_before > dt_begin_transient:
-                raise RuntimeError("Dates of change points are not temporally ordered")
-            prior_mean = (dt_begin_transient - model.sim_begin).days
-            tr_time_L2, _ = ut.hierarchical_normal(
-                name_L1=f"transient_day_{i + 1}_hc_L1",
-                name_L2=f"transient_day_{i + 1}_hc_L2",
-                name_sigma=f"sigma_transient_day_{i + 1}_L1",
-                pr_mean=prior_mean,
-                pr_sigma=cp["pr_sigma_date_transient"],
-                error_fact=1.0,
-                error_cauchy=False,
-            )
-            tr_time_list.append(tr_time_L2)
-            dt_before = dt_begin_transient
 
-        # Create transient len list
-        for i, cp in enumerate(change_points_list):
-            # if model.sim_ndim == 1:
-            tr_len_L2_log, tr_len_L1_log = ut.hierarchical_normal(
-                name_L1=f"transient_len_{i + 1}_hc_L1_log",
-                name_L2=f"transient_len_{i + 1}_hc_L2_log",
-                name_sigma=f"sigma_transient_len_{i + 1}",
-                pr_mean=np.log(cp["pr_median_transient_len"]),
-                pr_sigma=cp["pr_sigma_transient_len"],
-                error_fact=1.0,
-                error_cauchy=False,
-            )
-            if tr_len_L1_log is not None:
-                pm.Deterministic(f"transient_len_{i + 1}_hc_L1", tt.exp(tr_len_L1_log))
-                pm.Deterministic(f"transient_len_{i + 1}_hc_L2", tt.exp(tr_len_L2_log))
-            else:
-                pm.Deterministic(f"transient_len_{i + 1}", tt.exp(tr_len_L2_log))
-            tr_len_list.append(tt.exp(tr_len_L2_log))
+        if hierarchical == "only_lambda":
+            for i, cp in enumerate(change_points_list):
+                dt_begin_transient = cp["pr_mean_date_transient"]
+                if dt_before is not None and dt_before > dt_begin_transient:
+                    raise RuntimeError(
+                        "Dates of change points are not temporally ordered"
+                    )
+
+                prior_mean = (dt_begin_transient - model.sim_begin).days
+                tr_time = pm.Normal(
+                    name=f"{prefix_lambdas}transient_day_{i + 1}",
+                    mu=prior_mean,
+                    sigma=cp["pr_sigma_date_transient"],
+                    shape=model.shape_of_regions,
+                )
+                tr_time_list.append(tr_time)
+                dt_before = dt_begin_transient
+
+            # Create transient length list
+            for i, cp in enumerate(change_points_list):
+                tr_len_log = pm.Normal(
+                    name=f"{prefix_lambdas}transient_len_{i + 1}_log_",
+                    mu=np.log(cp["pr_median_transient_len"]),
+                    sigma=cp["pr_sigma_transient_len"],
+                    shape=model.shape_of_regions,
+                )
+                pm.Deterministic(
+                    f"{prefix_lambdas}transient_len_{i + 1}", tt.exp(tr_len_log)
+                )
+                tr_len_list.append(tt.exp(tr_len_log))
+        else:
+            for i, cp in enumerate(change_points_list):
+                dt_begin_transient = cp["pr_mean_date_transient"]
+                if dt_before is not None and dt_before > dt_begin_transient:
+                    raise RuntimeError(
+                        "Dates of change points are not temporally ordered"
+                    )
+                prior_mean = (dt_begin_transient - model.sim_begin).days
+                tr_time_L2, _ = ut.hierarchical_normal(
+                    name_L1=f"transient_day_{i + 1}_hc_L1",
+                    name_L2=f"transient_day_{i + 1}_hc_L2",
+                    name_sigma=f"sigma_transient_day_{i + 1}_L1",
+                    pr_mean=prior_mean,
+                    pr_sigma=cp["pr_sigma_date_transient"],
+                    error_fact=1.0,
+                    error_cauchy=False,
+                )
+                tr_time_list.append(tr_time_L2)
+                dt_before = dt_begin_transient
+
+            # Create transient len list
+            for i, cp in enumerate(change_points_list):
+                # if model.sim_ndim == 1:
+                tr_len_L2_log, tr_len_L1_log = ut.hierarchical_normal(
+                    name_L1=f"transient_len_{i + 1}_hc_L1_log",
+                    name_L2=f"transient_len_{i + 1}_hc_L2_log",
+                    name_sigma=f"sigma_transient_len_{i + 1}",
+                    pr_mean=np.log(cp["pr_median_transient_len"]),
+                    pr_sigma=cp["pr_sigma_transient_len"],
+                    error_fact=1.0,
+                    error_cauchy=False,
+                )
+                if tr_len_L1_log is not None:
+                    pm.Deterministic(
+                        f"transient_len_{i + 1}_hc_L1", tt.exp(tr_len_L1_log)
+                    )
+                    pm.Deterministic(
+                        f"transient_len_{i + 1}_hc_L2", tt.exp(tr_len_L2_log)
+                    )
+                else:
+                    pm.Deterministic(f"transient_len_{i + 1}", tt.exp(tr_len_L2_log))
+                tr_len_list.append(tt.exp(tr_len_L2_log))
 
     def non_hierarchical_mod():
         lambda_0_log = pm.Normal(
