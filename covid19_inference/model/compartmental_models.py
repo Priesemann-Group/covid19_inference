@@ -788,12 +788,11 @@ def SIR_variants(
         Phi = pm.HalfNormal("Phi", 0.01, shape=(model.sim_len, num_variants))
     else:
         loop_phi = False
-        Phi = (
-            pm.HalfNormal("Phi_raw", 0.005, shape=(model.sim_len, num_variants))
-            * PhiScale[:, None]
-        )
-        pm.Deterministic("Phi", Phi)
-
+        Phi = (pm.HalfNormal("Phi_raw", 0.001, shape=(model.sim_len, num_variants))
+            * PhiScale[:,None]
+            )
+        pm.Deterministic("Phi",Phi)
+        
     def next_day(lambda_t, Phi, S_t, I_tv, _, mu, f, N):
         # Variants SIR
         """
@@ -974,11 +973,10 @@ def kernelized_spread_variants(
         Phi = pm.HalfNormal("Phi", 0.01, shape=(model.sim_len, num_variants))
     else:
         loop_phi = False
-        Phi = (
-            pm.HalfNormal("Phi_raw", 0.005, shape=(model.sim_len, num_variants))
-            * PhiScale[:, None]
-        )
-        pm.Deterministic("Phi", Phi)
+        Phi = (pm.HalfNormal("Phi_raw", 0.001, shape=(model.sim_len, num_variants))
+            * PhiScale[:,None]
+            )
+        pm.Deterministic("Phi",Phi)
 
     # Total number of people in population
     N = model.N_population
