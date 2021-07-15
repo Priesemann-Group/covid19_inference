@@ -79,9 +79,17 @@ def hierarchical_normal(
         raise RuntimeError("Model is not hierarchical.")
 
     if error_cauchy:
-        sigma_Y = pm.HalfCauchy(name_sigma, beta=error_fact * pr_sigma)
+        sigma_Y = (
+            (pm.HalfCauchy(name_sigma, beta=1, transform=pm.transforms.log_exp_m1))
+            * error_fact
+            * pr_sigma
+        )
     else:
-        sigma_Y = pm.HalfNormal(name_sigma, sigma=error_fact * pr_sigma)
+        sigma_Y = (
+            (pm.HalfNormal(name_sigma, sigma=1, transform=pm.transforms.log_exp_m1))
+            * error_fact
+            * pr_sigma
+        )
 
     X = pm.Normal(name_L1, mu=pr_mean, sigma=pr_sigma)
     phi = pm.Normal(

@@ -28,7 +28,7 @@ def delay_cases(
     len_input_arr=None,
     len_output_arr=None,
     diff_input_output=None,
-    num_variants = None,
+    num_variants=None,
 ):
     """
         Convolves the input by a lognormal distribution, in order to model a delay:
@@ -205,12 +205,10 @@ def delay_cases(
     # depending on the give input shape
     if cases.ndim == 2 and not model.is_hierarchical:
         if num_variants is None:
-            raise RuntimeError(
-                "Please pass num_variants to delay function."
-            )
-        delay_log = tt.stack([delay_log]*num_variants,axis=0)
-        width_log = tt.stack([width_log]*num_variants,axis=0)
-        
+            raise RuntimeError("Please pass num_variants to delay function.")
+        delay_log = tt.stack([delay_log] * num_variants, axis=0)
+        width_log = tt.stack([width_log] * num_variants, axis=0)
+
     # delay the input cases
     delayed_cases = _delay_lognormal(
         input_arr=cases,
