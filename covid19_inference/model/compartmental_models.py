@@ -730,7 +730,7 @@ def SIR_variants(
     model=None,
     return_all=False,
     num_variants=5,
-    PhiScale=None,
+    Phi=None,
 ):
     r"""
 
@@ -749,10 +749,8 @@ def SIR_variants(
         if none, it is retrieved from the context
     num_variants : number,
         The number of input variants, corresponding to the shape of f.
-    PhiScale : array
-        The scaling of influx, should be the same shape as [length of sim],
-        can also be [length of sim, variants]. If None the numer of current cases 
-        is taken as scaling.
+    Phi : array
+        The influx array which is added each timestep should have the shape (variants, time)
         
     Returns
     ------------------
@@ -782,16 +780,12 @@ def SIR_variants(
     lambda_t = tt.exp(lambda_t_log)
 
     # Set prior for Influx phi
-    if PhiScale is None:
-        # See loop
-        loop_phi = True
-        Phi = pm.HalfNormal("Phi", 0.01, shape=(model.sim_len, num_variants))
-    else:
+    if Phi is None:
         loop_phi = False
-        Phi = (pm.HalfNormal("Phi_raw", 0.001, shape=(model.sim_len, num_variants))
-            * PhiScale[:,None]
-            )
-        pm.Deterministic("Phi",Phi)
+        Phi = tt.zeros(model.sim_length)
+    elif isinstance(Phi, tt.Variable) :
+        loop_phi = True
+
         
     def next_day(lambda_t, Phi, S_t, I_tv, _, mu, f, N):
         # Variants SIR
@@ -803,9 +797,9 @@ def SIR_variants(
         """
 
         new_I_tv = f * I_tv * lambda_t * S_t / N
+        
+        # Add influx if defined
         if loop_phi:
-            new_I_tv += Phi * new_I_tv
-        else:
             new_I_tv += Phi
 
         # Update new compartments
@@ -854,7 +848,7 @@ def kernelized_spread_variants(
     sigma_incubation=0.4,
     model=None,
     return_all=False,
-    PhiScale=None,
+    Phi=None,
 ):
     r"""
     Implements a model similar to the susceptible-exposed-infected-recovered model.
@@ -924,10 +918,8 @@ def kernelized_spread_variants(
         if True, returns ``name_new_I_t``, ``name_new_E_t``,  ``name_I_t``,
         ``name_S_t`` otherwise returns only ``name_new_I_t``
         
-    PhiScale : array
-        The scaling of influx, should be the same shape as [length of sim],
-        can also be [length of sim, variants]. If None the numer of current cases 
-        is taken as scaling.
+    Phi : array
+        The influx array which is added each timestep should have the shape (variants, time)
 
     Returns
     -------
@@ -967,16 +959,11 @@ def kernelized_spread_variants(
         )
 
     # Set prior for Influx phi
-    if PhiScale is None:
-        # See loop
-        loop_phi = True
-        Phi = pm.HalfNormal("Phi", 0.01, shape=(model.sim_len, num_variants))
-    else:
+    if Phi is None:
         loop_phi = False
-        Phi = (pm.HalfNormal("Phi_raw", 0.001, shape=(model.sim_len, num_variants))
-            * PhiScale[:,None]
-            )
-        pm.Deterministic("Phi",Phi)
+        Phi = tt.zeros(model.sim_length)
+    elif isinstance(Phi, tt.Variable) :
+        loop_phi = True
 
     # Total number of people in population
     N = model.N_population
@@ -1025,10 +1012,10 @@ def kernelized_spread_variants(
             + beta[8] * nE9
             + beta[9] * nE10
         )
+        
         if loop_phi:
-            new_I_tv += new_I_tv * Phi
-        else:
             new_I_tv += Phi
+            
         new_E_tv = f * new_I_tv * S_t * lambda_t / N
 
         S_t = S_t - new_E_tv.sum()
