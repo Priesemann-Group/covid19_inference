@@ -57,6 +57,7 @@ def robust_sample(
     final_chains,
     return_tuning=False,
     args_start_points=None,
+    tune_2nd=None,
     **kwargs,
 ):
     r"""
@@ -77,6 +78,8 @@ def robust_sample(
         Number of draw chains
     args_start_points : dict
         Arguments passed to `get_start_points`
+    tune_2nd : int
+        If set, use different number of tuning samples for the second tuning
     **kwargs :
         Arguments passed to `pm.sample`
 
@@ -131,7 +134,7 @@ def robust_sample(
 
         trace = pm.sample(
             model=model,
-            tune=tune,
+            tune=tune_2nd if tune_2nd is not None else tune,
             draws=draws,
             chains=final_chains,
             start=start_points,
