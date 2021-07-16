@@ -783,10 +783,9 @@ def SIR_variants(
     if Phi is None:
         loop_phi = False
         Phi = tt.zeros(model.sim_length)
-    elif isinstance(Phi, tt.Variable) :
+    elif isinstance(Phi, tt.Variable):
         loop_phi = True
 
-        
     def next_day(lambda_t, Phi, S_t, I_tv, _, mu, f, N):
         # Variants SIR
         """
@@ -797,7 +796,7 @@ def SIR_variants(
         """
 
         new_I_tv = f * I_tv * lambda_t * S_t / N
-        
+
         # Add influx if defined
         if loop_phi:
             new_I_tv += Phi
@@ -834,7 +833,7 @@ def SIR_variants(
 
 
 def kernelized_spread_variants(
-    lambda_t_log,
+    R_t_log,
     f,
     num_variants=5,
     name_new_I_tv="new_I_tv",
@@ -849,6 +848,7 @@ def kernelized_spread_variants(
     model=None,
     return_all=False,
     Phi=None,
+    f_is_varying=False,
 ):
     r"""
     Implements a model similar to the susceptible-exposed-infected-recovered model.
@@ -857,13 +857,13 @@ def kernelized_spread_variants(
 
     Parameters
     ----------
-    lambda_t_log : :class:`~theano.tensor.TensorVariable`
-        time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional, the first
+    R_t_log : :class:`~theano.tensor.TensorVariable`
+        time series of the logarithm of the reproduction time, 1 or 2-dimensional. If 2-dimensional, the first
         dimension is time.
 
-    mu : :class:`~theano.tensor.TensorVariable`
-        the recovery rate :math:`\mu`, typically a random variable. Can be 0 or
-        1-dimensional. If 1-dimensional, the dimension are the different regions.
+    f : :class:`~theano.tensor.TensorVariable`
+        The factor by which the reproduction number of each variant is multiplied by,
+        is of shape num_variants
 
     name_new_E_tv : str, optional
         Name of the ``new_E_tv`` variable
@@ -919,18 +919,20 @@ def kernelized_spread_variants(
         ``name_S_t`` otherwise returns only ``name_new_I_t``
         
     Phi : array
-        The influx array which is added each timestep should have the shape (variants, time)
+        The influx array which is added each timestep should have the shape (time, variants)
+    f_is_varying : bool
+        Whether f varies over time. In this case it is assumed to have shape (time, variants)
 
     Returns
     -------
-    name_new_I_t : :class:`~theano.tensor.TensorVariable`
+    new_I_t : :class:`~theano.tensor.TensorVariable`
         time series of the number daily newly infected persons.
 
-    name_new_E_t : :class:`~theano.tensor.TensorVariable`
+    new_E_t : :class:`~theano.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
 
-    name_S_t : :class:`~theano.tensor.TensorVariable`
+    S_t : :class:`~theano.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
 
     """
@@ -961,9 +963,13 @@ def kernelized_spread_variants(
     # Set prior for Influx phi
     if Phi is None:
         loop_phi = False
-        Phi = tt.zeros(model.sim_length)
-    elif isinstance(Phi, tt.Variable) :
+        Phi = tt.zeros(model.sim_len)
+    elif isinstance(Phi, tt.Variable):
         loop_phi = True
+
+    # prepare f
+    if not f_is_varying:
+        f *= tt.ones((model.sim_len, 1))
 
     # Total number of people in population
     N = model.N_population
@@ -971,7 +977,7 @@ def kernelized_spread_variants(
     # Starting suceptible pool
     S_begin = N - new_E_begin.sum().sum()
 
-    lambda_t = tt.exp(lambda_t_log)
+    R_t = tt.exp(R_t_log)
 
     new_I_0 = tt.zeros(num_variants)
 
@@ -982,23 +988,7 @@ def kernelized_spread_variants(
 
     # Runs kernelized spread model with variants:
     def next_day(
-        lambda_t,
-        Phi,
-        S_t,
-        nE1,
-        nE2,
-        nE3,
-        nE4,
-        nE5,
-        nE6,
-        nE7,
-        nE8,
-        nE9,
-        nE10,
-        _,
-        beta,
-        f,
-        N,
+        R_t, Phi, f, S_t, nE1, nE2, nE3, nE4, nE5, nE6, nE7, nE8, nE9, nE10, _, beta, N,
     ):
         new_I_tv = (
             beta[0] * nE1
@@ -1012,11 +1002,11 @@ def kernelized_spread_variants(
             + beta[8] * nE9
             + beta[9] * nE10
         )
-        
+
         if loop_phi:
             new_I_tv += Phi
-            
-        new_E_tv = f * new_I_tv * S_t * lambda_t / N
+
+        new_E_tv = f * new_I_tv * S_t * R_t / N
 
         S_t = S_t - new_E_tv.sum()
         S_t = tt.clip(S_t, -1, N)
@@ -1025,15 +1015,16 @@ def kernelized_spread_variants(
 
     # theano scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, E's, new_I
+
     outputs, _ = theano.scan(
         fn=next_day,
-        sequences=[lambda_t, Phi],
+        sequences=[R_t, Phi, f],
         outputs_info=[
             S_begin,
             dict(initial=new_E_begin, taps=[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10]),
             new_I_0,
         ],
-        non_sequences=[beta, f, N],
+        non_sequences=[beta, N],
         # mode="DebugMode",
     )
 

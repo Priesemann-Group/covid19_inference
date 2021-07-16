@@ -26,6 +26,7 @@ def hierarchical_normal(
     model=None,
     error_fact=2.0,
     error_cauchy=True,
+    shape=None,
 ):
     r"""
     Implements an hierarchical normal model:
@@ -75,6 +76,9 @@ def hierarchical_normal(
 
     model = modelcontext(model)
 
+    if shape is None:
+        shape = model.shape_of_regions
+
     if not model.is_hierarchical:
         raise RuntimeError("Model is not hierarchical.")
 
@@ -93,7 +97,7 @@ def hierarchical_normal(
 
     X = pm.Normal(name_L1, mu=pr_mean, sigma=pr_sigma)
     phi = pm.Normal(
-        name_L2 + "_raw_", mu=0, sigma=1, shape=model.shape_of_regions
+        name_L2 + "_raw_", mu=0, sigma=1, shape=shape
     )  # (1-w**2)*sigma_X+1*w**2, shape=len_Y)
     Y = X + phi * sigma_Y
     pm.Deterministic(name_L2, Y)
