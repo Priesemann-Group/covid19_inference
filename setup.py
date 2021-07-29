@@ -2,6 +2,7 @@ from setuptools import setup, find_namespace_packages
 import re
 
 # read the contents of your README file
+import os
 from os import path
 
 with open("README.md") as f:
@@ -38,5 +39,5 @@ setup(
     long_description_content_type="text/markdown",
     python_requires=">=3.6.0",
     version=verstr,
-    install_requires=parse_requirements("requirements.txt"),
+    install_requires=parse_requirements("./requirements.txt"),
 )
