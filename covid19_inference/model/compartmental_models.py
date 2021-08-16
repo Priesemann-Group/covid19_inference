@@ -1174,13 +1174,14 @@ def kernelized_spread_gender(
                 beta=pr_new_E_begin,
                 shape=(11, num_gender, model.shape_of_regions),
             )
+            
 
-    # should also have shape: countries
+    # shape: countries
     S_begin = N - pm.math.sum(new_E_begin, axis=(0,1))
 
     
     lambda_t = tt.exp(lambda_t_log)
-    new_I_0 = tt.zeros((num_gender,model.shape_of_regions))
+    new_I_0 = tt.zeros(model.sim_shape[1:])
 
     if pr_sigma_median_incubation is None:
         median_incubation = pr_mean_median_incubation
@@ -1201,9 +1202,8 @@ def kernelized_spread_gender(
 
     # Runs kernelized spread model:
     def next_day(
-        lambda_t, S_t, nE1, nE2, nE3, nE4, nE5, nE6, nE7, nE8, nE9, nE10, _, beta, N,
+        lambda_t, S_t, nE1, nE2, nE3, nE4, nE5, nE6, nE7, nE8, nE9, nE10, _, beta, N, gender_interaction_matrix,
     ):
-        
         new_I_t = (
             beta[0] * nE1
             + beta[1] * nE2
@@ -1216,15 +1216,15 @@ def kernelized_spread_gender(
             + beta[8] * nE9
             + beta[9] * nE10
         )
+        print(new_I_t.shape)
         # shape: gender, country
-        new_E_t = lambda_t / N * new_I_t * S_t
-        print(new_E_t.shape.eval())
+        new_E_t = lambda_t / N[None,:] * new_I_t * S_t[None,:]
         
-        # Interaction between gender groups
-        new_E_t = tt.dot(gender_interaction_matrix, new_E_t,)
+        # Interaction between gender groups (gender,gender)@(gender,countries)
+        new_E_t = tt.dot(gender_interaction_matrix,new_E_t)
         
         # Update suceptible compartement
-        S_t = S_t - new_E_t
+        S_t = S_t[None,:] - new_E_t
         S_t = tt.clip(S_t, -1, N)
         return S_t, new_E_t, new_I_t
 
@@ -1236,9 +1236,9 @@ def kernelized_spread_gender(
         outputs_info=[
             S_begin,
             dict(initial=new_E_begin, taps=[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10]),
-            new_I_0,
+            new_I_0
         ],
-        non_sequences=[beta, N],
+        non_sequences=[beta, N, gender_interaction_matrix],
     )
     S_t, new_E_t, new_I_t = outputs
     pm.Deterministic(name_new_I_t, new_I_t)

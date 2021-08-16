@@ -178,11 +178,11 @@ class Cov19Model(Model):
     @property
     def shape_of_regions(self):
         # Number of regions as tuple of int
-        return () if self.sim_ndim == 1 else self.sim_shape[1]
+        return () if self.sim_ndim == 1 else self.sim_shape[-1]
 
     @property
     def is_hierarchical(self):
-        return self.new_cases_obs.ndim == 2
+        return self.new_cases_obs.ndim >= 2
 
     """
         Forecast properties
