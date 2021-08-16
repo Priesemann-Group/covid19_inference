@@ -1,4 +1,4 @@
-# ------------------------------------------------------------------------------ #
+0  # ------------------------------------------------------------------------------ #
 # Apply a weekly modulation to the reported cases. Less reports on the weekend
 # ------------------------------------------------------------------------------ #
 
@@ -135,7 +135,10 @@ def week_modulation(
     modulation = step_modulation() if week_modulation_type == "step" else 0
     modulation = abs_sine_modulation() if week_modulation_type == "abs_sine" else 0
 
-    if model.is_hierarchical:
+    if len(shape_modulation) == 2:
+        modulation = tt.shape_padaxis(modulation, axis=-1)
+    elif len(shape_modulation) == 3:
+        modulation = tt.shape_padaxis(modulation, axis=-1)
         modulation = tt.shape_padaxis(modulation, axis=-1)
 
     multiplication_vec = tt.abs_(

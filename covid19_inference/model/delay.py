@@ -112,6 +112,8 @@ def delay_cases(
         num_variants : int
             If you are not using the hierachical model but still want to apply a delay
             to multidimensional casenumbers. This is the shape of your last dimension.
+            For an 3 dimensional cases, with the last dimension countries, it is the
+            shape of the second to last dimension
 
         Returns
         -------
@@ -157,8 +159,8 @@ def delay_cases(
     # We may also have a distribution of the width (of the kernel of delays) within
     # each sample/trace.
     if pr_sigma_of_width is None:
-        # Default: width of kernel has no distribution
-        width_log = np.log(pr_median_of_width)
+        # Default: width of kernel has no distribution, and a shape of (1,)
+        width_log = tt.as_tensor_variable(np.log(pr_median_of_width))[None]
     else:
         # Alternatively, put a prior distribution on the witdh, too
         width_log = pm.Normal(
@@ -208,6 +210,9 @@ def delay_cases(
             raise RuntimeError("Please pass num_variants to delay function.")
         delay_log = tt.stack([delay_log] * num_variants, axis=0)
         width_log = tt.stack([width_log] * num_variants, axis=0)
+    elif cases.ndim == 3:
+        delay_log = tt.stack([delay_log] * num_variants, axis=0)
+        width_log = tt.stack([width_log] * num_variants, axis=0)
 
     # delay the input cases
     delayed_cases = _delay_lognormal(
@@ -245,6 +250,8 @@ def _delay_lognormal(
     # add a dim if hierarchical
     if input_arr.ndim == 2:
         delay_mat = delay_mat[:, :, None]
+    if input_arr.ndim == 3:
+        delay_mat = delay_mat[:, :, None, None]
     delayed_arr = _apply_delay(input_arr, median_delay, scale_delay, delay_mat)
     return delayed_arr
 
@@ -315,6 +322,14 @@ def _apply_delay(array, delay, sigma_delay, delay_mat):
         delayed_arr = delayed_arr.dimshuffle((1, 0))
     elif array.ndim == 1 and mat.ndim == 2:
         delayed_arr = tt.dot(array, mat)
+    elif array.ndim == 3 and mat.ndim == 4:
+        array_flat = array.reshape((array.shape[0], -1))
+        mat_flat = mat.reshape((mat.shape[0], mat.shape[1], -1))
+        array_shuf = array_flat.dimshuffle((1, 0))
+        mat_shuf = mat_flat.dimshuffle((2, 0, 1))
+        delayed_arr_flat = tt.batched_dot(array_shuf, mat_shuf)
+        delayed_arr_flat = delayed_arr_flat.dimshuffle((1, 0))
+        delayed_arr = delayed_arr_flat.reshape(array.shape)
     else:
         raise RuntimeError(
             "For some reason, wrong number of dimensions, shouldn't happen"
