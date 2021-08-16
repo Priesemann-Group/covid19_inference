@@ -1181,6 +1181,7 @@ def kernelized_spread_gender(
 
     
     lambda_t = tt.exp(lambda_t_log)
+    # shape: genders, countries
     new_I_0 = tt.zeros(model.sim_shape[1:])
 
     if pr_sigma_median_incubation is None:
@@ -1216,7 +1217,7 @@ def kernelized_spread_gender(
             + beta[8] * nE9
             + beta[9] * nE10
         )
-        print(new_I_t.shape)
+        print(new_I_t.shape) #
         # shape: gender, country
         new_E_t = lambda_t / N[None,:] * new_I_t * S_t[None,:]
         
@@ -1224,7 +1225,7 @@ def kernelized_spread_gender(
         new_E_t = tt.dot(gender_interaction_matrix,new_E_t)
         
         # Update suceptible compartement
-        S_t = S_t[None,:] - new_E_t
+        S_t = S_t - new_E_t.sum(axis=0)
         S_t = tt.clip(S_t, -1, N)
         return S_t, new_E_t, new_I_t
 
@@ -1234,9 +1235,9 @@ def kernelized_spread_gender(
         fn=next_day,
         sequences=[lambda_t],
         outputs_info=[
-            S_begin,
-            dict(initial=new_E_begin, taps=[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10]),
-            new_I_0
+            S_begin, # shape: countries
+            dict(initial=new_E_begin, taps=[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10]), # shape time, gender, countries
+            new_I_0 # shape gender, countries
         ],
         non_sequences=[beta, N, gender_interaction_matrix],
     )
