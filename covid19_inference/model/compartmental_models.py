@@ -691,8 +691,9 @@ def uncorrelated_prior_E(
     log.info("Uncorrelated prior_E")
     model = modelcontext(model)
 
-    num_regions = () if model.sim_ndim == 1 else model.sim_shape[1]
+    num_regions = () if model.sim_ndim == 1 else model.sim_shape[1:]
 
+    
     num_new_E_ref = (
         np.nansum(model.new_cases_obs[:n_data_points_used], axis=0) / model.data_len
     )
@@ -708,9 +709,13 @@ def uncorrelated_prior_E(
             f"{name_E_begin_ratio_log}_L2_raw",
             mu=0,
             sigma=1,
-            shape=(len_time, num_regions),
+            shape=((len_time,)+tuple(num_regions)),
         )
-    ) * sigma_E_begi_log[:, None] + diff_E_begin_L1_log[:, None]
+    )
+    if model.sim_ndim < 3: 
+        diff_E_begin_L2_log = diff_E_begin_L2_log * sigma_E_begi_log[:, None] + diff_E_begin_L1_log[:, None]
+    elif model.sim_ndim == 3:
+        diff_E_begin_L2_log = diff_E_begin_L2_log * sigma_E_begi_log[:, None, None] + diff_E_begin_L1_log[:, None, None]
 
     new_E_begin = num_new_E_ref * tt.exp(diff_E_begin_L2_log)
 
@@ -1054,11 +1059,9 @@ def kernelized_spread_gender(
     name_new_E_begin="new_E_begin",
     name_median_incubation="median_incubation",
     pr_new_E_begin=50,
-    pr_median_mu=1 / 8,
     pr_mean_median_incubation=4,
     pr_sigma_median_incubation=1,
     sigma_incubation=0.4,
-    pr_sigma_mu=0.2,
     num_gender=2,
     model=None,
     return_all=False,
@@ -1071,15 +1074,12 @@ def kernelized_spread_gender(
     Parameters
     ----------
     lambda_t_log : :class:`~theano.tensor.TensorVariable`
-        time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional, the first
+        Time series of the logarithm of the spreading rate, 2 or 3-dimensional. If 3-dimensional, the first
         dimension is time.
+        shape: time, gender, [country]
         
     gender_interaction_matrix : :class:`~theano.tensor.TensorVariable`
         Gender interaction matrix should be of shape (num_gender,num_gender)
-
-    mu : :class:`~theano.tensor.TensorVariable`
-        the recovery rate :math:`\mu`, typically a random variable. Can be 0 or
-        1-dimensional. If 1-dimensional, the dimension are the different regions.
 
     name_new_I_t : str, optional
         Name of the ``new_I_t`` variable
@@ -1102,11 +1102,6 @@ def kernelized_spread_gender(
     pr_new_E_begin : float or array_like
         Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
         distribution of :math:`E(0)`.
-
-    pr_median_mu : float or array_like
-        Prior for the median of the
-        :class:`~pymc3.distributions.continuous.Lognormal` distribution of the
-        recovery rate :math:`\mu`.
 
     pr_mean_median_incubation :
         Prior mean of the :class:`~pymc3.distributions.continuous.Normal`
@@ -1180,10 +1175,12 @@ def kernelized_spread_gender(
                 shape=(11, num_gender, model.shape_of_regions),
             )
 
-    S_begin = N - pm.math.sum(new_E_begin, axis=0)
+    # should also have shape: countries
+    S_begin = N - pm.math.sum(new_E_begin, axis=(0,1))
 
+    
     lambda_t = tt.exp(lambda_t_log)
-    new_I_0 = tt.zeros(model.shape_of_regions)
+    new_I_0 = tt.zeros((num_gender,model.shape_of_regions))
 
     if pr_sigma_median_incubation is None:
         median_incubation = pr_mean_median_incubation
@@ -1206,6 +1203,7 @@ def kernelized_spread_gender(
     def next_day(
         lambda_t, S_t, nE1, nE2, nE3, nE4, nE5, nE6, nE7, nE8, nE9, nE10, _, beta, N,
     ):
+        
         new_I_t = (
             beta[0] * nE1
             + beta[1] * nE2
@@ -1218,10 +1216,12 @@ def kernelized_spread_gender(
             + beta[8] * nE9
             + beta[9] * nE10
         )
+        # shape: gender, country
         new_E_t = lambda_t / N * new_I_t * S_t
+        print(new_E_t.shape.eval())
         
         # Interaction between gender groups
-        new_E_t = tt.tensordot(gender_interaction_matrix, new_E_t, axes=1)
+        new_E_t = tt.dot(gender_interaction_matrix, new_E_t,)
         
         # Update suceptible compartement
         S_t = S_t - new_E_t

@@ -156,7 +156,9 @@ class Cov19Model(Model):
             self.sim_shape = (sim_len,)
         elif self.sim_ndim == 2:
             self.sim_shape = (sim_len, self.new_cases_obs.shape[1])
-
+        elif self.sim_ndim == 3:
+            self.sim_shape = (sim_len, self.new_cases_obs.shape[1], self.new_cases_obs.shape[2])
+            
         if self.data_end > datetime.datetime.today():
             log.warning(
                 f"Your last data point is in the future ({self.data_end}). "
