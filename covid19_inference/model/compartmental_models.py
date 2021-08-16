@@ -693,7 +693,6 @@ def uncorrelated_prior_E(
 
     num_regions = () if model.sim_ndim == 1 else model.sim_shape[1:]
 
-    
     num_new_E_ref = (
         np.nansum(model.new_cases_obs[:n_data_points_used], axis=0) / model.data_len
     )
@@ -704,18 +703,22 @@ def uncorrelated_prior_E(
     sigma_E_begi_log = pm.HalfNormal(
         f"sigma_{name_E_begin_ratio_log}_L1", pr_sigma_E_begin, shape=len_time
     )
-    diff_E_begin_L2_log = (
-        pm.Normal(
-            f"{name_E_begin_ratio_log}_L2_raw",
-            mu=0,
-            sigma=1,
-            shape=((len_time,)+tuple(num_regions)),
-        )
+    diff_E_begin_L2_log = pm.Normal(
+        f"{name_E_begin_ratio_log}_L2_raw",
+        mu=0,
+        sigma=1,
+        shape=((len_time,) + tuple(num_regions)),
     )
-    if model.sim_ndim < 3: 
-        diff_E_begin_L2_log = diff_E_begin_L2_log * sigma_E_begi_log[:, None] + diff_E_begin_L1_log[:, None]
+    if model.sim_ndim < 3:
+        diff_E_begin_L2_log = (
+            diff_E_begin_L2_log * sigma_E_begi_log[:, None]
+            + diff_E_begin_L1_log[:, None]
+        )
     elif model.sim_ndim == 3:
-        diff_E_begin_L2_log = diff_E_begin_L2_log * sigma_E_begi_log[:, None, None] + diff_E_begin_L1_log[:, None, None]
+        diff_E_begin_L2_log = (
+            diff_E_begin_L2_log * sigma_E_begi_log[:, None, None]
+            + diff_E_begin_L1_log[:, None, None]
+        )
 
     new_E_begin = num_new_E_ref * tt.exp(diff_E_begin_L2_log)
 
@@ -1049,7 +1052,7 @@ def kernelized_spread_variants(
     else:
         return new_I_tv
 
-    
+
 def kernelized_spread_gender(
     lambda_t_log,
     gender_interaction_matrix,
@@ -1157,7 +1160,7 @@ def kernelized_spread_gender(
     # --------------------------
 
     # Total number of people in population
-    N = model.N_population #shape: [gender, country]
+    N = model.N_population  # shape: [gender, country]
 
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
     # We choose to consider the transitions of newly exposed people of the last 10 days.
@@ -1174,12 +1177,10 @@ def kernelized_spread_gender(
                 beta=pr_new_E_begin,
                 shape=(11, num_gender, model.shape_of_regions),
             )
-            
 
     # shape: countries
-    S_begin = N - pm.math.sum(new_E_begin, axis=(0,1))
+    S_begin = N - pm.math.sum(new_E_begin, axis=(0, 1))
 
-    
     lambda_t = tt.exp(lambda_t_log)
     # shape: genders, countries
     new_I_0 = tt.zeros(model.sim_shape[1:])
@@ -1203,7 +1204,22 @@ def kernelized_spread_gender(
 
     # Runs kernelized spread model:
     def next_day(
-        lambda_t, S_t, nE1, nE2, nE3, nE4, nE5, nE6, nE7, nE8, nE9, nE10, _, beta, N, gender_interaction_matrix,
+        lambda_t,
+        S_t,
+        nE1,
+        nE2,
+        nE3,
+        nE4,
+        nE5,
+        nE6,
+        nE7,
+        nE8,
+        nE9,
+        nE10,
+        _,
+        beta,
+        N,
+        gender_interaction_matrix,
     ):
         new_I_t = (
             beta[0] * nE1
@@ -1217,13 +1233,13 @@ def kernelized_spread_gender(
             + beta[8] * nE9
             + beta[9] * nE10
         )
-        print(new_I_t.shape) #
+        print(new_I_t.shape)  #
         # shape: gender, country
-        new_E_t = lambda_t / N[None,:] * new_I_t * S_t[None,:]
-        
+        new_E_t = lambda_t / N[None, :] * new_I_t * S_t[None, :]
+
         # Interaction between gender groups (gender,gender)@(gender,countries)
-        new_E_t = tt.dot(gender_interaction_matrix,new_E_t)
-        
+        new_E_t = tt.dot(gender_interaction_matrix, new_E_t)
+
         # Update suceptible compartement
         S_t = S_t - new_E_t.sum(axis=0)
         S_t = tt.clip(S_t, -1, N)
@@ -1235,9 +1251,11 @@ def kernelized_spread_gender(
         fn=next_day,
         sequences=[lambda_t],
         outputs_info=[
-            S_begin, # shape: countries
-            dict(initial=new_E_begin, taps=[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10]), # shape time, gender, countries
-            new_I_0 # shape gender, countries
+            S_begin,  # shape: countries
+            dict(
+                initial=new_E_begin, taps=[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10]
+            ),  # shape time, gender, countries
+            new_I_0,  # shape gender, countries
         ],
         non_sequences=[beta, N, gender_interaction_matrix],
     )
