@@ -97,24 +97,25 @@ def student_t_likelihood(
         no_cases = data_obs == 0
         if len(data_obs.shape) > 1:
 
-            for c, cases_obs_c in enumerate(data_obs.T):
+            for c in range(data_obs.shape[-1]):
+                cases_obs_c = data_obs[..., c]
                 # find short intervals of 0 entries and set to NaN
-                no_cases_blob, n_blob = ndi.label(no_cases[:, c])
+                no_cases_blob, n_blob = ndi.label(no_cases[..., c])
                 for i in range(n_blob):
                     if (no_cases_blob == (i + 1)).sum() < 10:
-                        data_obs[no_cases_blob == i + 1, c] = np.NaN
+                        data_obs[no_cases_blob == i + 1, ..., c] = np.NaN
 
                 # shift cases from weekends or such to the next day, where cases are reported
                 if n_blob > 0:
                     new_cases = 0
                     update = False
                     for i, cases_obs in enumerate(cases_obs_c):
-                        new_cases += cases[i + model.diff_data_sim][c]
+                        new_cases += cases[i + model.diff_data_sim][..., c]
                         if np.isnan(cases_obs):
                             update = True
                         elif update:
                             cases_i = tt.set_subtensor(
-                                cases[i + model.diff_data_sim][c], new_cases
+                                cases[i + model.diff_data_sim][..., c], new_cases
                             )
                             cases = tt.set_subtensor(
                                 cases[i + model.diff_data_sim], cases_i
