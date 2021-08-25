@@ -28,7 +28,8 @@ def delay_cases(
     len_input_arr=None,
     len_output_arr=None,
     diff_input_output=None,
-    num_variants=None,
+    seperate_on_axes=True,
+    num_seperated_axes=None,
 ):
     """
         Convolves the input by a lognormal distribution, in order to model a delay:
@@ -94,6 +95,7 @@ def delay_cases(
             The model to use.
             Default: None, model is retrieved automatically from the context
 
+
         Other Parameters
         ----------------
         len_input_arr :
@@ -109,11 +111,14 @@ def delay_cases(
             Number of days the returned array begins later then the input. Should be
             significantly larger than the median delay. By default it is set to the
             ``model.diff_data_sim``.
-        num_variants : int
-            If you are not using the hierachical model but still want to apply a delay
-            to multidimensional casenumbers. This is the shape of your last dimension.
-            For an 3 dimensional cases, with the last dimension countries, it is the
-            shape of the second to last dimension
+
+        seperate_on_axes : Bool
+            This decides whether or not the delay is applied on every
+            axes separately. I.e. Different delay times for the different axes. If 
+            None **no** axes is modelled separately!
+
+        num_seperated_axes: int or None
+            If you are not using separated axes, this is the number of axes.
 
         Returns
         -------
@@ -124,38 +129,18 @@ def delay_cases(
     log.info("Delaying cases")
     model = modelcontext(model)
 
-    # log normal distributed delays (the median values)
+    # Define the shape of the delays i.e. seperate for different axes
+    shape_of_delays = (1,) if not seperate_on_axes else model.shape_of_regions
 
+    # log normal distributed delays (the median values)
     delay_log = pm.Normal(
         name=f"{name_delay}_log",
         mu=np.log(pr_mean_of_median),
         sigma=pr_sigma_of_median,
-        shape=model.shape_of_regions,
+        shape=shape_of_delays,
     )
     pm.Deterministic(f"{name_delay}", np.exp(delay_log))
 
-    """
-    if not model.is_hierarchical:
-        delay_log = pm.Normal(
-            name=f"{name_delay}_log",
-            mu=np.log(pr_mean_of_median),
-            sigma=pr_sigma_of_median,
-        )
-        pm.Deterministic(f"{name_delay}", np.exp(delay_log))
-    else:
-        delay_L2_log, delay_L1_log = ut.hierarchical_normal(
-            name_L1=f"{name_delay}_hc_L1_log",
-            name_L2=f"{name_delay}_hc_L2_log",
-            name_sigma=f"{name_delay}_hc_sigma",
-            pr_mean=np.log(pr_mean_of_median),
-            pr_sigma=pr_sigma_of_median,
-            model=model,
-            error_cauchy=False,
-        )
-        pm.Deterministic(f"{name_delay}_hc_L2", np.exp(delay_L2_log))
-        pm.Deterministic(f"{name_delay}_hc_L1", np.exp(delay_L1_log))
-        delay_log = delay_L2_log
-    """
     # We may also have a distribution of the width (of the kernel of delays) within
     # each sample/trace.
     if pr_sigma_of_width is None:
@@ -167,32 +152,9 @@ def delay_cases(
             name=f"{name_width}_log",
             mu=np.log(pr_median_of_width),
             sigma=pr_sigma_of_width,
-            shape=model.shape_of_regions,
+            shape=shape_of_delays,
         )
         pm.Deterministic(f"{name_width}", tt.exp(width_log))
-
-        """
-        if not model.is_hierarchical:
-            width_log = pm.Normal(
-                name=f"{name_width}_log",
-                mu=np.log(pr_median_of_width),
-                sigma=pr_sigma_of_width,
-            )
-            pm.Deterministic(f"{name_width}", tt.exp(width_log))
-        else:
-            width_L2_log, width_L1_log = hierarchical_normal(
-                name_L1=f"{name_width}_hc_L1_log",
-                name_L2=f"{name_width}_hc_L2_log",
-                name_sigma=f"{name_width}_hc_sigma",
-                pr_mean=np.log(pr_median_of_width),
-                pr_sigma=pr_sigma_of_width,
-                model=model,
-                error_cauchy=False,
-            )
-            pm.Deterministic(f"{name_width}_hc_L2", tt.exp(width_L2_log))
-            pm.Deterministic(f"{name_width}_hc_L1", tt.exp(width_L1_log))
-            width_log = width_L2_log
-        """
 
     # enable this function for custom data and data ranges
     if len_output_arr is None:
@@ -202,17 +164,11 @@ def delay_cases(
     if len_input_arr is None:
         len_input_arr = model.sim_len
 
-    # It is possible, that the input is multidimensional even tho the model
-    # is not hierachical! Thus we need to stack the delay_log and width_log
-    # depending on the give input shape
-    if cases.ndim == 2 and not model.is_hierarchical:
-        if num_variants is None:
-            raise RuntimeError("Please pass num_variants to delay function.")
-        delay_log = tt.stack([delay_log] * num_variants, axis=0)
-        width_log = tt.stack([width_log] * num_variants, axis=0)
-    elif cases.ndim == 3:
-        delay_log = tt.stack([delay_log] * num_variants, axis=0)
-        width_log = tt.stack([width_log] * num_variants, axis=0)
+    # We need to stack the delay_log and width_log
+    # depending on the give input shape.
+    if cases.ndim >= 2 and not seperate_on_axes:
+        delay_log = tt.stack([delay_log] * num_seperated_axes, axis=1)
+        width_log = tt.stack([width_log] * num_seperated_axes, axis=1)
 
     # delay the input cases
     delayed_cases = _delay_lognormal(
