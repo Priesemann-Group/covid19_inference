@@ -53,7 +53,7 @@ def week_modulation(
         Default: None, cases are not stored in the trace.
     week_modulation_type : str
         The type of modulation, accepts ``"step"`` or  ``"abs_sine`` (the default).
-    pr_mean_weekend_factor : float
+    pr_mean_weekend_factor : float, tt.Variable
         Sets the prior mean of the factor :math:`f_w` by which weekends are counted.
     pr_sigma_weekend_factor : float
         Sets the prior sigma of the factor :math:`f_w` by which weekends are counted.
@@ -106,7 +106,11 @@ def week_modulation(
     shape_modulation = list(model.sim_shape)
     # shape_modulation[0] -= model.diff_data_sim
 
-    if not model.is_hierarchical:
+    if isinstance(pr_mean_weekend_factor,tt.Variable):
+        weekend_factor = pr_mean_weekend_factor
+        pm.Deterministic(name_weekend_factor, weekend_factor)
+        
+    elif not model.is_hierarchical:
         weekend_factor_log = pm.Normal(
             name=name_weekend_factor + "_log",
             mu=tt.log(pr_mean_weekend_factor),
@@ -142,7 +146,7 @@ def week_modulation(
         modulation = tt.shape_padaxis(modulation, axis=-1)
 
     multiplication_vec = tt.abs_(
-        np.ones(shape_modulation) - weekend_factor * modulation
+        np.ones(model.sim_shape) - weekend_factor * modulation
     )
 
     new_cases_inferred_eff = cases * multiplication_vec
