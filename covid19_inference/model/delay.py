@@ -278,7 +278,7 @@ def _apply_delay(array, delay, sigma_delay, delay_mat, use_gamma=False):
     if use_gamma:
         mat = ut.tt_gamma(delay_mat, mu=delay, sigma=sigma_delay)
     else:
-        mat = ut.tt_lognormal(delay_mat, mu=np.log(delay), sigma=np.log(sigma_delay))
+        mat = ut.tt_lognormal(delay_mat, mu=np.log(delay), sigma=sigma_delay)
     if array.ndim == 2 and mat.ndim == 3:
         array_shuf = array.dimshuffle((1, 0))
         mat_shuf = mat.dimshuffle((2, 0, 1))
