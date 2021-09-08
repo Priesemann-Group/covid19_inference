@@ -30,6 +30,7 @@ def delay_cases(
     diff_input_output=None,
     seperate_on_axes=True,
     num_seperated_axes=None,
+    use_gamma=False,
 ):
     """
         Convolves the input by a lognormal distribution, in order to model a delay:
@@ -178,6 +179,7 @@ def delay_cases(
         median_delay=tt.exp(delay_log),
         scale_delay=tt.exp(width_log),
         delay_betw_input_output=diff_input_output,
+        use_gamma=use_gamma,
     )
 
     # optionally, add the cases to the trace. maybe let the user do this in the future.
@@ -194,6 +196,7 @@ def _delay_lognormal(
     median_delay,
     scale_delay,
     delay_betw_input_output,
+    use_gamma=False
 ):
     delay_mat = _make_delay_matrix(
         n_rows=len_input_arr,
@@ -208,7 +211,7 @@ def _delay_lognormal(
         delay_mat = delay_mat[:, :, None]
     if input_arr.ndim == 3:
         delay_mat = delay_mat[:, :, None, None]
-    delayed_arr = _apply_delay(input_arr, median_delay, scale_delay, delay_mat)
+    delayed_arr = _apply_delay(input_arr, median_delay, scale_delay, delay_mat,use_gamma=use_gamma)
     return delayed_arr
 
 
@@ -269,8 +272,11 @@ def _make_delay_matrix(n_rows, n_columns, initial_delay=0):
     return mat[:n_rows, :n_columns]
 
 
-def _apply_delay(array, delay, sigma_delay, delay_mat):
-    mat = ut.tt_lognormal(delay_mat, mu=np.log(delay), sigma=sigma_delay)
+def _apply_delay(array, delay, sigma_delay, delay_mat, use_gamma=False):
+    if use_gamma:
+        mat = ut.tt_gamma(delay_mat, mu=delay, sigma=sigma_delay)
+    else:
+        mat = ut.tt_lognormal(delay_mat, mu=np.log(delay), sigma=np.log(sigma_delay))
     if array.ndim == 2 and mat.ndim == 3:
         array_shuf = array.dimshuffle((1, 0))
         mat_shuf = mat.dimshuffle((2, 0, 1))
