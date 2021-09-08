@@ -106,10 +106,10 @@ def week_modulation(
     shape_modulation = list(model.sim_shape)
     # shape_modulation[0] -= model.diff_data_sim
 
-    if isinstance(pr_mean_weekend_factor,tt.Variable):
+    if isinstance(pr_mean_weekend_factor, tt.Variable):
         weekend_factor = pr_mean_weekend_factor
         pm.Deterministic(name_weekend_factor, weekend_factor)
-        
+
     elif not model.is_hierarchical:
         weekend_factor_log = pm.Normal(
             name=name_weekend_factor + "_log",
@@ -145,9 +145,7 @@ def week_modulation(
         modulation = tt.shape_padaxis(modulation, axis=-1)
         modulation = tt.shape_padaxis(modulation, axis=-1)
 
-    multiplication_vec = tt.abs_(
-        np.ones(model.sim_shape) - weekend_factor * modulation
-    )
+    multiplication_vec = tt.abs_(np.ones(model.sim_shape) - weekend_factor * modulation)
 
     new_cases_inferred_eff = cases * multiplication_vec
 

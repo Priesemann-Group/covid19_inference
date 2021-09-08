@@ -146,10 +146,10 @@ def tt_gamma(x, mu=None, sigma=None, alpha=None, beta=None):
     """
     assert (alpha is None and beta is None) != (mu is None and sigma is None)
     if alpha is None and beta is None:
-        alpha = mu ** 2 / sigma ** 2
-        beta = mu / sigma ** 2
+        alpha = mu ** 2 / (sigma ** 2 + 1e-8)
+        beta = mu / (sigma ** 2 + 1e-8)
     x = tt.nnet.relu(x - 1e-12) + 1e-12  # clip values at 1e-12
     distr = beta ** alpha * x ** (alpha - 1) * tt.exp(-beta * x)
 
     # normalize, add a small offset in case the sum is zero
-    return distr / tt.sum(distr, axis=0) + 1e-8
+    return distr / (tt.sum(distr, axis=0) + 1e-8)

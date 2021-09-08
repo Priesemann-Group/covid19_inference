@@ -196,7 +196,7 @@ def _delay_lognormal(
     median_delay,
     scale_delay,
     delay_betw_input_output,
-    use_gamma=False
+    use_gamma=False,
 ):
     delay_mat = _make_delay_matrix(
         n_rows=len_input_arr,
@@ -211,7 +211,9 @@ def _delay_lognormal(
         delay_mat = delay_mat[:, :, None]
     if input_arr.ndim == 3:
         delay_mat = delay_mat[:, :, None, None]
-    delayed_arr = _apply_delay(input_arr, median_delay, scale_delay, delay_mat,use_gamma=use_gamma)
+    delayed_arr = _apply_delay(
+        input_arr, median_delay, scale_delay, delay_mat, use_gamma=use_gamma
+    )
     return delayed_arr
 
 
