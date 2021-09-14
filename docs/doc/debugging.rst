@@ -4,7 +4,7 @@ Debugging
 =========
 
 
-This is some pointer to help debugging models and sampling issues
+This is some pointer to help debugging models and sampling issues.
 
 
 General approach for nans/infs during sampling
