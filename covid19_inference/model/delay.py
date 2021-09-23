@@ -155,7 +155,8 @@ def delay_cases(
             sigma=pr_sigma_of_width,
             shape=shape_of_delays,
         )
-        pm.Deterministic(f"{name_width}", tt.exp(width_log))
+
+        pm.Deterministic(f"{name_width}", tt.exp(width_log) + 0.1)
 
     # enable this function for custom data and data ranges
     if len_output_arr is None:
@@ -177,7 +178,7 @@ def delay_cases(
         len_input_arr=len_input_arr,
         len_output_arr=len_output_arr,
         median_delay=tt.exp(delay_log),
-        scale_delay=tt.exp(width_log),
+        scale_delay=tt.exp(width_log) + 0.1,
         delay_betw_input_output=diff_input_output,
         use_gamma=use_gamma,
     )
