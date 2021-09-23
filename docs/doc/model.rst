@@ -2,21 +2,21 @@ Model
 =====
 
 If you are familiar with ``pymc3``, then looking at the example below should explain
-how our model works. Otherwise, here is a quick overivew:
+how our model works. Otherwise, here is a quick overview:
 
 * First, we have to create an instance of the base class (that is derived from pymc3s model class). It has some convenient properties to get the range of the data, simulation length and so forth.
 * We then add details that base model. They correspond to the actual (physical) model features, such as the change points, the reporting delay and the week modulation.
 
-    - Every feature has it's own function that takes in arguments to set prior
+    - Every feature has its own function that takes in arguments to set prior
       assumptions.
     - Sometimes they also take in input (data, reported cases ... ) but none of the
-      function performs any actual modifactions on the data. They only tell pymc3 what
+      functions perform any actual modifications on the data. They only tell pymc3 what
       it is supposed to do during the sampling.
     - None of our functions actually modifies any data. They rather define ways how
       pymc3 should modify data during the sampling.
     - Most of the feature functions add variables to the ``pymc3.trace``, see the function arguments that start with ``name_``.
 
-* in pymc3 it is common to use a context, as we also do in the example. everything within the block ``with cov19.model.Cov19Model(**params_model) as this_model:`` automagically applies to ``this_model``. Alternatively, you could provide a keyword to each function ``model=this_model``.
+* In pymc3 it is common to use a context, as we also do in the example. Everything within the block ``with cov19.model.Cov19Model(**params_model) as this_model:`` automatically applies to ``this_model``. Alternatively, you could provide a keyword to each function ``model=this_model``.
 
 Example
 -------

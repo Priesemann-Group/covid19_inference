@@ -6,7 +6,7 @@ Getting Started
 Installation
 ------------
 
-There exists three different possiblities to run the models:
+There exist three different possibilities to run the models:
 
 1. Clone the repository, with the latest release:
 
@@ -36,9 +36,9 @@ To get started, we recommend to look at one of the currently two example noteboo
     fixed.
 
 2. `Hierarchical model of the German states  <https://github.com/Priesemann-Group/covid19_inference/blob/master/scripts/example_bundeslaender.ipynb>`_
-    This builds a hierarchical bayesian model of the states of Germany. Caution, seems to be currently broken!
+    This builds a hierarchical Bayesian model of the states of Germany. Caution, seems to be currently broken!
 
-We can for example recommend the following articles about bayesian modeling:
+We can for example recommend the following articles about Bayesian modeling:
 
 As a introduction to Bayesian statistics and the python package (PyMC3) that we use:
 https://docs.pymc.io/notebooks/api_quickstart.html
