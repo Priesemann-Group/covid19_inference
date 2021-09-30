@@ -8,7 +8,7 @@ log = logging.getLogger(__name__)
 
 import filelock
 
-filelock.logger().setLevel("WARNING")
+logging.getLogger("filelock").setLevel(logging.ERROR)
 
 # from .data_retrieval import GOOGLE
 from . import data_retrieval

@@ -6,5 +6,5 @@ pandas
 pytest
 requests
 numpyro
-filelock
+filelock>=3.2.0
 
