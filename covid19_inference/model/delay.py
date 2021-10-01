@@ -140,23 +140,25 @@ def delay_cases(
         sigma=pr_sigma_of_median,
         shape=shape_of_delays,
     )
-    pm.Deterministic(f"{name_delay}", np.exp(delay_log))
+    pm.Deterministic(f"{name_delay}", tt.exp(delay_log))
 
     # We may also have a distribution of the width (of the kernel of delays) within
     # each sample/trace.
     if pr_sigma_of_width is None:
         # Default: width of kernel has no distribution, and a shape of (1,)
         width_log = tt.as_tensor_variable(np.log(pr_median_of_width))[None]
+        width = tt.exp(width_log)
     else:
         # Alternatively, put a prior distribution on the witdh, too
         width_log = pm.Normal(
             name=f"{name_width}_log",
-            mu=np.log(pr_median_of_width),
+            mu=pr_median_of_width - 0.2,
             sigma=pr_sigma_of_width,
             shape=shape_of_delays,
         )
-
-        pm.Deterministic(f"{name_width}", tt.exp(width_log) + 0.1)
+        # transformation such that it is positive, and not too small:
+        width = tt.nnet.sigmoid(width_log) + 0.2
+        pm.Deterministic(f"{name_width}", width)
 
     # enable this function for custom data and data ranges
     if len_output_arr is None:
@@ -170,7 +172,7 @@ def delay_cases(
     # depending on the give input shape.
     if cases.ndim >= 2 and not seperate_on_axes:
         delay_log = tt.stack([delay_log] * num_seperated_axes, axis=1)
-        width_log = tt.stack([width_log] * num_seperated_axes, axis=1)
+        width = tt.stack([width] * num_seperated_axes, axis=1)
 
     # delay the input cases
     delayed_cases = _delay_lognormal(
@@ -178,7 +180,7 @@ def delay_cases(
         len_input_arr=len_input_arr,
         len_output_arr=len_output_arr,
         median_delay=tt.exp(delay_log),
-        scale_delay=tt.exp(width_log) + 0.1,
+        scale_delay=width,
         delay_betw_input_output=diff_input_output,
         use_gamma=use_gamma,
     )

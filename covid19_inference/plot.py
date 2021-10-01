@@ -415,6 +415,7 @@ def _timeseries(
     draw_ci_75=None,
     draw_ci_50=None,
     date_format=True,
+    alpha=None,
     **kwargs,
 ):
     """
@@ -512,12 +513,10 @@ def _timeseries(
         del kwargs["linewidth"]
     if "marker" in kwargs:
         del kwargs["marker"]
-    if "alpha" in kwargs:
-        del kwargs["alpha"]
     if "label" in kwargs:
         del kwargs["label"]
     kwargs["lw"] = 0
-    kwargs["alpha"] = 0.1
+    kwargs["alpha"] = 0.1 if alpha is None else alpha
 
     if draw_ci_95 and y.ndim == 2:
         ax.fill_between(
@@ -536,7 +535,7 @@ def _timeseries(
         )
 
     del kwargs["alpha"]
-    kwargs["alpha"] = 0.2
+    kwargs["alpha"] = 0.2 if alpha is None else alpha
 
     if draw_ci_50 and y.ndim == 2:
         ax.fill_between(

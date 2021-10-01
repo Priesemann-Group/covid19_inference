@@ -104,15 +104,27 @@ def robust_sample(
             "ignore",
             message=".*The number of samples is too small to check convergence reliably.*",
         )
-        trace_tuning = pm.sample(
-            model=model,
-            tune=tune,
-            draws=0,
-            chains=tuning_chains,
-            return_inferencedata=False,
-            discard_tuned_samples=False,
-            **kwargs,
-        )
+
+        i = 0
+        while i < 5:
+            try:
+                trace_tuning = pm.sample(
+                    model=model,
+                    tune=tune,
+                    draws=0,
+                    chains=tuning_chains,
+                    return_inferencedata=False,
+                    discard_tuned_samples=False,
+                    **kwargs,
+                )
+            except RuntimeError as error:
+                if i < 3:
+                    i += 1
+                    continue
+                else:
+                    raise error
+            i = 100
+
         trace_tuning_az = az.from_pymc3(trace_tuning, model=model, save_warmup=True)
         if args_start_points is None:
             args_start_points = {}
