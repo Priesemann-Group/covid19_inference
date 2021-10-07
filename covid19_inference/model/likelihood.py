@@ -25,6 +25,7 @@ def student_t_likelihood(
     offset_sigma=1,
     model=None,
     data_obs=None,
+    sigma_shape=None,
 ):
     r"""
         Set the likelihood to apply to the model observations (`model.new_cases_obs`)
@@ -39,7 +40,8 @@ def student_t_likelihood(
 
         The parameter :math:`\sigma_r` follows
         a :class:`~pymc3.distributions.continuous.HalfCauchy` prior distribution with parameter beta set by
-        ``pr_beta_sigma_obs``. If the input is 2 dimensional, the parameter :math:`\sigma_r` is different for every region.
+        ``pr_beta_sigma_obs``. If the input is 2 dimensional, the parameter :math:`\sigma_r` is different for every region,
+        this can be changed be using the ``sigma_shape`` Parameter.
 
         Parameters
         ----------
@@ -71,6 +73,9 @@ def student_t_likelihood(
 
         data_obs : array
             The data that is observed. By default it is ``model.new_cases_obs``
+        
+        sigma_shape : int, array
+            Shape of the sigma distribution i.e. the data error term. 
 
 
         Returns
@@ -146,9 +151,10 @@ def student_t_likelihood(
 
     cases = cases[model.diff_data_sim : model.data_len + model.diff_data_sim]
     # theano.printing.Print(f'cases')(cases)
-
     sigma_obs = pm.HalfCauchy(
-        name_sigma_obs, beta=pr_beta_sigma_obs, shape=model.shape_of_regions
+        name_sigma_obs,
+        beta=pr_beta_sigma_obs,
+        shape=model.shape_of_regions if sigma_shape is None else sigma_shape,
     )
     sigma = (
         tt.abs_(cases + offset_sigma) ** 0.5 * sigma_obs
