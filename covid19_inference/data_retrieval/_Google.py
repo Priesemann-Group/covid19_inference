@@ -135,7 +135,7 @@ class GOOGLE(Retrieval):
                 )
             df = df.set_index(["country", "state", "region"])
             # datetime columns
-            df["date"] = pd.to_datetime(df["date"])
+            df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
             self.data = df
             return True
         except Exception as e:
