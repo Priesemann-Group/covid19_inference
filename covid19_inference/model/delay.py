@@ -152,12 +152,12 @@ def delay_cases(
         # Alternatively, put a prior distribution on the witdh, too
         width_log = pm.Normal(
             name=f"{name_width}_log",
-            mu=pr_median_of_width - 0.2,
+            mu=pr_median_of_width,
             sigma=pr_sigma_of_width,
             shape=shape_of_delays,
         )
         # transformation such that it is positive, and not too small:
-        width = tt.nnet.sigmoid(width_log) + 0.2
+        width = tt.nnet.softplus(width_log) + 0.01
         pm.Deterministic(f"{name_width}", width)
 
     # enable this function for custom data and data ranges

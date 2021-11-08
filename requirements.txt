@@ -6,5 +6,6 @@ pandas
 pytest
 requests
 numpyro
+cairosvg
 filelock>=3.2.0
 
