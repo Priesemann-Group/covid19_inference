@@ -40,7 +40,7 @@ def SIR(
     name_new_I_t : str, optional
         Name of the ``new_I_t`` variable
     name_I_begin : str, optional
-        Name of the ``I_begin`` variable
+        Name of the ``I_be  gin`` variable
     name_I_t : str, optional
         Name of the ``I_t`` variable, set to None to avoid adding as trace variable.
     name_S_t : str, optional

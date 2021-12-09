@@ -106,7 +106,7 @@ def robust_sample(
         )
 
         i = 0
-        while i < 5:
+        while i < 50:
             try:
                 trace_tuning = pm.sample(
                     model=model,
@@ -118,12 +118,15 @@ def robust_sample(
                     **kwargs,
                 )
             except RuntimeError as error:
-                if i < 3:
+                if i < 10:
                     i += 1
+                    log.warning(f"Tuning lead to a nan error in one chain, "
+                                f"trying again (try no {i}).")
                     continue
+
                 else:
                     raise error
-            i = 100
+            i = 1000
 
         trace_tuning_az = az.from_pymc3(trace_tuning, model=model, save_warmup=True)
         if args_start_points is None:
