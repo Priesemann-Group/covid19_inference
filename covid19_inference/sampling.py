@@ -81,7 +81,7 @@ def robust_sample(
     tune_2nd : int
         If set, use different number of tuning samples for the second tuning
     **kwargs :
-        Arguments passed to `pm.sample`
+        Arguments passed to the nuts step function.
 
     Returns
     -------
@@ -105,6 +105,9 @@ def robust_sample(
             message=".*The number of samples is too small to check convergence reliably.*",
         )
 
+        # Create nuts step method class to reuse for tuning and later sampling
+        default_nuts = pm.NUTS(model=model, **kwargs)
+
         i = 0
         while i < 50:
             try:
@@ -115,13 +118,15 @@ def robust_sample(
                     chains=tuning_chains,
                     return_inferencedata=False,
                     discard_tuned_samples=False,
-                    **kwargs,
+                    step=default_nuts,
                 )
             except RuntimeError as error:
                 if i < 10:
                     i += 1
-                    log.warning(f"Tuning lead to a nan error in one chain, "
-                                f"trying again (try no {i}).")
+                    log.warning(
+                        f"Tuning lead to a nan error in one chain, "
+                        f"trying again (try no {i})."
+                    )
                     continue
 
                 else:
@@ -144,7 +149,10 @@ def robust_sample(
         elif num_start_points > final_chains:
             p = np.exp(logl_starting_points - max(logl_starting_points))
             start_points = np.random.choice(
-                start_points, size=final_chains, p=p / np.sum(p), replace=False,
+                start_points,
+                size=final_chains,
+                p=p / np.sum(p),
+                replace=False,
             )
 
         trace = pm.sample(
@@ -155,7 +163,7 @@ def robust_sample(
             start=start_points,
             return_inferencedata=False,
             discard_tuned_samples=False,
-            **kwargs,
+            step=default_nuts,
         )
         trace_az = az.from_pymc3(trace, model=model, save_warmup=True)
     if return_tuning:
