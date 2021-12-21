@@ -1,10 +1,15 @@
 import random
 import logging
 import warnings
+from collections import Counter
+import pickle
+import glob
 
 import pymc3 as pm
 import arviz as az
+import matplotlib.pyplot as plt
 import numpy as np
+
 
 log = logging.getLogger(__name__)
 
@@ -49,6 +54,69 @@ def get_start_points(trace, trace_az, frames_start=None, SD_chain_logl=2.5):
     return start_points, logl_mean[keep_chains]
 
 
+class Callback:
+    """
+    Simple callback to save the trace every n iterations and
+    plot the logp.
+
+    Parameters
+    ----------
+    path : str
+        Path to save the trace
+
+    name : str 
+        Name of the model, should be used when running multiple
+        models in parallel (default: "model")
+
+    n : int
+        Save the trace every n iterations
+    """
+    def __init__(self, path="/temp", name="model", n=100):
+        self.path = path
+        self.name = name
+        self.n = n
+        self.lengths = Counter()
+
+        # Setup plotting of logp
+        self.fig, self.ax = plt.subplots(1, 1, figsize=(10, 5))
+        self.ax.set_xlabel("Iteration")
+        self.ax.set_ylabel("Logp")
+        self.ax.set_title(name)
+
+    """This function is called by pymc3 every iterations
+    """
+    def __call__(self, trace, draw):
+
+        # Update values
+        self.lengths[draw.chain] += 1
+        
+        # Save the trace every n iterations
+        if self.lengths[draw.chain] % self.n == 0:
+            self.save(trace, draw.chain)
+            self.plot_logp(trace, draw.chain)
+
+    def plot_logp(self, trace, chain):
+        pm_trace = pm.backends.base.MultiTrace({chain:trace}.values())
+        masked_logp = pm_trace["model_logp"][pm_trace["model_logp"]!=0]
+
+        self.ax.plot(np.arange(self.lengths[chain]-len(masked_logp),self.lengths[chain]),masked_logp)
+        self.fig.savefig(f"{self.path}/{self.name}_logp.png")
+
+    def save(self, trace, chain):
+        with open(f"{self.path}/{self.name}_{chain}.pkl", "wb") as f:
+            trace.chain = chain
+            pickle.dump(trace, f)
+
+    def load_all(self):
+        files = glob.glob(f"{self.path}/{self.name}_*.pkl")
+        traces = {}
+        for f in files:
+            with open(f, "rb") as f:
+                trace = pickle.load(f)
+                traces[trace.chain] = trace
+        return az.from_pymc3(pm.backends.base.MultiTrace(traces.values()))
+
+
 def robust_sample(
     model,
     tune,
@@ -58,6 +126,7 @@ def robust_sample(
     return_tuning=False,
     args_start_points=None,
     tune_2nd=None,
+    callback=None,
     **kwargs,
 ):
     r"""
@@ -119,6 +188,7 @@ def robust_sample(
                     return_inferencedata=False,
                     discard_tuned_samples=False,
                     step=default_nuts,
+                    callback=callback,
                 )
             except RuntimeError as error:
                 if i < 10:
@@ -164,6 +234,7 @@ def robust_sample(
             return_inferencedata=False,
             discard_tuned_samples=False,
             step=default_nuts,
+            callback=callback,
         )
         trace_az = az.from_pymc3(trace, model=model, save_warmup=True)
     if return_tuning:
