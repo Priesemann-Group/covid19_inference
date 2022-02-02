@@ -61,7 +61,7 @@ class RKI(Retrieval):
         """
         The url to the main dataset as csv, if none if supplied the fallback routines get used
         """
-        url_csv = "https://www.arcgis.com/sharing/rest/content/items/f10774f1c63e40168479a1feb6c7ca74/data"
+        url_csv = "https://www.arcgis.com/sharing/rest/content/items/66876b81065340a4a48710b062319336/data"
 
         """
         Kwargs for pandas read csv
@@ -128,12 +128,12 @@ class RKI(Retrieval):
         df = self.data
         if "Meldedatum" in df.columns:
             df["date"] = df["Meldedatum"].apply(
-                lambda x: datetime.datetime.strptime(x, "%Y/%m/%d %H:%M:%S")
+                lambda x: datetime.datetime.strptime(x, "%Y-%m-%d")
             )
             df = df.drop(columns="Meldedatum")
         if "Refdatum" in df.columns:
             df["date_ref"] = df["Refdatum"].apply(
-                lambda x: datetime.datetime.strptime(x, "%Y/%m/%d %H:%M:%S")
+                lambda x: datetime.datetime.strptime(x, "%Y-%m-%d")
             )
             df = df.drop(columns="Refdatum")
 
@@ -151,7 +151,8 @@ class RKI(Retrieval):
 
     def __download_via_rest_api(self, try_max=10):
         landkreise_max = 412  # Strangely there are 412 regions defined by the Robert Koch Insitute in contrast to the offical 294 rural districts or the 401 administrative districts.
-        url_id = "https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0/query?where=0%3D0&objectIds=&time=&resultType=none&outFields=idLandkreis&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=true&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token="
+
+        url_id = "https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/Covid19_hubv/FeatureServer/0/query?where=0%3D0&objectIds=&time=&resultType=none&outFields=idLandkreis&returnIdsOnly=false&returnUniqueIdsOnly=false&returnCountOnly=false&returnDistinctValues=true&cacheHint=false&orderByFields=&groupByFieldsForStatistics=&outStatistics=&having=&resultOffset=&resultRecordCount=&sqlFormat=none&f=pjson&token="
 
         url = urllib.request.urlopen(url_id)
         json_data = json.loads(url.read().decode())
