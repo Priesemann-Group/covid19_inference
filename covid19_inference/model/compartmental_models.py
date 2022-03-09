@@ -700,25 +700,31 @@ def uncorrelated_prior_E(
     diff_E_begin_L1_log = pm.Normal(
         f"{name_E_begin_ratio_log}_L1", mu=0, sigma=pr_sigma_E_begin, shape=len_time
     )
-    sigma_E_begi_log = pm.HalfNormal(
-        f"sigma_{name_E_begin_ratio_log}_L1", pr_sigma_E_begin, shape=len_time
-    )
-    diff_E_begin_L2_log = pm.Normal(
-        f"{name_E_begin_ratio_log}_L2_raw",
-        mu=0,
-        sigma=1,
-        shape=((len_time,) + tuple(num_regions)),
-    )
-    if model.sim_ndim < 3:
-        diff_E_begin_L2_log = (
-            diff_E_begin_L2_log * sigma_E_begi_log[:, None]
-            + diff_E_begin_L1_log[:, None]
+
+
+    if model.sim_ndim == 1:
+        diff_E_begin_L2_log = diff_E_begin_L1_log
+    else:
+        sigma_E_begi_log = pm.HalfNormal(
+            f"sigma_{name_E_begin_ratio_log}_L1", pr_sigma_E_begin, shape=len_time
         )
-    elif model.sim_ndim == 3:
-        diff_E_begin_L2_log = (
-            diff_E_begin_L2_log * sigma_E_begi_log[:, None, None]
-            + diff_E_begin_L1_log[:, None, None]
+        diff_E_begin_L2_log = pm.Normal(
+            f"{name_E_begin_ratio_log}_L2_raw",
+            mu=0,
+            sigma=1,
+            shape=((len_time,) + tuple(num_regions)),
         )
+        if model.sim_ndim == 2:
+
+            diff_E_begin_L2_log = (
+                diff_E_begin_L2_log * sigma_E_begi_log[:, None]
+                + diff_E_begin_L1_log[:, None]
+            )
+        elif model.sim_ndim == 3:
+            diff_E_begin_L2_log = (
+                diff_E_begin_L2_log * sigma_E_begi_log[:, None, None]
+                + diff_E_begin_L1_log[:, None, None]
+            )
 
     new_E_begin = num_new_E_ref * tt.exp(diff_E_begin_L2_log)
 
@@ -1258,6 +1264,433 @@ def kernelized_spread_gender(
             new_I_0,  # shape gender, countries
         ],
         non_sequences=[beta, N, gender_interaction_matrix],
+    )
+    S_t, new_E_t, new_I_t = outputs
+    pm.Deterministic(name_new_I_t, new_I_t)
+
+    if name_S_t is not None:
+        pm.Deterministic(name_S_t, S_t)
+    if name_new_E_t is not None:
+        pm.Deterministic(name_new_E_t, new_E_t)
+
+    if return_all:
+        return new_I_t, new_E_t, S_t
+    else:
+        return new_I_t
+
+
+def kernelized_spread_with_interaction(
+        R_t_log,
+        interaction_matrix,
+        num_groups,
+        name_new_I_t="new_I_t",
+        name_new_E_t="new_E_t",
+        name_S_t="S_t",
+        name_new_E_begin="new_E_begin",
+        name_median_incubation="median_incubation",
+        pr_new_E_begin=50,
+        pr_mean_median_incubation=4,
+        pr_sigma_median_incubation=1,
+        sigma_incubation=0.4,
+        model=None,
+        return_all=False,
+):
+    r"""
+    Implements a model similar to the susceptible-exposed-infected-recovered model.
+    Instead of a exponential decaying incubation period, the length of the period is
+    lognormal distributed.
+
+    Parameters
+    ----------
+    lambda_t_log : :class:`~theano.tensor.TensorVariable`
+        Time series of the logarithm of the spreading rate, 2 or 3-dimensional. If 3-dimensional, the first
+        dimension is time.
+        shape: time, gender, [country]
+
+    gender_interaction_matrix : :class:`~theano.tensor.TensorVariable`
+        Gender interaction matrix should be of shape (num_gender,num_gender)
+
+    name_new_I_t : str, optional
+        Name of the ``new_I_t`` variable
+
+    name_S_t : str, optional
+        Name of the ``S_t`` variable
+
+    name_new_E_begin : str, optional
+        Name of the ``new_E_begin`` variable
+
+    name_median_incubation : str
+        The name under which the median incubation time is saved in the trace
+
+    pr_I_begin : float or array_like
+        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
+        distribution of :math:`I(0)`.
+        if type is ``tt.Variable``, ``I_begin`` will be set to the provided prior as
+        a constant.
+
+    pr_new_E_begin : float or array_like
+        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
+        distribution of :math:`E(0)`.
+
+    pr_mean_median_incubation :
+        Prior mean of the :class:`~pymc3.distributions.continuous.Normal`
+        distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
+        Defaults to 4 days [Nishiura2020]_, which is the median serial interval (the
+        important measure here is not exactly the incubation period, but the delay
+        until a person becomes infectious which seems to be about 1 day earlier as
+        showing symptoms).
+
+    pr_sigma_median_incubation : number or None
+        Prior sigma of the :class:`~pymc3.distributions.continuous.Normal`
+        distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
+        If None, the incubation time will be fixed to the value of
+        ``pr_mean_median_incubation`` instead of a random variable
+        Default is 1 day.
+
+    sigma_incubation :
+        Scale parameter of the :class:`~pymc3.distributions.continuous.Lognormal`
+        distribution of the incubation time/ delay until infectiousness. The default
+        is set to 0.4, which is about the scale found in [Nishiura2020]_,
+        [Lauer2020]_.
+
+    pr_sigma_mu : float or array_like
+        Prior for the sigma of the lognormal distribution of recovery rate
+        :math:`\mu`.
+
+    model : :class:`Cov19Model`
+        if none, it is retrieved from the context
+
+    return_all : bool
+        if True, returns ``name_new_I_t``, ``name_new_E_t``,  ``name_I_t``,
+        ``name_S_t`` otherwise returns only ``name_new_I_t``
+    num_gender : int, optional
+        Number of proposed gender groups (dimension size)
+
+    Returns
+    -------
+    name_new_I_t : :class:`~theano.tensor.TensorVariable`
+        time series of the number daily newly infected persons.
+
+    name_new_E_t : :class:`~theano.tensor.TensorVariable`
+        time series of the number daily newly exposed persons. (if return_all set to
+        True)
+
+    name_S_t : :class:`~theano.tensor.TensorVariable`
+        time series of the susceptible (if return_all set to True)
+
+    """
+    log.info("kernelized spread")
+    model = modelcontext(model)
+
+
+    # Total number of people in population
+    N = model.N_population  # shape: [num_groups]
+
+    assert len(N) == num_groups
+    assert model.sim_shape[-1] == num_groups
+    assert len(model.sim_shape) == 2
+
+    # Build prior distrubutions:
+    # --------------------------
+
+    # Prior distributions of starting populations (exposed, infectious, susceptibles)
+    # We choose to consider the transitions of newly exposed people of the last 10 days.
+    if isinstance(pr_new_E_begin, tt.Variable):
+        new_E_begin = pr_new_E_begin
+    else:
+        new_E_begin = pm.HalfCauchy(
+            name=name_new_E_begin,
+            beta=pr_new_E_begin,
+            shape=(11, num_groups),
+        )
+
+    # shape: num_groups
+    S_begin = N - pm.math.sum(new_E_begin, axis=(0,))
+
+    R_t = tt.exp(R_t_log)
+    # shape: genders, countries
+    new_I_0 = tt.zeros(model.sim_shape[1:])
+
+    if pr_sigma_median_incubation is None:
+        median_incubation = pr_mean_median_incubation
+    else:
+        median_incubation = pm.Normal(
+            name_median_incubation,
+            mu=pr_mean_median_incubation,
+            sigma=pr_sigma_median_incubation,
+        )
+
+    # Choose transition rates (E to I) according to incubation period distribution
+
+    x = np.arange(1, 11)[:, None]
+
+    beta = ut.tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
+
+    # Runs kernelized spread model:
+    def next_day(
+            R_t,
+            S_t,
+            nE1,
+            nE2,
+            nE3,
+            nE4,
+            nE5,
+            nE6,
+            nE7,
+            nE8,
+            nE9,
+            nE10,
+            _,
+            beta,
+            N,
+            interaction_matrix,
+    ):
+        new_I_t = (
+                beta[0] * nE1
+                + beta[1] * nE2
+                + beta[2] * nE3
+                + beta[3] * nE4
+                + beta[4] * nE5
+                + beta[5] * nE6
+                + beta[6] * nE7
+                + beta[7] * nE8
+                + beta[8] * nE9
+                + beta[9] * nE10
+        )
+        print(new_I_t.shape)  #
+        # shape: gender, country
+        new_E_t = R_t / N * new_I_t * S_t
+
+        # Interaction between gender groups (gender,gender)@(gender,countries)
+        new_E_t = tt.dot(interaction_matrix, new_E_t)
+
+        # Update suceptible compartement
+        S_t = S_t - new_E_t.sum(axis=0)
+        S_t = tt.clip(S_t, -1, N)
+        return S_t, new_E_t, new_I_t
+
+    # theano scan returns two tuples, first one containing a time series of
+    # what we give in outputs_info : S, E's, new_I
+    outputs, _ = theano.scan(
+        fn=next_day,
+        sequences=[R_t],
+        outputs_info=[
+            S_begin,  # shape: countries
+            dict(
+                initial=new_E_begin, taps=[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10]
+            ),  # shape time, gender, countries
+            new_I_0,  # shape gender, countries
+        ],
+        non_sequences=[beta, N, interaction_matrix],
+    )
+    S_t, new_E_t, new_I_t = outputs
+    pm.Deterministic(name_new_I_t, new_I_t)
+
+    if name_S_t is not None:
+        pm.Deterministic(name_S_t, S_t)
+    if name_new_E_t is not None:
+        pm.Deterministic(name_new_E_t, new_E_t)
+
+    if return_all:
+        return new_I_t, new_E_t, S_t
+    else:
+        return new_I_t
+
+def kernelized_spread_tmp(
+        R_t_log,
+        name_new_I_t="new_I_t",
+        name_new_E_t="new_E_t",
+        name_S_t="S_t",
+        name_new_E_begin="new_E_begin",
+        name_median_incubation="median_incubation",
+        pr_new_E_begin=50,
+        pr_mean_median_incubation=4,
+        pr_sigma_median_incubation=1,
+        sigma_incubation=0.4,
+        model=None,
+        return_all=False,
+):
+    r"""
+    Implements a model similar to the susceptible-exposed-infected-recovered model.
+    Instead of a exponential decaying incubation period, the length of the period is
+    lognormal distributed.
+
+    Parameters
+    ----------
+    lambda_t_log : :class:`~theano.tensor.TensorVariable`
+        Time series of the logarithm of the spreading rate, 2 or 3-dimensional. If 3-dimensional, the first
+        dimension is time.
+        shape: time, gender, [country]
+
+    gender_interaction_matrix : :class:`~theano.tensor.TensorVariable`
+        Gender interaction matrix should be of shape (num_gender,num_gender)
+
+    name_new_I_t : str, optional
+        Name of the ``new_I_t`` variable
+
+    name_S_t : str, optional
+        Name of the ``S_t`` variable
+
+    name_new_E_begin : str, optional
+        Name of the ``new_E_begin`` variable
+
+    name_median_incubation : str
+        The name under which the median incubation time is saved in the trace
+
+    pr_I_begin : float or array_like
+        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
+        distribution of :math:`I(0)`.
+        if type is ``tt.Variable``, ``I_begin`` will be set to the provided prior as
+        a constant.
+
+    pr_new_E_begin : float or array_like
+        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
+        distribution of :math:`E(0)`.
+
+    pr_mean_median_incubation :
+        Prior mean of the :class:`~pymc3.distributions.continuous.Normal`
+        distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
+        Defaults to 4 days [Nishiura2020]_, which is the median serial interval (the
+        important measure here is not exactly the incubation period, but the delay
+        until a person becomes infectious which seems to be about 1 day earlier as
+        showing symptoms).
+
+    pr_sigma_median_incubation : number or None
+        Prior sigma of the :class:`~pymc3.distributions.continuous.Normal`
+        distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
+        If None, the incubation time will be fixed to the value of
+        ``pr_mean_median_incubation`` instead of a random variable
+        Default is 1 day.
+
+    sigma_incubation :
+        Scale parameter of the :class:`~pymc3.distributions.continuous.Lognormal`
+        distribution of the incubation time/ delay until infectiousness. The default
+        is set to 0.4, which is about the scale found in [Nishiura2020]_,
+        [Lauer2020]_.
+
+    pr_sigma_mu : float or array_like
+        Prior for the sigma of the lognormal distribution of recovery rate
+        :math:`\mu`.
+
+    model : :class:`Cov19Model`
+        if none, it is retrieved from the context
+
+    return_all : bool
+        if True, returns ``name_new_I_t``, ``name_new_E_t``,  ``name_I_t``,
+        ``name_S_t`` otherwise returns only ``name_new_I_t``
+    num_gender : int, optional
+        Number of proposed gender groups (dimension size)
+
+    Returns
+    -------
+    name_new_I_t : :class:`~theano.tensor.TensorVariable`
+        time series of the number daily newly infected persons.
+
+    name_new_E_t : :class:`~theano.tensor.TensorVariable`
+        time series of the number daily newly exposed persons. (if return_all set to
+        True)
+
+    name_S_t : :class:`~theano.tensor.TensorVariable`
+        time series of the susceptible (if return_all set to True)
+
+    """
+    log.info("kernelized spread")
+    model = modelcontext(model)
+
+
+    # Total number of people in population
+    N = model.N_population  # shape: ()
+
+    assert len(model.sim_shape) == 1
+
+    # Build prior distrubutions:
+    # --------------------------
+
+    # Prior distributions of starting populations (exposed, infectious, susceptibles)
+    # We choose to consider the transitions of newly exposed people of the last 10 days.
+    if isinstance(pr_new_E_begin, tt.Variable):
+        new_E_begin = pr_new_E_begin
+    else:
+        new_E_begin = pm.HalfCauchy(
+            name=name_new_E_begin,
+            beta=pr_new_E_begin,
+            shape=(11,),
+        )
+
+    # shape: num_groups
+    S_begin = N - pm.math.sum(new_E_begin, axis=(0,))
+
+    R_t = tt.exp(R_t_log)
+
+    new_I_0 = tt.zeros(())
+
+    if pr_sigma_median_incubation is None:
+        median_incubation = pr_mean_median_incubation
+    else:
+        median_incubation = pm.Normal(
+            name_median_incubation,
+            mu=pr_mean_median_incubation,
+            sigma=pr_sigma_median_incubation,
+        )
+
+    # Choose transition rates (E to I) according to incubation period distribution
+
+    x = np.arange(1, 11)[:, None]
+
+    beta = ut.tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
+
+    # Runs kernelized spread model:
+    def next_day(
+            R_t,
+            S_t,
+            nE1,
+            nE2,
+            nE3,
+            nE4,
+            nE5,
+            nE6,
+            nE7,
+            nE8,
+            nE9,
+            nE10,
+            _,
+            beta,
+            N,
+    ):
+        new_I_t = (
+                beta[0] * nE1
+                + beta[1] * nE2
+                + beta[2] * nE3
+                + beta[3] * nE4
+                + beta[4] * nE5
+                + beta[5] * nE6
+                + beta[6] * nE7
+                + beta[7] * nE8
+                + beta[8] * nE9
+                + beta[9] * nE10
+        )
+        print(new_I_t.shape)  #
+        # shape: gender, country
+        new_E_t = R_t / N * new_I_t * S_t
+
+        # Update susceptible compartement
+        S_t = S_t - new_E_t.sum(axis=0)
+        S_t = tt.clip(S_t, -1, N)
+        return S_t, new_E_t, new_I_t
+
+    # theano scan returns two tuples, first one containing a time series of
+    # what we give in outputs_info : S, E's, new_I
+    outputs, _ = theano.scan(
+        fn=next_day,
+        sequences=[R_t],
+        outputs_info=[
+            S_begin,  # shape: countries
+            dict(
+                initial=new_E_begin, taps=[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10]
+            ),  # shape time, gender, countries
+            new_I_0,  # shape gender, countries
+        ],
+        non_sequences=[beta, N],
     )
     S_t, new_E_t, new_I_t = outputs
     pm.Deterministic(name_new_I_t, new_I_t)

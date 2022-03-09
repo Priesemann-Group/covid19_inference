@@ -8,6 +8,7 @@ from .compartmental_models import (
     SIR_variants,
     kernelized_spread_variants,
     kernelized_spread_gender,
+    kernelized_spread_with_interaction,
 )
 from .delay import delay_cases
 from .spreading_rate import lambda_t_with_sigmoids, lambda_t_with_linear_interp

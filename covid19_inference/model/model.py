@@ -110,6 +110,7 @@ class Cov19Model(Model):
         fcast_len,
         diff_data_sim,
         N_population,
+        data_end=None,
         name="",
         model=None,
         shifted_cases=True,
@@ -139,17 +140,23 @@ class Cov19Model(Model):
         # assign properties
         self._data_begin = data_begin
         self._sim_begin = self.data_begin - datetime.timedelta(days=diff_data_sim)
-        self._data_end = self.data_begin + datetime.timedelta(
-            days=len(new_cases_obs) - 1
-        )
+        if data_end is None:
+            self._data_end = self.data_begin + datetime.timedelta(
+                days=len(new_cases_obs) - 1
+            )
+            # totel length of simulation, get later via the shape
+            sim_len = len(new_cases_obs) + diff_data_sim + fcast_len
+            if sim_len < len(new_cases_obs) + diff_data_sim:
+                raise RuntimeError(
+                    "Simulation ends before the end of the data. Increase num_days_sim."
+                )
+        else:
+            self._data_end = data_end
+            sim_len = (self.data_end - self.data_begin).days + 1 + diff_data_sim + fcast_len
+
         self._sim_end = self.data_end + datetime.timedelta(days=fcast_len)
 
-        # totel length of simulation, get later via the shape
-        sim_len = len(new_cases_obs) + diff_data_sim + fcast_len
-        if sim_len < len(new_cases_obs) + diff_data_sim:
-            raise RuntimeError(
-                "Simulation ends before the end of the data. Increase num_days_sim."
-            )
+
 
         # shape and dimension of simulation
         if self.sim_ndim == 1:
