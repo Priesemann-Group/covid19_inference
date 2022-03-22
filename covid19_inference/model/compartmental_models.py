@@ -1298,17 +1298,21 @@ def kernelized_spread_with_interaction(
     r"""
     Implements a model similar to the susceptible-exposed-infected-recovered model.
     Instead of a exponential decaying incubation period, the length of the period is
-    lognormal distributed.
+    lognormal distributed. In this model, we have an interaction between different
+    groups, could be different age-groups, countries, states,...
 
     Parameters
     ----------
-    lambda_t_log : :class:`~theano.tensor.TensorVariable`
-        Time series of the logarithm of the spreading rate, 2 or 3-dimensional. If 3-dimensional, the first
+    R_t_log : :class:`~theano.tensor.TensorVariable`
+        Time series of the logarithm of the spreading rate, 2 or 3-dimensional. The first
         dimension is time.
-        shape: time, gender, [country]
+        shape: time, num_groups, [independent dimension]
 
-    gender_interaction_matrix : :class:`~theano.tensor.TensorVariable`
-        Gender interaction matrix should be of shape (num_gender,num_gender)
+    interaction_matrix : :class:`~theano.tensor.TensorVariable`
+        Interaction matrix should be of shape (num_groups, num_groups)
+
+    num_groups : int
+         number of groups
 
     name_new_I_t : str, optional
         Name of the ``new_I_t`` variable
@@ -1363,8 +1367,6 @@ def kernelized_spread_with_interaction(
     return_all : bool
         if True, returns ``name_new_I_t``, ``name_new_E_t``,  ``name_I_t``,
         ``name_S_t`` otherwise returns only ``name_new_I_t``
-    num_gender : int, optional
-        Number of proposed gender groups (dimension size)
 
     Returns
     -------
@@ -1408,7 +1410,7 @@ def kernelized_spread_with_interaction(
     S_begin = N - pm.math.sum(new_E_begin, axis=(0,))
 
     R_t = tt.exp(R_t_log)
-    # shape: genders, countries
+    # shape: num_groups, [independent dimension]
     new_I_0 = tt.zeros(model.sim_shape[1:])
 
     if pr_sigma_median_incubation is None:
@@ -1457,12 +1459,13 @@ def kernelized_spread_with_interaction(
                 + beta[8] * nE9
                 + beta[9] * nE10
         )
-        print(new_I_t.shape)  #
-        # shape: gender, country
-        new_E_t = R_t / N * new_I_t * S_t
 
-        # Interaction between gender groups (gender,gender)@(gender,countries)
-        new_E_t = tt.dot(interaction_matrix, new_E_t)
+
+        # The reproduction number is assumed to have a symmetric effect, hence the sqrt
+        new_E_t = tt.sqrt(R_t) / N * new_I_t * S_t
+
+        # Interaction between gender groups (groups,groups)@(groups, [evtl. other dimension])
+        new_E_t = tt.sqrt(R_t) * tt.dot(interaction_matrix, new_E_t)
 
         # Update suceptible compartement
         S_t = S_t - new_E_t.sum(axis=0)
@@ -1478,8 +1481,8 @@ def kernelized_spread_with_interaction(
             S_begin,  # shape: countries
             dict(
                 initial=new_E_begin, taps=[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10]
-            ),  # shape time, gender, countries
-            new_I_0,  # shape gender, countries
+            ),  # shape time, groups, independent dimension
+            new_I_0,  # shape groups, independent dimension
         ],
         non_sequences=[beta, N, interaction_matrix],
     )
