@@ -701,7 +701,6 @@ def uncorrelated_prior_E(
         f"{name_E_begin_ratio_log}_L1", mu=0, sigma=pr_sigma_E_begin, shape=len_time
     )
 
-
     if model.sim_ndim == 1:
         diff_E_begin_L2_log = diff_E_begin_L1_log
     else:
@@ -1280,20 +1279,20 @@ def kernelized_spread_gender(
 
 
 def kernelized_spread_with_interaction(
-        R_t_log,
-        interaction_matrix,
-        num_groups,
-        name_new_I_t="new_I_t",
-        name_new_E_t="new_E_t",
-        name_S_t="S_t",
-        name_new_E_begin="new_E_begin",
-        name_median_incubation="median_incubation",
-        pr_new_E_begin=50,
-        pr_mean_median_incubation=4,
-        pr_sigma_median_incubation=1,
-        sigma_incubation=0.4,
-        model=None,
-        return_all=False,
+    R_t_log,
+    interaction_matrix,
+    num_groups,
+    name_new_I_t="new_I_t",
+    name_new_E_t="new_E_t",
+    name_S_t="S_t",
+    name_new_E_begin="new_E_begin",
+    name_median_incubation="median_incubation",
+    pr_new_E_begin=50,
+    pr_mean_median_incubation=4,
+    pr_sigma_median_incubation=1,
+    sigma_incubation=0.4,
+    model=None,
+    return_all=False,
 ):
     r"""
     Implements a model similar to the susceptible-exposed-infected-recovered model.
@@ -1384,7 +1383,6 @@ def kernelized_spread_with_interaction(
     log.info("kernelized spread")
     model = modelcontext(model)
 
-
     # Total number of people in population
     N = model.N_population  # shape: [num_groups]
 
@@ -1401,9 +1399,7 @@ def kernelized_spread_with_interaction(
         new_E_begin = pr_new_E_begin
     else:
         new_E_begin = pm.HalfCauchy(
-            name=name_new_E_begin,
-            beta=pr_new_E_begin,
-            shape=(11, num_groups),
+            name=name_new_E_begin, beta=pr_new_E_begin, shape=(11, num_groups),
         )
 
     # shape: num_groups
@@ -1430,36 +1426,35 @@ def kernelized_spread_with_interaction(
 
     # Runs kernelized spread model:
     def next_day(
-            R_t,
-            S_t,
-            nE1,
-            nE2,
-            nE3,
-            nE4,
-            nE5,
-            nE6,
-            nE7,
-            nE8,
-            nE9,
-            nE10,
-            _,
-            beta,
-            N,
-            interaction_matrix,
+        R_t,
+        S_t,
+        nE1,
+        nE2,
+        nE3,
+        nE4,
+        nE5,
+        nE6,
+        nE7,
+        nE8,
+        nE9,
+        nE10,
+        _,
+        beta,
+        N,
+        interaction_matrix,
     ):
         new_I_t = (
-                beta[0] * nE1
-                + beta[1] * nE2
-                + beta[2] * nE3
-                + beta[3] * nE4
-                + beta[4] * nE5
-                + beta[5] * nE6
-                + beta[6] * nE7
-                + beta[7] * nE8
-                + beta[8] * nE9
-                + beta[9] * nE10
+            beta[0] * nE1
+            + beta[1] * nE2
+            + beta[2] * nE3
+            + beta[3] * nE4
+            + beta[4] * nE5
+            + beta[5] * nE6
+            + beta[6] * nE7
+            + beta[7] * nE8
+            + beta[8] * nE9
+            + beta[9] * nE10
         )
-
 
         # The reproduction number is assumed to have a symmetric effect, hence the sqrt
         new_E_t = tt.sqrt(R_t) / N * new_I_t * S_t
@@ -1499,19 +1494,20 @@ def kernelized_spread_with_interaction(
     else:
         return new_I_t
 
+
 def kernelized_spread_tmp(
-        R_t_log,
-        name_new_I_t="new_I_t",
-        name_new_E_t="new_E_t",
-        name_S_t="S_t",
-        name_new_E_begin="new_E_begin",
-        name_median_incubation="median_incubation",
-        pr_new_E_begin=50,
-        pr_mean_median_incubation=4,
-        pr_sigma_median_incubation=1,
-        sigma_incubation=0.4,
-        model=None,
-        return_all=False,
+    R_t_log,
+    name_new_I_t="new_I_t",
+    name_new_E_t="new_E_t",
+    name_S_t="S_t",
+    name_new_E_begin="new_E_begin",
+    name_median_incubation="median_incubation",
+    pr_new_E_begin=50,
+    pr_mean_median_incubation=4,
+    pr_sigma_median_incubation=1,
+    sigma_incubation=0.4,
+    model=None,
+    return_all=False,
 ):
     r"""
     Implements a model similar to the susceptible-exposed-infected-recovered model.
@@ -1600,7 +1596,6 @@ def kernelized_spread_tmp(
     log.info("kernelized spread")
     model = modelcontext(model)
 
-
     # Total number of people in population
     N = model.N_population  # shape: ()
 
@@ -1615,9 +1610,7 @@ def kernelized_spread_tmp(
         new_E_begin = pr_new_E_begin
     else:
         new_E_begin = pm.HalfCauchy(
-            name=name_new_E_begin,
-            beta=pr_new_E_begin,
-            shape=(11,),
+            name=name_new_E_begin, beta=pr_new_E_begin, shape=(11,),
         )
 
     # shape: num_groups
@@ -1644,33 +1637,19 @@ def kernelized_spread_tmp(
 
     # Runs kernelized spread model:
     def next_day(
-            R_t,
-            S_t,
-            nE1,
-            nE2,
-            nE3,
-            nE4,
-            nE5,
-            nE6,
-            nE7,
-            nE8,
-            nE9,
-            nE10,
-            _,
-            beta,
-            N,
+        R_t, S_t, nE1, nE2, nE3, nE4, nE5, nE6, nE7, nE8, nE9, nE10, _, beta, N,
     ):
         new_I_t = (
-                beta[0] * nE1
-                + beta[1] * nE2
-                + beta[2] * nE3
-                + beta[3] * nE4
-                + beta[4] * nE5
-                + beta[5] * nE6
-                + beta[6] * nE7
-                + beta[7] * nE8
-                + beta[8] * nE9
-                + beta[9] * nE10
+            beta[0] * nE1
+            + beta[1] * nE2
+            + beta[2] * nE3
+            + beta[3] * nE4
+            + beta[4] * nE5
+            + beta[5] * nE6
+            + beta[6] * nE7
+            + beta[7] * nE8
+            + beta[8] * nE9
+            + beta[9] * nE10
         )
         print(new_I_t.shape)  #
         # shape: gender, country

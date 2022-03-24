@@ -152,11 +152,11 @@ class Cov19Model(Model):
                 )
         else:
             self._data_end = data_end
-            sim_len = (self.data_end - self.data_begin).days + 1 + diff_data_sim + fcast_len
+            sim_len = (
+                (self.data_end - self.data_begin).days + 1 + diff_data_sim + fcast_len
+            )
 
         self._sim_end = self.data_end + datetime.timedelta(days=fcast_len)
-
-
 
         # shape and dimension of simulation
         if self.sim_ndim == 1:
