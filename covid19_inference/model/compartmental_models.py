@@ -1462,7 +1462,7 @@ def kernelized_spread_with_interaction(
         new_E_t = tt.dot(interaction_matrix, new_E_t)
 
         # Update suceptible compartement
-        S_t = S_t - new_E_t.sum
+        S_t = S_t - new_E_t
         S_t = tt.clip(S_t, -1, N)
         return S_t, new_E_t, new_I_t
 
