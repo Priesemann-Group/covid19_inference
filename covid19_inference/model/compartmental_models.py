@@ -1482,7 +1482,10 @@ def kernelized_spread_with_interaction(
         non_sequences=[beta, N, interaction_matrix],
     )
     S_t, new_E_t, new_I_t = outputs
-    pm.Deterministic(name_new_I_t, new_I_t)
+
+    if name_new_I_t is not None:
+        pm.Deterministic(name_new_I_t, new_I_t)
+
 
     if name_S_t is not None:
         pm.Deterministic(name_S_t, S_t)
