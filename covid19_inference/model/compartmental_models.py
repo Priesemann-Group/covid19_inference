@@ -1456,10 +1456,11 @@ def kernelized_spread_with_interaction(
             + beta[9] * nE10
         )
 
-        new_E_t = R_t / N * new_I_t * S_t
+        # The reproduction number is assumed to have a symmetric effect, hence the sqrt
+        new_E_t = tt.sqrt(R_t) / N * new_I_t * S_t
 
         # Interaction between gender groups (groups,groups)@(groups, [evtl. other dimension])
-        new_E_t = tt.dot(interaction_matrix, new_E_t)
+        new_E_t = tt.sqrt(R_t) * tt.dot(interaction_matrix, new_E_t)
 
         # Update suceptible compartement
         S_t = S_t - new_E_t
