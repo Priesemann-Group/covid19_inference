@@ -1282,6 +1282,7 @@ def kernelized_spread_with_interaction(
     R_t_log,
     interaction_matrix,
     num_groups,
+    influx=None,
     name_new_I_t="new_I_t",
     name_new_E_t="new_E_t",
     name_S_t="S_t",
@@ -1408,6 +1409,8 @@ def kernelized_spread_with_interaction(
     R_t = tt.exp(R_t_log)
     # shape: num_groups, [independent dimension]
     new_I_0 = tt.zeros(model.sim_shape[1:])
+    if influx is None:
+        influx = tt.zeros(model.sim_shape)
 
     if pr_sigma_median_incubation is None:
         median_incubation = pr_mean_median_incubation
@@ -1427,6 +1430,7 @@ def kernelized_spread_with_interaction(
     # Runs kernelized spread model:
     def next_day(
         R_t,
+        influx_t,
         S_t,
         nE1,
         nE2,
@@ -1460,7 +1464,8 @@ def kernelized_spread_with_interaction(
         new_E_t = tt.sqrt(R_t) / N * new_I_t * S_t
 
         # Interaction between gender groups (groups,groups)@(groups, [evtl. other dimension])
-        new_E_t = tt.sqrt(R_t) * tt.dot(interaction_matrix, new_E_t)
+
+        new_E_t = tt.sqrt(R_t) * tt.dot(interaction_matrix, new_E_t) + influx_t
 
         # Update suceptible compartement
         S_t = S_t - new_E_t
@@ -1471,7 +1476,7 @@ def kernelized_spread_with_interaction(
     # what we give in outputs_info : S, E's, new_I
     outputs, _ = theano.scan(
         fn=next_day,
-        sequences=[R_t],
+        sequences=[R_t, influx],
         outputs_info=[
             S_begin,  # shape: countries
             dict(
