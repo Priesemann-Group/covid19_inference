@@ -6,7 +6,7 @@ import logging
 import pymc3 as pm
 import theano
 import theano.tensor as tt
-
+import scipy.special
 from .model import *
 from . import utility as ut
 
@@ -14,16 +14,15 @@ log = logging.getLogger(__name__)
 
 
 def R_t_log_with_longtailed_dist(
-    R_0_log, dist=None, model=None, name_R_t=None, **dist_priors
+    R_0_log, dist=None, model=None, name_R_t=None, rho_scale_prior=0.1, **dist_priors
 ):
     r"""
     Builds a time dependent reproduction number :math:`R_t` by using a long tailed distribution.
 
     .. math::
 
-        log(R_t) &= log(R_0) + cumsum( s \cdot \Deltarho))
-
-
+        log(R_t) &= log(R_0) + cumsum(  \cdot \Delta rho))
+        s &\sim \text{HalfCauchy}(\text{rho_scale_prior})
 
     The parameter :math:`\Delta rho` is dependent on the given distribution. Possible values are
     ``studentT``,``weibull``,``cauchy``. In theory you can also pass your another function of type
@@ -37,7 +36,7 @@ def R_t_log_with_longtailed_dist(
     dist : string or :class:`pm.distributions.Continuous`
         Distribution to use. Possible values are ``studentT``,``weibull``,``cauchy``.
         You can also pass your own distribution. If you use your own, be sure to configure the kwargs of the distribution
-        using the ``dist_priors`` parameter. The distribution
+        using the ``dist_priors`` parameter. The distribution should have the time dimension as first axis.
     dist_priors : dict
         Dictionary of kwargs i.e. mostly priors for the distribution.
     model : :class:`Cov19Model`
@@ -61,7 +60,7 @@ def R_t_log_with_longtailed_dist(
     # Helper functions to define the distributions
     def _get_StundentT_dist(**dist_priors):
         if "nu" not in dist_priors:
-            dist_priors["nu"] = 1
+            dist_priors["nu"] = 1.5
         if "mu" not in dist_priors:
             dist_priors["mu"] = 0
         if "sigma" not in dist_priors and "lam" not in dist_priors:
@@ -70,10 +69,21 @@ def R_t_log_with_longtailed_dist(
 
     def _get_Weibull_dist(**dist_priors):
         if "alpha" not in dist_priors:
-            dist_priors["alpha"] = 0.01
+            dist_priors["alpha"] = 0.2
         if "beta" not in dist_priors:
-            dist_priors["beta"] = 0.5
-        return pm.Weibull(**dist_priors)
+            dist_priors["beta"] = 1
+        if "scale" not in dist_priors:
+            mean_influx = 1
+            scale = mean_influx / scipy.special.gamma(1 + 1 / dist_priors["alpha"])
+        else:
+            scale = dist_priors["scale"]
+            del dist_priors["scale"]
+        dist = (
+            (pm.Weibull(**dist_priors))
+            * scale
+            * (pm.Normal("wb_scale", 0, 1, shape=dist_priors["shape"]))
+        )
+        return dist
 
     def _get_Cauchy_dist(**dist_priors):
         if "alpha" not in dist_priors:
@@ -88,24 +98,22 @@ def R_t_log_with_longtailed_dist(
     if isinstance(dist, str):
         if dist == "studentT":
             dist = _get_StundentT_dist(**dist_priors)
-            scale = 1
         elif dist == "weibull":
             dist = _get_Weibull_dist(**dist_priors)
-            scale = pm.Normal("wb_scale", 0, 1)
         elif dist == "cauchy":
             dist = _get_Cauchy_dist(**dist_priors)
-            scale = 1
     elif isinstance(dist, pm.distributions.Continuous):
         dist = dist("", **dist_priors)
     elif not isinstance(dist, pm.distributions.Continuous):
         raise ValueError(f"Distribution {dist} is not supported")
 
     # Build the model equations
-    R_t_log = R_0_log + tt.cumsum(scale * dist, axis=-1)
+    scale = pm.HalfCauchy("Delta_rho_scale", beta=rho_scale_prior)
+    R_t_log = R_0_log + tt.cumsum(scale * dist, axis=0)
 
     # Create responding R_t pymc3 variable with given name (from parameters)
     if name_R_t is not None:
-        pm.Deterministic(name_R_t, tt.exp(R_t))
+        pm.Deterministic(name_R_t, tt.exp(R_t_log))
 
     return R_t_log
 
