@@ -13,11 +13,101 @@ from . import utility as ut
 log = logging.getLogger(__name__)
 
 
-"""
-    TODO
-    ----
-    def lambda_t_with_transient
-"""
+def R_t_log_with_longtailed_dist(
+    R_0_log, dist=None, model=None, name_R_t=None, **dist_priors
+):
+    r"""
+    Builds a time dependent reproduction number :math:`R_t` by using a long tailed distribution.
+
+    .. math::
+
+        log(R_t) &= log(R_0) + cumsum( s \cdot \Deltarho))
+
+
+
+    The parameter :math:`\Delta rho` is dependent on the given distribution. Possible values are
+    ``studentT``,``weibull``,``cauchy``. In theory you can also pass your another function of type
+    :class:`pm.distributions.Continuous`.
+
+
+    Parameters
+    ----------
+    R_0_log : number
+        Initial value of the reproduction number in log transform
+    dist : string or :class:`pm.distributions.Continuous`
+        Distribution to use. Possible values are ``studentT``,``weibull``,``cauchy``.
+        You can also pass your own distribution. If you use your own, be sure to configure the kwargs of the distribution
+        using the ``dist_priors`` parameter. The distribution
+    dist_priors : dict
+        Dictionary of kwargs i.e. mostly priors for the distribution.
+    model : :class:`Cov19Model`
+        if none, it is retrieved from the context
+
+    Returns
+    -------
+    R_t_log
+    """
+
+    log.info("R_t with long tailed dist")
+    # Get our default mode context
+    model = modelcontext(model)
+
+    # Parse dist priors
+    if "name" not in dist_priors:
+        dist_priors["name"] = "Delta_rho"
+    if "shape" not in dist_priors:
+        dist_priors["shape"] = model.sim_len
+
+    # Helper functions to define the distributions
+    def _get_StundentT_dist(**dist_priors):
+        if "nu" not in dist_priors:
+            dist_priors["nu"] = 1
+        if "mu" not in dist_priors:
+            dist_priors["mu"] = 0
+        if "sigma" not in dist_priors and "lam" not in dist_priors:
+            dist_priors["sigma"] = 1
+        return pm.StudentT(**dist_priors)
+
+    def _get_Weibull_dist(**dist_priors):
+        if "alpha" not in dist_priors:
+            dist_priors["alpha"] = 0.01
+        if "beta" not in dist_priors:
+            dist_priors["beta"] = 0.5
+        return pm.Weibull(**dist_priors)
+
+    def _get_Cauchy_dist(**dist_priors):
+        if "alpha" not in dist_priors:
+            dist_priors["alpha"] = 0
+        if "beta" not in dist_priors:
+            dist_priors["beta"] = 1
+        return pm.Cauchy(**dist_priors)
+
+    # Parse dist
+    if dist is None:
+        dist = "studentT"
+    if isinstance(dist, str):
+        if dist == "studentT":
+            dist = _get_StundentT_dist(**dist_priors)
+            scale = 1
+        elif dist == "weibull":
+            dist = _get_Weibull_dist(**dist_priors)
+            scale = pm.Normal("wb_scale", 0, 1)
+        elif dist == "cauchy":
+            dist = _get_Cauchy_dist(**dist_priors)
+            scale = 1
+    elif isinstance(dist, pm.distributions.Continuous):
+        dist = dist("", **dist_priors)
+    elif not isinstance(dist, pm.distributions.Continuous):
+        raise ValueError(f"Distribution {dist} is not supported")
+
+    # Build the model equations
+    R_t_log = R_0_log + tt.cumsum(scale * dist, axis=-1)
+
+    # Create responding R_t pymc3 variable with given name (from parameters)
+    if name_R_t is not None:
+        pm.Deterministic(name_R_t, tt.exp(R_t))
+
+    return R_t_log
 
 
 def lambda_t_with_sigmoids(
@@ -442,7 +532,8 @@ def _make_change_point_RVs(
                 shape=shape,
             )
             pm.Deterministic(
-                f"{prefix_lambdas}transient_len_{i + 1}", tt.nnet.softplus(tr_len_raw),
+                f"{prefix_lambdas}transient_len_{i + 1}",
+                tt.nnet.softplus(tr_len_raw),
             )
             tr_len_list.append(tt.nnet.softplus(tr_len_raw))
 
