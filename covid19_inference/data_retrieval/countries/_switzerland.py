@@ -119,7 +119,12 @@ class Switzerland(Retrieval):
     def _to_iso(self):
         df = self.data
 
-        df = df.rename(columns={"Date": "date", "confirmados": "cumulative_cases",})
+        df = df.rename(
+            columns={
+                "Date": "date",
+                "confirmados": "cumulative_cases",
+            }
+        )
         df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
         df = df.set_index("date")
         self.data = df.sort_index()
@@ -159,7 +164,10 @@ class Switzerland(Retrieval):
         # ------------------------------------------------------------------------------ #
         # Default Parameters
         # ------------------------------------------------------------------------------ #
-        assert value in ["confirmed", "deaths",], f"Value '{value}' not possible!"
+        assert value in [
+            "confirmed",
+            "deaths",
+        ], f"Value '{value}' not possible!"
 
         if self.data is None:
             self.download_all_available_data()
@@ -226,7 +234,10 @@ class Switzerland(Retrieval):
             table with new cases and the date as index
         """
         return self.get_new(
-            value=value, age_group=age_group, data_begin=data_begin, data_end=data_end,
+            value=value,
+            age_group=age_group,
+            data_begin=data_begin,
+            data_end=data_end,
         ).cumsum()
 
     def __get_first_date(self):

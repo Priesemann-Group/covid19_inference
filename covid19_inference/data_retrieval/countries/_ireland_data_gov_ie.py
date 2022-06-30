@@ -162,7 +162,7 @@ class Ireland(Retrieval):
             last date for the returned data, if no value is given the most recent date in the dataset is used
         age_group : str, optional
             Possible are '0-4', '5-14', '15-24', '25-34', '35-44', '45-54', '55-64', '65-'
-            
+
         Returns
         -------
         : pandas.DataFrame

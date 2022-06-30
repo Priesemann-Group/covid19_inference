@@ -132,39 +132,39 @@ class OWD(Retrieval):
 
     def get_possible_countries(self):
         """
-            Can be used to obtain all different possible countries in the dataset.
+        Can be used to obtain all different possible countries in the dataset.
 
-            Returns
-            -------
-            : pandas.DataFrame
+        Returns
+        -------
+        : pandas.DataFrame
         """
         return self.data["country"].unique()
 
     def get_total(self, value="tests", country=None, data_begin=None, data_end=None):
         """
-            Retrieves all new cases from the Our World in Data dataset as a DataFrame with datetime index.
-            Can be filtered by value, country and state, if only a country is given all available states get summed up.
+        Retrieves all new cases from the Our World in Data dataset as a DataFrame with datetime index.
+        Can be filtered by value, country and state, if only a country is given all available states get summed up.
 
-            Parameters
-            ----------
-            value: str
-                Which data to return, possible values are
-                - "confirmed",
-                - "tests",
-                - "deaths",
-                - "vacination"
-                (default: "confirmed")
-            country : str
-                name of the country
-            begin_date : datetime.datetime, optional
-                intial date for the returned data, if no value is given the first date in the dataset is used
-            end_date : datetime.datetime, optional
-                last date for the returned data, if no value is given the most recent date in the dataset is used
+        Parameters
+        ----------
+        value: str
+            Which data to return, possible values are
+            - "confirmed",
+            - "tests",
+            - "deaths",
+            - "vacination"
+            (default: "confirmed")
+        country : str
+            name of the country
+        begin_date : datetime.datetime, optional
+            intial date for the returned data, if no value is given the first date in the dataset is used
+        end_date : datetime.datetime, optional
+            last date for the returned data, if no value is given the most recent date in the dataset is used
 
-            Returns
-            -------
-            : pandas.DataFrame
-                table with new cases and the date as index
+        Returns
+        -------
+        : pandas.DataFrame
+            table with new cases and the date as index
         """
         if value not in ["confirmed", "deaths", "tests", "vacinations"]:
             log.warning(
@@ -188,28 +188,28 @@ class OWD(Retrieval):
 
     def get_new(self, value="tests", country=None, data_begin=None, data_end=None):
         """
-            Retrieves all new cases from the Our World in Data dataset as a DataFrame with datetime index.
-            casesn be filtered by value, country and state, if only a country is given all available states get summed up.
+        Retrieves all new cases from the Our World in Data dataset as a DataFrame with datetime index.
+        casesn be filtered by value, country and state, if only a country is given all available states get summed up.
 
-            Parameters
-            ----------
-            value: str
-                Which data to return, possible values are
-                - "confirmed",
-                - "tests",
-                - "deaths"
-                (default: "confirmed")
-            country : str
-                name of the country
-            begin_date : datetime.datetime, optional
-                intial date for the returned data, if no value is given the first date in the dataset is used
-            end_date : datetime.datetime, optional
-                last date for the returned data, if no value is given the most recent date in the dataset is used
+        Parameters
+        ----------
+        value: str
+            Which data to return, possible values are
+            - "confirmed",
+            - "tests",
+            - "deaths"
+            (default: "confirmed")
+        country : str
+            name of the country
+        begin_date : datetime.datetime, optional
+            intial date for the returned data, if no value is given the first date in the dataset is used
+        end_date : datetime.datetime, optional
+            last date for the returned data, if no value is given the most recent date in the dataset is used
 
-            Returns
-            -------
-            : pandas.DataFrame
-                table with new cases and the date as index
+        Returns
+        -------
+        : pandas.DataFrame
+            table with new cases and the date as index
         """
         if value not in ["confirmed", "deaths", "tests", "vacinations"]:
             log.warning(

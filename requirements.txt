@@ -1,6 +1,6 @@
 numpy
 matplotlib
-pymc3==3.11.2
+pymc
 arviz
 pandas
 pytest

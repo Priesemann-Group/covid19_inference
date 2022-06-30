@@ -363,7 +363,11 @@ class Belgium(Retrieval):
 
         def helper(df):
             try:
-                df = df.rename(columns={"DATE": "date",})
+                df = df.rename(
+                    columns={
+                        "DATE": "date",
+                    }
+                )
                 df["date"] = pd.to_datetime(df["date"])
                 df = df.set_index("date")
 

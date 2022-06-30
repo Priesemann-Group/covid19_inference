@@ -3,11 +3,11 @@
 # ------------------------------------------------------------------------------ #
 
 import logging
-
-import theano
-import theano.tensor as tt
 import numpy as np
-import pymc3 as pm
+import pymc as pm
+
+from aesara import scan
+import aesara.tensor as at
 
 from .model import *
 from . import utility as ut
@@ -31,10 +31,10 @@ def SIR(
 
     Parameters
     ----------
-    lambda_t_log : :class:`~theano.tensor.TensorVariable`
+    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
         time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional the first
         dimension is time.
-    mu : :class:`~theano.tensor.TensorVariable`
+    mu : :class:`~aesara.tensor.TensorVariable`
         the recovery rate :math:`\mu`, typically a random variable. Can be 0 or 1-dimensional. If 1-dimensional,
         the dimension are the different regions.
     name_new_I_t : str, optional
@@ -45,9 +45,9 @@ def SIR(
         Name of the ``I_t`` variable, set to None to avoid adding as trace variable.
     name_S_t : str, optional
         Name of the ``S_t`` variable, set to None to avoid adding as trace variable.
-    pr_I_begin : float or array_like or :class:`~theano.tensor.Variable`
+    pr_I_begin : float or array_like or :class:`~aesara.tensor.Variable`
         Prior beta of the Half-Cauchy distribution of :math:`I(0)`.
-        if type is ``tt.Constant``, I_begin will not be inferred by pymc3
+        if type is ``at.Constant``, I_begin will not be inferred by pymc3
     model : :class:`Cov19Model`
         if none, it is retrieved from the context
     return_all : bool
@@ -55,11 +55,11 @@ def SIR(
 
     Returns
     ------------------
-    new_I_t : :class:`~theano.tensor.TensorVariable`
+    new_I_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly infected persons.
-    I_t : :class:`~theano.tensor.TensorVariable`
+    I_t : :class:`~aesara.tensor.TensorVariable`
         time series of the infected (if return_all set to True)
-    S_t : :class:`~theano.tensor.TensorVariable`
+    S_t : :class:`~aesara.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
 
     """
@@ -70,7 +70,7 @@ def SIR(
     N = model.N_population
 
     # Prior distributions of starting populations (infectious, susceptibles)
-    if isinstance(pr_I_begin, tt.Variable):
+    if isinstance(pr_I_begin, at.Variable):
         I_begin = pr_I_begin
     else:
         I_begin = pm.HalfCauchy(
@@ -79,21 +79,21 @@ def SIR(
 
     S_begin = N - I_begin
 
-    lambda_t = tt.exp(lambda_t_log)
-    new_I_0 = tt.zeros_like(I_begin)
+    lambda_t = at.exp(lambda_t_log)
+    new_I_0 = at.zeros_like(I_begin)
 
     # Runs SIR model:
     def next_day(lambda_t, S_t, I_t, _, mu, N):
         new_I_t = lambda_t / N * I_t * S_t
         S_t = S_t - new_I_t
         I_t = I_t + new_I_t - mu * I_t
-        I_t = tt.clip(I_t, -1, N)  # for stability
-        S_t = tt.clip(S_t, 0, N)
+        I_t = at.clip(I_t, -1, N)  # for stability
+        S_t = at.clip(S_t, 0, N)
         return S_t, I_t, new_I_t
 
-    # theano scan returns two tuples, first one containing a time series of
+    # aesara scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, I, new_I
-    outputs, _ = theano.scan(
+    outputs, _ = scan(
         fn=next_day,
         sequences=[lambda_t],
         outputs_info=[S_begin, I_begin, new_I_0],
@@ -139,11 +139,11 @@ def SEIR(
 
     Parameters
     ----------
-    lambda_t_log : :class:`~theano.tensor.TensorVariable`
+    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
         time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional, the first
         dimension is time.
 
-    mu : :class:`~theano.tensor.TensorVariable`
+    mu : :class:`~aesara.tensor.TensorVariable`
         the recovery rate :math:`\mu`, typically a random variable. Can be 0 or
         1-dimensional. If 1-dimensional, the dimension are the different regions.
 
@@ -168,7 +168,7 @@ def SEIR(
     pr_I_begin : float or array_like
         Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
         distribution of :math:`I(0)`.
-        if type is ``tt.Variable``, ``I_begin`` will be set to the provided prior as
+        if type is ``at.Variable``, ``I_begin`` will be set to the provided prior as
         a constant.
 
     pr_new_E_begin : float or array_like
@@ -214,17 +214,17 @@ def SEIR(
 
     Returns
     -------
-    name_new_I_t : :class:`~theano.tensor.TensorVariable`
+    name_new_I_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly infected persons.
 
-    name_new_E_t : :class:`~theano.tensor.TensorVariable`
+    name_new_E_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
 
-    name_I_t : :class:`~theano.tensor.TensorVariable`
+    name_I_t : :class:`~aesara.tensor.TensorVariable`
         time series of the infected (if return_all set to True)
 
-    name_S_t : :class:`~theano.tensor.TensorVariable`
+    name_S_t : :class:`~aesara.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
 
     """
@@ -239,7 +239,7 @@ def SEIR(
 
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
     # We choose to consider the transitions of newly exposed people of the last 10 days.
-    if isinstance(pr_new_E_begin, tt.Variable):
+    if isinstance(pr_new_E_begin, at.Variable):
         new_E_begin = pr_new_E_begin
     else:
         if not model.is_hierarchical:
@@ -254,7 +254,7 @@ def SEIR(
             )
 
     # Prior distributions of starting populations (infectious, susceptibles)
-    if isinstance(pr_I_begin, tt.Variable):
+    if isinstance(pr_I_begin, at.Variable):
         I_begin = pr_I_begin
     else:
         I_begin = pm.HalfCauchy(
@@ -263,8 +263,8 @@ def SEIR(
 
     S_begin = N - I_begin - pm.math.sum(new_E_begin, axis=0)
 
-    lambda_t = tt.exp(lambda_t_log)
-    new_I_0 = tt.zeros_like(I_begin)
+    lambda_t = at.exp(lambda_t_log)
+    new_I_0 = at.zeros_like(I_begin)
 
     if pr_sigma_median_incubation is None:
         median_incubation = pr_mean_median_incubation
@@ -281,7 +281,7 @@ def SEIR(
     else:
         x = np.arange(1, 11)[:, None]
 
-    beta = ut.tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
+    beta = ut.tt_lognormal(x, at.log(median_incubation), sigma_incubation)
 
     # Runs SEIR model:
     def next_day(
@@ -318,13 +318,13 @@ def SEIR(
             + beta[9] * nE10
         )
         I_t = I_t + new_I_t - mu * I_t
-        I_t = tt.clip(I_t, -1, N - 1)  # for stability
-        S_t = tt.clip(S_t, -1, N)
+        I_t = at.clip(I_t, -1, N - 1)  # for stability
+        S_t = at.clip(S_t, -1, N)
         return S_t, new_E_t, I_t, new_I_t
 
-    # theano scan returns two tuples, first one containing a time series of
+    # aesara scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, E's, I, new_I
-    outputs, _ = theano.scan(
+    outputs, _ = scan(
         fn=next_day,
         sequences=[lambda_t],
         outputs_info=[
@@ -374,11 +374,11 @@ def kernelized_spread(
 
     Parameters
     ----------
-    lambda_t_log : :class:`~theano.tensor.TensorVariable`
+    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
         time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional, the first
         dimension is time.
 
-    mu : :class:`~theano.tensor.TensorVariable`
+    mu : :class:`~aesara.tensor.TensorVariable`
         the recovery rate :math:`\mu`, typically a random variable. Can be 0 or
         1-dimensional. If 1-dimensional, the dimension are the different regions.
 
@@ -397,7 +397,7 @@ def kernelized_spread(
     pr_I_begin : float or array_like
         Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
         distribution of :math:`I(0)`.
-        if type is ``tt.Variable``, ``I_begin`` will be set to the provided prior as
+        if type is ``at.Variable``, ``I_begin`` will be set to the provided prior as
         a constant.
 
     pr_new_E_begin : float or array_like
@@ -443,14 +443,14 @@ def kernelized_spread(
 
     Returns
     -------
-    name_new_I_t : :class:`~theano.tensor.TensorVariable`
+    name_new_I_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly infected persons.
 
-    name_new_E_t : :class:`~theano.tensor.TensorVariable`
+    name_new_E_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
 
-    name_S_t : :class:`~theano.tensor.TensorVariable`
+    name_S_t : :class:`~aesara.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
 
     """
@@ -465,7 +465,7 @@ def kernelized_spread(
 
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
     # We choose to consider the transitions of newly exposed people of the last 10 days.
-    if isinstance(pr_new_E_begin, tt.Variable):
+    if isinstance(pr_new_E_begin, at.Variable):
         new_E_begin = pr_new_E_begin
     else:
         if not model.is_hierarchical:
@@ -481,8 +481,8 @@ def kernelized_spread(
 
     S_begin = N - pm.math.sum(new_E_begin, axis=0)
 
-    lambda_t = tt.exp(lambda_t_log)
-    new_I_0 = tt.zeros(model.shape_of_regions)
+    lambda_t = at.exp(lambda_t_log)
+    new_I_0 = at.zeros(model.shape_of_regions)
 
     if pr_sigma_median_incubation is None:
         median_incubation = pr_mean_median_incubation
@@ -499,11 +499,25 @@ def kernelized_spread(
     else:
         x = np.arange(1, 11)[:, None]
 
-    beta = ut.tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
+    beta = ut.tt_lognormal(x, at.log(median_incubation), sigma_incubation)
 
     # Runs kernelized spread model:
     def next_day(
-        lambda_t, S_t, nE1, nE2, nE3, nE4, nE5, nE6, nE7, nE8, nE9, nE10, _, beta, N,
+        lambda_t,
+        S_t,
+        nE1,
+        nE2,
+        nE3,
+        nE4,
+        nE5,
+        nE6,
+        nE7,
+        nE8,
+        nE9,
+        nE10,
+        _,
+        beta,
+        N,
     ):
         new_I_t = (
             beta[0] * nE1
@@ -519,12 +533,12 @@ def kernelized_spread(
         )
         new_E_t = lambda_t / N * new_I_t * S_t
         S_t = S_t - new_E_t
-        S_t = tt.clip(S_t, -1, N)
+        S_t = at.clip(S_t, -1, N)
         return S_t, new_E_t, new_I_t
 
-    # theano scan returns two tuples, first one containing a time series of
+    # aesara scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, E's, new_I
-    outputs, _ = theano.scan(
+    outputs, _ = scan(
         fn=next_day,
         sequences=[lambda_t],
         outputs_info=[
@@ -582,15 +596,15 @@ def uncorrelated_prior_I(
         Description
     model : :class:`Cov19Model`
         if none, it is retrieved from the context
-    lambda_t_log : :class:`~theano.tensor.TensorVariable`
-    mu : :class:`~theano.tensor.TensorVariable`
+    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
+    mu : :class:`~aesara.tensor.TensorVariable`
     pr_median_delay : float
     pr_sigma_I_begin : float
     n_data_points_used : int
 
     Returns
     ------------------
-    I_begin: :class:`~theano.tensor.TensorVariable`
+    I_begin: :class:`~aesara.tensor.TensorVariable`
 
     """
     log.info("Uncorrelated prior_I")
@@ -598,7 +612,7 @@ def uncorrelated_prior_I(
 
     num_regions = () if model.sim_ndim == 1 else model.sim_shape[1]
 
-    lambda_t = tt.exp(lambda_t_log)
+    lambda_t = at.exp(lambda_t_log)
 
     delay = round(pr_median_delay)
     num_new_I_ref = (
@@ -614,12 +628,12 @@ def uncorrelated_prior_I(
             pr_sigma=pr_sigma_I_begin // 2,
             error_cauchy=False,
         )
-        I_begin = I0_ref * tt.exp(diff_I_begin_L2_log)
+        I_begin = I0_ref * at.exp(diff_I_begin_L2_log)
     else:
         days_diff = model.diff_data_sim - delay + 3
         I_ref = num_new_I_ref / lambda_t[days_diff]
         I0_ref = I_ref / (1 + lambda_t[days_diff // 2] - mu) ** days_diff
-        I_begin = I0_ref * tt.exp(
+        I_begin = I0_ref * at.exp(
             pm.Normal(
                 name=name_I_begin_ratio_log,
                 mu=0,
@@ -636,10 +650,10 @@ def uncorrelated_prior_I(
     #    error_cauchy=False,
     # )
 
-    # I_begin = I0_ref * tt.exp(diff_I_begin_L2_log)
+    # I_begin = I0_ref * at.exp(diff_I_begin_L2_log)
 
     # I_begin = pm.Lognormal(
-    #   name_I_begin_ratio_log, mu=tt.log(I0_ref), sigma=2.5, shape=num_regions
+    #   name_I_begin_ratio_log, mu=at.log(I0_ref), sigma=2.5, shape=num_regions
     # )
     pm.Deterministic(name_I_begin, I_begin)
     return I_begin
@@ -654,38 +668,38 @@ def uncorrelated_prior_E(
     len_time=11,
 ):
     r"""
-        Builds the prior for I begin  by solving the SIR differential from the first
-        data backwards. This decorrelates the I_begin from the lambda_t at the
-        beginning, allowing a more efficient sampling. The example_one_bundesland runs
-        about 30\% faster with this prior, instead of a HalfCauchy.
+    Builds the prior for I begin  by solving the SIR differential from the first
+    data backwards. This decorrelates the I_begin from the lambda_t at the
+    beginning, allowing a more efficient sampling. The example_one_bundesland runs
+    about 30\% faster with this prior, instead of a HalfCauchy.
 
-        Parameters
-        ----------
-        lambda_t_log : TYPE
-            Description
-        mu : TYPE
-            Description
-        pr_median_delay : TYPE
-            Description
-        name_I_begin : str, optional
-            Description
-        name_I_begin_ratio_log : str, optional
-            Description
-        pr_sigma_I_begin : int, optional
-            Description
-        n_data_points_used : int, optional
-            Description
-        model : :class:`Cov19Model`
-            if none, it is retrieved from the context
-        lambda_t_log : :class:`~theano.tensor.TensorVariable`
-        mu : :class:`~theano.tensor.TensorVariable`
-        pr_median_delay : float
-        pr_sigma_I_begin : float
-        n_data_points_used : int
+    Parameters
+    ----------
+    lambda_t_log : TYPE
+        Description
+    mu : TYPE
+        Description
+    pr_median_delay : TYPE
+        Description
+    name_I_begin : str, optional
+        Description
+    name_I_begin_ratio_log : str, optional
+        Description
+    pr_sigma_I_begin : int, optional
+        Description
+    n_data_points_used : int, optional
+        Description
+    model : :class:`Cov19Model`
+        if none, it is retrieved from the context
+    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
+    mu : :class:`~aesara.tensor.TensorVariable`
+    pr_median_delay : float
+    pr_sigma_I_begin : float
+    n_data_points_used : int
 
-        Returns
-        ------------------
-        I_begin: :class:`~theano.tensor.TensorVariable`
+    Returns
+    ------------------
+    I_begin: :class:`~aesara.tensor.TensorVariable`
 
     """
     log.info("Uncorrelated prior_E")
@@ -725,7 +739,7 @@ def uncorrelated_prior_E(
                 + diff_E_begin_L1_log[:, None, None]
             )
 
-    new_E_begin = num_new_E_ref * tt.exp(diff_E_begin_L2_log)
+    new_E_begin = num_new_E_ref * at.exp(diff_E_begin_L2_log)
 
     pm.Deterministic(name_E_begin, new_E_begin)
     return new_E_begin
@@ -749,29 +763,29 @@ def SIR_variants(
 
     Parameters
     ----------
-    lambda_t_log : :class:`~theano.tensor.TensorVariable`
+    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
         Time series of the logarithm of the spreading rate. Shape: (time)
-    mu : :class:`~theano.tensor.TensorVariable`
+    mu : :class:`~aesara.tensor.TensorVariable`
         The recovery rate :math:`\mu`, typically a random variable.
-    f : :class:`~theano.tensor.TensorVariable`
+    f : :class:`~aesara.tensor.TensorVariable`
         TODO
-    pr_I_begin : float or array_like or :class:`~theano.tensor.Variable`
+    pr_I_begin : float or array_like or :class:`~aesara.tensor.Variable`
         Prior beta of the Half-Cauchy distribution of :math:`I(0)`.
-        if type is ``tt.Constant``, I_begin will not be inferred by pymc3.
+        if type is ``at.Constant``, I_begin will not be inferred by pymc3.
     model : :class:`Cov19Model`
         if none, it is retrieved from the context
     num_variants : number,
         The number of input variants, corresponding to the shape of f.
     Phi : array
         The influx array which is added each timestep should have the shape (variants, time)
-        
+
     Returns
     ------------------
-    new_I_t : :class:`~theano.tensor.TensorVariable`
+    new_I_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly infected persons.
-    I_t : :class:`~theano.tensor.TensorVariable`
+    I_t : :class:`~aesara.tensor.TensorVariable`
         time series of the infected (if return_all set to True)
-    S_t : :class:`~theano.tensor.TensorVariable`
+    S_t : :class:`~aesara.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
     """
 
@@ -779,7 +793,7 @@ def SIR_variants(
     model = modelcontext(model)
 
     # Prior distributions of starting populations (infectious, susceptibles)
-    if isinstance(pr_I_begin, tt.Variable):
+    if isinstance(pr_I_begin, at.Variable):
         I_begin = pr_I_begin
     else:
         I_begin = pm.HalfCauchy(name=name_I_begin, beta=pr_I_begin, shape=num_variants)
@@ -790,13 +804,13 @@ def SIR_variants(
     # Initial compartment Suceptible
     S_begin = N - I_begin.sum()
 
-    lambda_t = tt.exp(lambda_t_log)
+    lambda_t = at.exp(lambda_t_log)
 
     # Set prior for Influx phi
     if Phi is None:
         loop_phi = False
-        Phi = tt.zeros(model.sim_length)
-    elif isinstance(Phi, tt.Variable):
+        Phi = at.zeros(model.sim_length)
+    elif isinstance(Phi, at.Variable):
         loop_phi = True
 
     def next_day(lambda_t, Phi, S_t, I_tv, _, mu, f, N):
@@ -819,14 +833,14 @@ def SIR_variants(
         S_t = S_t - new_I_tv.sum()
 
         # for stability
-        I_tv = tt.clip(I_tv, -1, N)
-        S_t = tt.clip(S_t, 0, N)
+        I_tv = at.clip(I_tv, -1, N)
+        S_t = at.clip(S_t, 0, N)
         return S_t, I_tv, new_I_tv
 
-    # theano scan returns two tuples, first one containing a time series of
+    # aesara scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, I, new_I
-    new_I_0 = tt.zeros_like(I_begin)
-    outputs, _ = theano.scan(
+    new_I_0 = at.zeros_like(I_begin)
+    outputs, _ = scan(
         fn=next_day,
         sequences=[lambda_t, Phi],
         outputs_info=[S_begin, I_begin, new_I_0],
@@ -870,11 +884,11 @@ def kernelized_spread_variants(
 
     Parameters
     ----------
-    R_t_log : :class:`~theano.tensor.TensorVariable`
+    R_t_log : :class:`~aesara.tensor.TensorVariable`
         time series of the logarithm of the reproduction time, 1 or 2-dimensional. If 2-dimensional, the first
         dimension is time.
 
-    f : :class:`~theano.tensor.TensorVariable`
+    f : :class:`~aesara.tensor.TensorVariable`
         The factor by which the reproduction number of each variant is multiplied by,
         is of shape num_variants
 
@@ -896,7 +910,7 @@ def kernelized_spread_variants(
     pr_I_begin : float or array_like
         Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
         distribution of :math:`I(0)`.
-        if type is ``tt.Variable``, ``I_begin`` will be set to the provided prior as
+        if type is ``at.Variable``, ``I_begin`` will be set to the provided prior as
         a constant.
 
     pr_new_E_begin : float or array_like
@@ -930,7 +944,7 @@ def kernelized_spread_variants(
     return_all : bool
         if True, returns ``name_new_I_t``, ``name_new_E_t``,  ``name_I_t``,
         ``name_S_t`` otherwise returns only ``name_new_I_t``
-        
+
     Phi : array
         The influx array which is added each timestep should have the shape (time, variants)
     f_is_varying : bool
@@ -938,14 +952,14 @@ def kernelized_spread_variants(
 
     Returns
     -------
-    new_I_t : :class:`~theano.tensor.TensorVariable`
+    new_I_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly infected persons.
 
-    new_E_t : :class:`~theano.tensor.TensorVariable`
+    new_E_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
 
-    S_t : :class:`~theano.tensor.TensorVariable`
+    S_t : :class:`~aesara.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
 
     """
@@ -957,11 +971,13 @@ def kernelized_spread_variants(
 
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
     # We choose to consider the transitions of newly exposed people of the last 10 days.
-    if isinstance(pr_new_E_begin, tt.Variable):
+    if isinstance(pr_new_E_begin, at.Variable):
         new_E_begin = pr_new_E_begin
     else:
         new_E_begin = pm.HalfCauchy(
-            name=name_new_E_begin, beta=pr_new_E_begin, shape=(11, num_variants),
+            name=name_new_E_begin,
+            beta=pr_new_E_begin,
+            shape=(11, num_variants),
         )
 
     if pr_sigma_median_incubation is None:
@@ -976,13 +992,13 @@ def kernelized_spread_variants(
     # Set prior for Influx phi
     if Phi is None:
         loop_phi = False
-        Phi = tt.zeros(model.sim_len)
-    elif isinstance(Phi, tt.Variable):
+        Phi = at.zeros(model.sim_len)
+    elif isinstance(Phi, at.Variable):
         loop_phi = True
 
     # prepare f
     if not f_is_varying:
-        f *= tt.ones((model.sim_len, 1))
+        f *= at.ones((model.sim_len, 1))
 
     # Total number of people in population
     N = model.N_population
@@ -990,18 +1006,34 @@ def kernelized_spread_variants(
     # Starting suceptible pool
     S_begin = N - new_E_begin.sum().sum()
 
-    R_t = tt.exp(R_t_log)
+    R_t = at.exp(R_t_log)
 
-    new_I_0 = tt.zeros(num_variants)
+    new_I_0 = at.zeros(num_variants)
 
     # Choose transition rates (E to I) according to incubation period distribution
     x = np.arange(1, 11)[:, None]
 
-    beta = ut.tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
+    beta = ut.tt_lognormal(x, at.log(median_incubation), sigma_incubation)
 
     # Runs kernelized spread model with variants:
     def next_day(
-        R_t, Phi, f, S_t, nE1, nE2, nE3, nE4, nE5, nE6, nE7, nE8, nE9, nE10, _, beta, N,
+        R_t,
+        Phi,
+        f,
+        S_t,
+        nE1,
+        nE2,
+        nE3,
+        nE4,
+        nE5,
+        nE6,
+        nE7,
+        nE8,
+        nE9,
+        nE10,
+        _,
+        beta,
+        N,
     ):
         new_I_tv = (
             beta[0] * nE1
@@ -1022,14 +1054,14 @@ def kernelized_spread_variants(
         new_E_tv = f * new_I_tv * S_t * R_t / N
 
         S_t = S_t - new_E_tv.sum()
-        S_t = tt.clip(S_t, -1, N)
+        S_t = at.clip(S_t, -1, N)
 
         return S_t, new_E_tv, new_I_tv
 
-    # theano scan returns two tuples, first one containing a time series of
+    # aesara scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, E's, new_I
 
-    outputs, _ = theano.scan(
+    outputs, _ = scan(
         fn=next_day,
         sequences=[R_t, Phi, f],
         outputs_info=[
@@ -1081,12 +1113,12 @@ def kernelized_spread_gender(
 
     Parameters
     ----------
-    lambda_t_log : :class:`~theano.tensor.TensorVariable`
+    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
         Time series of the logarithm of the spreading rate, 2 or 3-dimensional. If 3-dimensional, the first
         dimension is time.
         shape: time, gender, [country]
-        
-    gender_interaction_matrix : :class:`~theano.tensor.TensorVariable`
+
+    gender_interaction_matrix : :class:`~aesara.tensor.TensorVariable`
         Gender interaction matrix should be of shape (num_gender,num_gender)
 
     name_new_I_t : str, optional
@@ -1104,7 +1136,7 @@ def kernelized_spread_gender(
     pr_I_begin : float or array_like
         Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
         distribution of :math:`I(0)`.
-        if type is ``tt.Variable``, ``I_begin`` will be set to the provided prior as
+        if type is ``at.Variable``, ``I_begin`` will be set to the provided prior as
         a constant.
 
     pr_new_E_begin : float or array_like
@@ -1147,14 +1179,14 @@ def kernelized_spread_gender(
 
     Returns
     -------
-    name_new_I_t : :class:`~theano.tensor.TensorVariable`
+    name_new_I_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly infected persons.
 
-    name_new_E_t : :class:`~theano.tensor.TensorVariable`
+    name_new_E_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
 
-    name_S_t : :class:`~theano.tensor.TensorVariable`
+    name_S_t : :class:`~aesara.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
 
     """
@@ -1169,7 +1201,7 @@ def kernelized_spread_gender(
 
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
     # We choose to consider the transitions of newly exposed people of the last 10 days.
-    if isinstance(pr_new_E_begin, tt.Variable):
+    if isinstance(pr_new_E_begin, at.Variable):
         new_E_begin = pr_new_E_begin
     else:
         if not model.is_hierarchical:
@@ -1186,9 +1218,9 @@ def kernelized_spread_gender(
     # shape: countries
     S_begin = N - pm.math.sum(new_E_begin, axis=(0, 1))
 
-    lambda_t = tt.exp(lambda_t_log)
+    lambda_t = at.exp(lambda_t_log)
     # shape: genders, countries
-    new_I_0 = tt.zeros(model.sim_shape[1:])
+    new_I_0 = at.zeros(model.sim_shape[1:])
 
     if pr_sigma_median_incubation is None:
         median_incubation = pr_mean_median_incubation
@@ -1205,7 +1237,7 @@ def kernelized_spread_gender(
     else:
         x = np.arange(1, 11)[:, None]
 
-    beta = ut.tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
+    beta = ut.tt_lognormal(x, at.log(median_incubation), sigma_incubation)
 
     # Runs kernelized spread model:
     def next_day(
@@ -1243,16 +1275,16 @@ def kernelized_spread_gender(
         new_E_t = lambda_t / N[None, :] * new_I_t * S_t[None, :]
 
         # Interaction between gender groups (gender,gender)@(gender,countries)
-        new_E_t = tt.dot(gender_interaction_matrix, new_E_t)
+        new_E_t = at.dot(gender_interaction_matrix, new_E_t)
 
         # Update suceptible compartement
         S_t = S_t - new_E_t.sum(axis=0)
-        S_t = tt.clip(S_t, -1, N)
+        S_t = at.clip(S_t, -1, N)
         return S_t, new_E_t, new_I_t
 
-    # theano scan returns two tuples, first one containing a time series of
+    # aesara scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, E's, new_I
-    outputs, _ = theano.scan(
+    outputs, _ = scan(
         fn=next_day,
         sequences=[lambda_t],
         outputs_info=[
@@ -1303,12 +1335,12 @@ def kernelized_spread_with_interaction(
 
     Parameters
     ----------
-    R_t_log : :class:`~theano.tensor.TensorVariable`
+    R_t_log : :class:`~aesara.tensor.TensorVariable`
         Time series of the logarithm of the spreading rate, 2 or 3-dimensional. The first
         dimension is time.
         shape: time, num_groups, [independent dimension]
 
-    interaction_matrix : :class:`~theano.tensor.TensorVariable`
+    interaction_matrix : :class:`~aesara.tensor.TensorVariable`
         Interaction matrix should be of shape (num_groups, num_groups)
 
     num_groups : int
@@ -1329,7 +1361,7 @@ def kernelized_spread_with_interaction(
     pr_I_begin : float or array_like
         Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
         distribution of :math:`I(0)`.
-        if type is ``tt.Variable``, ``I_begin`` will be set to the provided prior as
+        if type is ``at.Variable``, ``I_begin`` will be set to the provided prior as
         a constant.
 
     pr_new_E_begin : float or array_like
@@ -1370,14 +1402,14 @@ def kernelized_spread_with_interaction(
 
     Returns
     -------
-    name_new_I_t : :class:`~theano.tensor.TensorVariable`
+    name_new_I_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly infected persons.
 
-    name_new_E_t : :class:`~theano.tensor.TensorVariable`
+    name_new_E_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
 
-    name_S_t : :class:`~theano.tensor.TensorVariable`
+    name_S_t : :class:`~aesara.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
 
     """
@@ -1396,21 +1428,23 @@ def kernelized_spread_with_interaction(
 
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
     # We choose to consider the transitions of newly exposed people of the last 10 days.
-    if isinstance(pr_new_E_begin, tt.Variable):
+    if isinstance(pr_new_E_begin, at.Variable):
         new_E_begin = pr_new_E_begin
     else:
         new_E_begin = pm.HalfCauchy(
-            name=name_new_E_begin, beta=pr_new_E_begin, shape=(11, num_groups),
+            name=name_new_E_begin,
+            beta=pr_new_E_begin,
+            shape=(11, num_groups),
         )
 
     # shape: num_groups
     S_begin = N - pm.math.sum(new_E_begin, axis=(0,))
 
-    R_t = tt.exp(R_t_log)
+    R_t = at.exp(R_t_log)
     # shape: num_groups, [independent dimension]
-    new_I_0 = tt.zeros(model.sim_shape[1:])
+    new_I_0 = at.zeros(model.sim_shape[1:])
     if influx is None:
-        influx = tt.zeros(model.sim_shape)
+        influx = at.zeros(model.sim_shape)
 
     if pr_sigma_median_incubation is None:
         median_incubation = pr_mean_median_incubation
@@ -1425,7 +1459,7 @@ def kernelized_spread_with_interaction(
 
     x = np.arange(1, 11)[:, None]
 
-    beta = ut.tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
+    beta = ut.tt_lognormal(x, at.log(median_incubation), sigma_incubation)
 
     # Runs kernelized spread model:
     def next_day(
@@ -1461,20 +1495,20 @@ def kernelized_spread_with_interaction(
         )
 
         # The reproduction number is assumed to have a symmetric effect, hence the sqrt
-        new_E_t = tt.sqrt(R_t) / N * new_I_t * S_t
+        new_E_t = at.sqrt(R_t) / N * new_I_t * S_t
 
         # Interaction between gender groups (groups,groups)@(groups, [evtl. other dimension])
 
-        new_E_t = tt.sqrt(R_t) * tt.dot(interaction_matrix, new_E_t) + influx_t
+        new_E_t = at.sqrt(R_t) * at.dot(interaction_matrix, new_E_t) + influx_t
 
         # Update suceptible compartement
         S_t = S_t - new_E_t
-        S_t = tt.clip(S_t, -1, N)
+        S_t = at.clip(S_t, -1, N)
         return S_t, new_E_t, new_I_t
 
-    # theano scan returns two tuples, first one containing a time series of
+    # aesara scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, E's, new_I
-    outputs, _ = theano.scan(
+    outputs, _ = scan(
         fn=next_day,
         sequences=[R_t, influx],
         outputs_info=[
@@ -1490,7 +1524,6 @@ def kernelized_spread_with_interaction(
 
     if name_new_I_t is not None:
         pm.Deterministic(name_new_I_t, new_I_t)
-
 
     if name_S_t is not None:
         pm.Deterministic(name_S_t, S_t)
@@ -1524,12 +1557,12 @@ def kernelized_spread_tmp(
 
     Parameters
     ----------
-    lambda_t_log : :class:`~theano.tensor.TensorVariable`
+    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
         Time series of the logarithm of the spreading rate, 2 or 3-dimensional. If 3-dimensional, the first
         dimension is time.
         shape: time, gender, [country]
 
-    gender_interaction_matrix : :class:`~theano.tensor.TensorVariable`
+    gender_interaction_matrix : :class:`~aesara.tensor.TensorVariable`
         Gender interaction matrix should be of shape (num_gender,num_gender)
 
     name_new_I_t : str, optional
@@ -1547,7 +1580,7 @@ def kernelized_spread_tmp(
     pr_I_begin : float or array_like
         Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
         distribution of :math:`I(0)`.
-        if type is ``tt.Variable``, ``I_begin`` will be set to the provided prior as
+        if type is ``at.Variable``, ``I_begin`` will be set to the provided prior as
         a constant.
 
     pr_new_E_begin : float or array_like
@@ -1590,14 +1623,14 @@ def kernelized_spread_tmp(
 
     Returns
     -------
-    name_new_I_t : :class:`~theano.tensor.TensorVariable`
+    name_new_I_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly infected persons.
 
-    name_new_E_t : :class:`~theano.tensor.TensorVariable`
+    name_new_E_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
 
-    name_S_t : :class:`~theano.tensor.TensorVariable`
+    name_S_t : :class:`~aesara.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
 
     """
@@ -1614,19 +1647,21 @@ def kernelized_spread_tmp(
 
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
     # We choose to consider the transitions of newly exposed people of the last 10 days.
-    if isinstance(pr_new_E_begin, tt.Variable):
+    if isinstance(pr_new_E_begin, at.Variable):
         new_E_begin = pr_new_E_begin
     else:
         new_E_begin = pm.HalfCauchy(
-            name=name_new_E_begin, beta=pr_new_E_begin, shape=(11,),
+            name=name_new_E_begin,
+            beta=pr_new_E_begin,
+            shape=(11,),
         )
 
     # shape: num_groups
     S_begin = N - pm.math.sum(new_E_begin, axis=(0,))
 
-    R_t = tt.exp(R_t_log)
+    R_t = at.exp(R_t_log)
 
-    new_I_0 = tt.zeros(())
+    new_I_0 = at.zeros(())
 
     if pr_sigma_median_incubation is None:
         median_incubation = pr_mean_median_incubation
@@ -1641,11 +1676,25 @@ def kernelized_spread_tmp(
 
     x = np.arange(1, 11)[:, None]
 
-    beta = ut.tt_lognormal(x, tt.log(median_incubation), sigma_incubation)
+    beta = ut.tt_lognormal(x, at.log(median_incubation), sigma_incubation)
 
     # Runs kernelized spread model:
     def next_day(
-        R_t, S_t, nE1, nE2, nE3, nE4, nE5, nE6, nE7, nE8, nE9, nE10, _, beta, N,
+        R_t,
+        S_t,
+        nE1,
+        nE2,
+        nE3,
+        nE4,
+        nE5,
+        nE6,
+        nE7,
+        nE8,
+        nE9,
+        nE10,
+        _,
+        beta,
+        N,
     ):
         new_I_t = (
             beta[0] * nE1
@@ -1665,12 +1714,12 @@ def kernelized_spread_tmp(
 
         # Update susceptible compartement
         S_t = S_t - new_E_t.sum(axis=0)
-        S_t = tt.clip(S_t, -1, N)
+        S_t = at.clip(S_t, -1, N)
         return S_t, new_E_t, new_I_t
 
-    # theano scan returns two tuples, first one containing a time series of
+    # aesara scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, E's, new_I
-    outputs, _ = theano.scan(
+    outputs, _ = scan(
         fn=next_day,
         sequences=[R_t],
         outputs_info=[
