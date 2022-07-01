@@ -45,7 +45,7 @@ def student_t_likelihood(
 
         Parameters
         ----------
-        cases : :class:`~theano.tensor.TensorVariable`
+        cases : :class:`~aesara.tensor.TensorVariable`
             The daily new cases estimated by the model.
             Will be compared to  the real world data ``data_obs``.
             One or two dimensonal array. If 2 dimensional, the first dimension is time
@@ -150,7 +150,6 @@ def student_t_likelihood(
                         update = False
 
     cases = cases[model.diff_data_sim : model.data_len + model.diff_data_sim]
-    # theano.printing.Print(f'cases')(cases)
     sigma_obs = pm.HalfCauchy(
         name_sigma_obs,
         beta=pr_beta_sigma_obs,

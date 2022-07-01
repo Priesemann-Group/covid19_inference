@@ -68,9 +68,9 @@ def hierarchical_normal(
 
     Returns
     -------
-    y : :class:`~theano.tensor.TensorVariable`
+    y : :class:`~aesara.tensor.TensorVariable`
         the random variable :math:`y_\text{L2}`
-    x : :class:`~theano.tensor.TensorVariable`
+    x : :class:`~aesara.tensor.TensorVariable`
         the random variable :math:`x_\text{L1}`
     """
 
@@ -84,13 +84,23 @@ def hierarchical_normal(
 
     if error_cauchy:
         sigma_Y = (
-            (pm.HalfCauchy(name_sigma, beta=1, transform=pm.transforms.log_exp_m1))
+            (
+                pm.HalfCauchy(
+                    name_sigma, beta=1, transform=pm.distributions.transforms.log_exp_m1
+                )
+            )
             * error_fact
             * pr_sigma
         )
     else:
         sigma_Y = (
-            (pm.HalfNormal(name_sigma, sigma=1, transform=pm.transforms.log_exp_m1))
+            (
+                pm.HalfNormal(
+                    name_sigma,
+                    sigma=1,
+                    transform=pm.distributions.transforms.log_exp_m1,
+                )
+            )
             * error_fact
             * pr_sigma
         )

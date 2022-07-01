@@ -130,9 +130,12 @@ def lambda_t_with_sigmoids(
     prefix_lambdas="",
     shape=None,
 ):
-    """
-    Builds a time dependent spreading rate :math:`\lambda_t` with change points. The change points are marked by
-    a transient with a sigmoidal shape, with at
+    r"""
+    Builds a time dependent spreading rate :math:`\lambda_t` with change points. The change points are marked by a transient with a sigmoidal shape.
+
+    TODO
+    ----
+    Add a bit more detailed documentation.
 
     Parameters
     ----------
@@ -145,10 +148,6 @@ def lambda_t_with_sigmoids(
     Returns
     -------
     lambda_t_log
-
-    TODO
-    ----
-    Documentation on this
     """
     log.info("Lambda_t with sigmoids")
     # Get our default mode context
@@ -587,24 +586,24 @@ def _smooth_step_function(start_val, end_val, t_begin, t_end, t_total):
 
     Parameters
     ----------
-        start_val : number
+        start_val : float
             Starting value
 
-        end_val : number
+        end_val : float
             Target value
 
-        t_begin : number or array (theano)
+        t_begin : int or array_like or :class:`~aesara.tensor.Variable`
             Time point (inbetween 0 and t_total) where start_val is placed
 
-        t_end : number or array (theano)
+        t_end : int or array_like or :class:`~aesara.tensor.Variable`
             Time point (inbetween 0 and t_total) where end_val is placed
 
-        t_total : integer
+        t_total : int
             Total number of time points
 
     Returns
     -------
-        : theano vector
+        : :class:`~aesara.tensor.Variable`
             vector of length t_total with the values of the parameterised f(t)
     """
     t = np.arange(t_total)

@@ -47,7 +47,7 @@ def week_modulation(
     Parameters
     ----------
 
-    cases : :class:`~theano.tensor.TensorVariable`
+    cases : :class:`~aesara.tensor.TensorVariable`
         The input array of daily new cases, can be one- or two-dimensional
     name_cases : str or None,
         The name under which to save the cases as a trace variable.
@@ -66,7 +66,7 @@ def week_modulation(
     Returns
     -------
 
-    new_cases : :class:`~theano.tensor.TensorVariable`
+    new_cases : :class:`~aesara.tensor.TensorVariable`
 
     """
 
