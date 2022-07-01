@@ -739,12 +739,13 @@ def _new_cases_to_cum_cases(x, y, what, offset=0):
 # ------------------------------------------------------------------------------ #
 
 
-def _distribution(model, trace, key, ax=None, color=None, draw_prior=True):
+def _distribution(model, idata, key, ax=None, color=None, draw_prior=True):
     """
-    TODO
-    ----
-    documentation
-
+    Parameters
+    ----------
+    model: :class:`pymc.Model`
+    idata: :class:`arviz.InferenceData`
+    key: The key which should be plotted from the data
     """
     # check if model was hierarchical
     # if model.is_hierarchical
