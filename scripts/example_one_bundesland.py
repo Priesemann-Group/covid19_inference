@@ -180,7 +180,7 @@ with cov19.model.Cov19Model(**params_model) as this_model:
     The sampling can take a long time.
 """
 
-idata = pm.sample(model=this_model, tune=500, draws=1000, init="advi+adapt_diag")
+idata = pm.sample(model=this_model, tune=1000, draws=1000, init="advi+adapt_diag")
 
 
 """## Plotting
