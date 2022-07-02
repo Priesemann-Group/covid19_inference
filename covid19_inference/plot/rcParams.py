@@ -24,15 +24,11 @@ def get_rcparams_default():
         draw_ci_95=True,
         draw_ci_75=False,
         draw_ci_50=False,
-        color_model="#009988",
-        color_data="#060434",
+        color_model="tab:green",
+        color_data="tab:blue",
         color_prior="#708090",
         color_posterior="#009988",
         color_annot="#646464",
-        color_male="#EE7733",
-        color_female="#EE3377",
-        color_championship_range="#c6e2f7",
-        timeseries_xticklabel_rotation=0,  # In degree
     )
 
     return par
