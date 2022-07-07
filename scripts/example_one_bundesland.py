@@ -184,7 +184,8 @@ idata = pm.sample(model=this_model, tune=1000, draws=1000, init="advi+adapt_diag
 
 
 """## Plotting
-Plotting tools are rudimentary right now. But one can always write custom plotting function by accessing the samples stored in the inference data.
+Plotting tools are rudimentary right now. But one can always write custom plotting function
+by accessing the samples stored in the inference data. See the arviz [documentation](https://arviz-devs.github.io/arviz/getting_started/XarrayforArviZ.html#xarray-for-arviz) for a indepth explanation of the inference data structure.
 
 
     ### Distributions
@@ -246,3 +247,7 @@ fig  # To print in jupyter notebook
     timeseries overview, for now needs an offset variable to get cumulative cases
 """
 fig, axes = cov19.plot.timeseries_overview(this_model, idata, offset=total_cases_obs[0])
+
+
+%load_ext watermark
+%watermark --iversions -v
