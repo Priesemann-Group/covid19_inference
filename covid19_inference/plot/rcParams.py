@@ -1,3 +1,4 @@
+import copy
 colors = {
     "data": "#060434",  # black
     "fraction": "#33BBEE",  # cyan
