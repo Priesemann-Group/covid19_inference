@@ -17,9 +17,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy.stats
-import theano
-import theano.tensor as tt
-import pymc3 as pm
+import pymc as pm
 
 try:
     import covid19_inference as cov19
