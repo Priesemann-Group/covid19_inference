@@ -1,4 +1,5 @@
 import copy
+
 colors = {
     "data": "#060434",  # black
     "fraction": "#33BBEE",  # cyan
@@ -57,35 +58,35 @@ def set_rcparams(par):
     rasterization_zorder : int or None
         Rasterizes plotted content below this value, set to None to keep everything
         a vector.
-        |Default| -1
+        Default: -1
 
     draw_ci_95 : bool
         For time series plots, indicate 95% Confidence interval via fill between.
-        |default| True
+        Default: True
 
     draw_ci_75 : bool
         For time series plots, indicate 75% Confidence interval via fill between.
-        |default| False
+        Default: False
 
     draw_ci_50 : bool
         For time series plots, indicate 50% Confidence interval via fill between.
-        |default| False
+        Default: False
 
     color_model : str
         Base color used for model plots, mpl compatible color code "C0", "#303030"
-        |default| "tab:green"
+        Default: "tab:green"
 
     color_data : str
         Base color used for data
-        |default| "tab:blue"
+        Default: "tab:blue"
 
     color_annot : str
         Color to use for annotations
-        |default| "#646464"
+        Default: "#646464"
 
     color_prior : str
         Color to used for priors in distributions
-        |default| "#708090"
+        Default: "#708090"
 
     color_posterior : str
             Color used in posterior plotting

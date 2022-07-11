@@ -5,7 +5,6 @@ import pandas as pd
 from .rcParams import *
 
 
-
 def add_watermark(ax, mark="Dehning et al. 10.1126/science.abb9789"):
     """
     Add our arxive url to an axes as (upper right) title
@@ -41,6 +40,7 @@ def format_k(prec):
 
     return inner
 
+
 def format_date_xticks(ax, minor=None):
     # ensuring utf-8 helps on some setups
     locale.setlocale(locale.LC_ALL, rcParams.locale + ".UTF-8")
@@ -55,38 +55,37 @@ def format_date_xticks(ax, minor=None):
     ax.xaxis.set_major_formatter(mpl.dates.DateFormatter(rcParams["date_format"]))
 
 
-def get_array_from_idata(idata,var,from_type="posterior"):
+def get_array_from_idata(idata, var, from_type="posterior"):
     """Reshapes and returns an numpy array from an arviz idata
 
-        Parameters
-        ----------
-        idata : :class:`arviz.InferenceData`
-            InferenceData object
-        var : str
-            Variable name
-        from_type : str, optional
-            Type of data to return. Options are:
-            * `posterior` : posterior samples
-            * `prior` : prior samples
-            * ... check idata attributes for options
-        
-        Returns
-        -------
-        array : numpy.ndarray with chain and smaples flattened
+    Parameters
+    ----------
+    idata : :class:`arviz.InferenceData`
+        InferenceData object
+    var : str
+        Variable name
+    from_type : str, optional
+        Type of data to return. Options are:
+        * `posterior` : posterior samples
+        * `prior` : prior samples
+        * ... check idata attributes for options
+
+    Returns
+    -------
+    array : numpy.ndarray with chain and smaples flattened
     """
 
-    var = np.array(getattr(idata,from_type)[var])
+    var = np.array(getattr(idata, from_type)[var])
     if from_type == "predictions":
-            var = var.reshape((var.shape[0] * var.shape[1],)+var.shape[2:])
+        var = var.reshape((var.shape[0] * var.shape[1],) + var.shape[2:])
     var = var.reshape((var.shape[0] * var.shape[1],) + var.shape[2:])
-        
+
     # Remove nans (normally there are 0 nans but can happen if you use where operations)
-    var = var[~np.isnan(var).any(tuple(range(1,var.ndim))),...]
+    var = var[~np.isnan(var).any(tuple(range(1, var.ndim))), ...]
     return var
 
-def get_array_from_idata_via_date(model,idata,var,start=None,
-    end=None,
-    dates=None):
+
+def get_array_from_idata_via_date(model, idata, var, start=None, end=None, dates=None):
     """
     Parameters
     ----------
@@ -132,7 +131,6 @@ def get_array_from_idata_via_date(model,idata,var,start=None,
         ax = cov.plot._timeseries(x, y[:,:,0], what="model")
     """
 
-
     ref = model.sim_begin
     # the variable `new_cases` and some others (?) used to have different bounds
     # 20-05-27: not anymore, we made things consistent. let's remove this at some point
@@ -159,7 +157,7 @@ def get_array_from_idata_via_date(model,idata,var,start=None,
     )
     assert np.all(indices < model.sim_len), "all dates should be before model.sim_end"
 
-    trace = get_array_from_idata(idata,var,"posterior")
+    trace = get_array_from_idata(idata, var, "posterior")
 
     # here we make sure that the returned array always has the same dimensions:
     if trace.ndim == 3:

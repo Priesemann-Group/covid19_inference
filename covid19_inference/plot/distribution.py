@@ -8,6 +8,7 @@ from .rcParams import *
 
 log = logging.getLogger(__name__)
 
+
 def distribution(
     model,
     idata,
@@ -43,7 +44,9 @@ def distribution(
         prior = pm.sample_prior_predictive(
             samples=nSamples_prior, model=model, var_names=[key]
         ).prior[key]
-        prior = np.array(prior).reshape((prior.shape[0] * prior.shape[1],) + prior.shape[2:])
+        prior = np.array(prior).reshape(
+            (prior.shape[0] * prior.shape[1],) + prior.shape[2:]
+        )
     except ValueError:
         log.warning(f"Could not calculate prior for {key}")
         prior = None
@@ -143,16 +146,18 @@ def _distribution(
 
     suffix: str,optional
         Suffix for the plot title e.g. "age_group_1"
-        |default| ""
+        Default: ""
 
     ax : mpl axes element, optional
         Plot into an existing axes element
-        |default| :code:`None`
+        Default: :code:`None`
 
 
     """
     if ax is None:
-        fig, ax = plt.subplots(figsize=(4.5 / 3, 1),)
+        fig, ax = plt.subplots(
+            figsize=(4.5 / 3, 1),
+        )
 
     # ------------------------------------------------------------------------------ #
     # Plot
@@ -203,7 +208,11 @@ def _distribution(
             zorder=101,
         )
         _add_mpl_rect_around_text(
-            [tel_md, tel_ci], ax, facecolor="white", alpha=0.5, zorder=99,
+            [tel_md, tel_ci],
+            ax,
+            facecolor="white",
+            alpha=0.5,
+            zorder=99,
         )
     except Exception as e:
         log.debug(f"Unable to create inset with {dist_name} value: {e}")
@@ -250,7 +259,9 @@ def _plot_prior(x, ax=None, **kwargs):
         xlim = ax.get_xlim()
         reset_xlim = True
     try:
-        prior = stats.kde.gaussian_kde(x,)
+        prior = stats.kde.gaussian_kde(
+            x,
+        )
     except Exception as e:  # Probably only one value of x
         log.warning(f"Could not plot prior! {x}")
         return ax

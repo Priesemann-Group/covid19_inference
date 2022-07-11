@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath("../"))
 
 # -- Project information -----------------------------------------------------
 
-project = "Bayesian inference of COVID-19 "
+project = "Bayesian inference of COVID-19"
 copyright = "2020, Jonas Dehning, Johannes Zierenberg, F. Paul Spitzner, Michael Wibral, Joao Pinheiro Neto, Michael Wilczek, Viola Priesemann"
 author = "Jonas Dehning, Johannes Zierenberg, F. Paul Spitzner, Michael Wibral, Joao Pinheiro Neto, Michael Wilczek, Viola Priesemann"
 
@@ -58,7 +58,7 @@ extensions = [
     "sphinx.ext.doctest",
     "sphinx.ext.todo",
     "sphinx.ext.coverage",
-    #'sphinx.ext.mathjax',
+    "sphinx.ext.mathjax",
     "sphinx.ext.napoleon",
     # 'numpydoc',
     "sphinx.ext.intersphinx",
@@ -77,8 +77,8 @@ autodoc_mock_imports = [
     "matplotlib.pyplot",
     "mpl_toolkits",
     "scipy",
-    "pymc3",
-    "theano",
+    "pymc",
+    "aesara",
     "pandas",
     "filelock",
     "arviz",
@@ -195,8 +195,8 @@ intersphinx_mapping = {
     "numpy": ("https://docs.scipy.org/doc/numpy", None),
     "scipy": ("https://docs.scipy.org/doc/scipy/reference", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
-    "pymc3": ("https://docs.pymc.io", None),
-    "theano": ("https://theano-pymc.readthedocs.io/en/stable/", None),
+    "pymc": ("https://www.pymc.io/projects/docs/en/stable", None),
+    "aesara": ("https://aesara.readthedocs.io/en/latest/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
     "arviz": ("https://arviz-devs.github.io/arviz/", None),
 }
