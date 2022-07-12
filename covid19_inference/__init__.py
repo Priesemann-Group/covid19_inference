@@ -12,7 +12,7 @@ logging.getLogger("filelock").setLevel(logging.ERROR)
 
 # from .data_retrieval import GOOGLE
 from . import data_retrieval
-from . import plot
+from .plot import *
 from . import model
 from .model import Cov19Model
 from .sampling import robust_sample

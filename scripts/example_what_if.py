@@ -149,16 +149,15 @@ mod_c = create_model(cp_c, params_model)
 """## engage!
     Increase tune and/or draws to get better statistics.
 """
-tr_a = pm.sample(model=mod_a, tune=50, draws=100, init="advi+adapt_diag")
-tr_b = pm.sample(model=mod_b, tune=50, draws=100, init="advi+adapt_diag")
-tr_c = pm.sample(model=mod_c, tune=50, draws=100, init="advi+adapt_diag")
+tr_a = pm.sample(model=mod_a, tune=200, draws=200, init="advi+adapt_diag")
+tr_b = pm.sample(model=mod_b, tune=200, draws=200, init="advi+adapt_diag")
+tr_c = pm.sample(model=mod_c, tune=200, draws=200, init="advi+adapt_diag")
 
 """## Plotting
-    ### english
 """
-cov19.plot.set_rcparams(cov19.plot.get_rcparams_default())
-cov19.plot.rcParams.draw_ci_50 = True
+cov19.plot.rcParams.rcParams.draw_ci_50 = True
 
+%%capture
 fig, axes = cov19.plot.timeseries_overview(
     mod_a,
     tr_a,
@@ -168,7 +167,6 @@ fig, axes = cov19.plot.timeseries_overview(
     add_more_later=True,
     color="tab:red",
 )
-
 
 fig, axes = cov19.plot.timeseries_overview(
     mod_b,
@@ -187,40 +185,4 @@ fig, axes = cov19.plot.timeseries_overview(
     forecast_label="Optimistic",
     color="tab:green",
 )
-
-"""
-    ### german
-"""
-cov19.plot.set_rcparams(cov19.plot.get_rcparams_default())
-cov19.plot.rcParams.draw_ci_50 = True
-cov19.plot.rcParams.locale = "de_DE"
-cov19.plot.rcParams.date_format = "%-d. %b"
-
-fig, axes = cov19.plot.timeseries_overview(
-    mod_a,
-    tr_a,
-    offset=cum_cases[0],
-    forecast_label="Pessimistisch",
-    forecast_heading=r"$\bf Szenarien\!:$",
-    add_more_later=True,
-    color="tab:red",
-)
-
-
-fig, axes = cov19.plot.timeseries_overview(
-    mod_b,
-    tr_b,
-    axes=axes,
-    offset=cum_cases[0],
-    forecast_label="Neutral",
-    color="tab:orange",
-)
-
-fig, axes = cov19.plot.timeseries_overview(
-    mod_c,
-    tr_c,
-    axes=axes,
-    offset=cum_cases[0],
-    forecast_label="Optimistisch",
-    color="tab:green",
-)
+fig

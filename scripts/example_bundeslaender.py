@@ -4,10 +4,10 @@
     # Hierarchical Bayesian Model for all German states (Bundeslaender).
 
     Runtime ~ 1h
-
-    This file creates the model with three changing points of the paper https://science.sciencemag.org/content/early/2020/05/14/science.abb9789.
-
     
+    This notebook is using experimental features of our package to 
+    
+
     ## Importing modules
 """
 import datetime
@@ -17,9 +17,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy.stats
-import theano
-import theano.tensor as tt
-import pymc3 as pm
+import pymc as pm
 
 try:
     import covid19_inference as cov19
@@ -162,7 +160,7 @@ with cov19.model.Cov19Model(**params_model) as this_model:
     The sampling can take a long time.
 """
 
-trace = pm.sample(model=this_model, tune=1000, draws=1000, init="advi+adapt_diag")
+idata = pm.sample(model=this_model, tune=1000, draws=1000, init="advi+adapt_diag")
 
 """
     # Plotting
@@ -182,7 +180,6 @@ trace = pm.sample(model=this_model, tune=1000, draws=1000, init="advi+adapt_diag
 
 # Defines plotted variables, their names and plotting range
 var_names = {
-    "delay_hc_L2": {"name": "delay", "xlim": [0, 14]},
     "I_begin": {"name": r"$I_0$", "xlim": [0, 300]},
     "lambda_0_hc_L2": {"name": r"$\lambda_0$", "xlim": [0, 1]},
     "lambda_1_hc_L2": {"name": r"$\lambda_1$", "xlim": [0, 1]},
@@ -190,18 +187,18 @@ var_names = {
     "lambda_3_hc_L2": {"name": r"$\lambda_3$", "xlim": [0, 1]},
     "transient_day_1_hc_L2": {"name": r"$t_1$", "xlim": [10, 40]},
     "transient_day_2_hc_L2": {"name": r"$t_2$", "xlim": [10, 40]},
-    "transient_day_3_hc_L2": {"name": r"$t_3$", "xlim": [10, 40]},
+    "transient_day_3_hc_L2": {"name": r"$t_3$", "xlim": [30, 60]},
 }
 
 # Plots violin plots
 for var_name in var_names.keys():
     f, ax = plt.subplots()
-    ax.violinplot(trace[var_name], showextrema=False, vert=False, showmedians=True)
+    posterior_samples = cov19.plot.utils.get_array_from_idata(idata,var_name)
+    ax.violinplot(posterior_samples, showextrema=False, vert=False, showmedians=True)
     ax.set_yticks(np.arange(1, 17))
     ax.set_yticklabels(df_bundeslaender.columns)
     ax.set_xlabel(var_names[var_name]["name"])
     ax.set_xlim(var_names[var_name]["xlim"])
-
 """
     ### Timeseries
 
@@ -213,25 +210,26 @@ bd = datetime.datetime(2020, 3, 10)
 ed = datetime.datetime(2020, 4, 19) + datetime.timedelta(days=num_days_forecast - 1)
 
 # Next we have to get our trace corresponding to that date range. We do that by calling the helper function `cov19.plot._get_array_from_trace_via_date()`.
-y_all_regions, x = cov19.plot._get_array_from_trace_via_date(
-    this_model, trace, "new_cases", bd, ed
+y_all_regions, x = cov19.plot.utils.get_array_from_idata_via_date(
+    this_model, idata, "new_cases", bd, ed
 )
 
+%%capture
 # After retrieving the trace var for our specified time period, we plot the timeseries for each region. Additionaly we set the format of the date (x-)axis.
 # We have 16 regions in this example -> we create 16 subplots
-fig, axes = plt.subplots(16, 1, figsize=(10, 35))
+fig, axes = plt.subplots(16, 1, figsize=(10, 35), gridspec_kw={"hspace":0.5});
 
 for i in range(16):
     y = y_all_regions[:, :, i]
-    cov19.plot._timeseries(x, y, axes[i], what="fcast")
+    cov19.plot.timeseries._timeseries(x, y, axes[i], what="fcast")
     axes[i].set_title(df_bundeslaender.columns[i])
-    cov19.plot._format_date_xticks(axes[i])
+    #cov19.plot._format_date_xticks(axes[i])
 
 # Furthermore, we can plot our observable i.e. our new_cases_obs.
 x_dat = pd.date_range(this_model.data_begin, this_model.data_end)
 for i in range(16):
     y = new_cases_obs[:, i]
-    cov19.plot._timeseries(x_dat, y, axes[i], what="data", lw=0)
+    cov19.plot.timeseries._timeseries(x_dat, y, axes[i], what="data", lw=0)
 
-plt.tight_layout()
+#plt.tight_layout()
 fig  # To show figure in jupyter notebook

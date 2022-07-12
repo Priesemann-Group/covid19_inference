@@ -19,8 +19,8 @@ We provide three different types of functions here:
 
 If one just wants to recreate our figures with a different color. The easiest was is to change the default rc parameters.
 
-.. autofunction:: covid19_inference.plot.get_rcparams_default
-.. autofunction:: covid19_inference.plot.set_rcparams
+.. autofunction:: covid19_inference.plot.rcParams.get_rcparams_default
+.. autofunction:: covid19_inference.plot.rcParams.set_rcparams
 
 
 
@@ -28,14 +28,14 @@ High level functions
 --------------------
 .. autofunction:: covid19_inference.plot.timeseries_overview
 
-
+.. autofunction:: covid19_inference.plot.distribution.distribution
 
 Low level functions
 -------------------
 
-.. autofunction:: covid19_inference.plot._timeseries
+.. autofunction:: covid19_inference.plot.timeseries._timeseries
 
-.. autofunction:: covid19_inference.plot._distribution
+.. autofunction:: covid19_inference.plot.distribution._distribution
 
 Example
 ^^^^^^^
@@ -97,19 +97,14 @@ In this example we want to use the low level time series function to plot the ne
 Helper functions
 ----------------
 
-.. autofunction:: covid19_inference.plot._get_array_from_trace_via_date
-.. autofunction:: covid19_inference.plot._new_cases_to_cum_cases
-.. autofunction:: covid19_inference.plot._label_for_varname
-.. autofunction:: covid19_inference.plot._math_for_varname
-.. autofunction:: covid19_inference.plot._days_to_mpl_dates
-.. autofunction:: covid19_inference.plot._get_mpl_text_coordinates
-.. autofunction:: covid19_inference.plot._add_mpl_rect_around_text
-
-.. autofunction:: covid19_inference.plot._rx_cp_id
-.. autofunction:: covid19_inference.plot._rx_hc_id
-.. autofunction:: covid19_inference.plot._format_k
-.. autofunction:: covid19_inference.plot._format_date_xticks
-.. autofunction:: covid19_inference.plot._truncate_number
-.. autofunction:: covid19_inference.plot._string_median_CI
-.. autofunction:: covid19_inference.plot._add_watermark
-.. autoclass:: covid19_inference.plot.Param
+.. autofunction:: covid19_inference.plot.utils.get_array_from_idata
+.. autofunction:: covid19_inference.plot.utils.get_array_from_idata_via_date
+.. autofunction:: covid19_inference.plot.timeseries._new_cases_to_cum_cases
+.. autofunction:: covid19_inference.plot.distribution._get_mpl_text_coordinates
+.. autofunction:: covid19_inference.plot.distribution._add_mpl_rect_around_text
+.. autofunction:: covid19_inference.plot.utils.format_k
+.. autofunction:: covid19_inference.plot.utils.format_date_xticks
+.. autofunction:: covid19_inference.plot.distribution._truncate_number
+.. autofunction:: covid19_inference.plot.distribution._string_median_CI
+.. autofunction:: covid19_inference.plot.utils.add_watermark
+.. autoclass:: covid19_inference.plot.rcParams

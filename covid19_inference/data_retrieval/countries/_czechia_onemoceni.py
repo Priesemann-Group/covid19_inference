@@ -336,7 +336,11 @@ class Czechia(Retrieval):
 
         def helper(df):
             try:
-                df = df.rename(columns={"datum": "date",})
+                df = df.rename(
+                    columns={
+                        "datum": "date",
+                    }
+                )
                 df["date"] = pd.to_datetime(df["date"])
                 df = df.set_index("date")
 

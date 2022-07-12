@@ -2,7 +2,7 @@
     # Non-hierarchical model using jhu data (no regions).
     Reproduces Dehning et al. arXiv:2004.01105 Figure 3
 
-    Runtime ~ 5 min
+    Runtime ~ 15 min
 
     In the new code we have implemented smoother transitions at the change points
     via sigmoids instead of the linear transient.
@@ -12,7 +12,7 @@
 """
 import datetime
 import sys
-import pymc3 as pm
+import pymc as pm
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -128,43 +128,60 @@ with cov19.Cov19Model(**params_model) as this_model:
 """## engage!
     Reduce tune and/or draws to speed things up.
 """
-trace = pm.sample(model=this_model, tune=500, draws=1000, init="advi+adapt_diag")
+idata = pm.sample(model=this_model, tune=500, draws=1000, init="advi+adapt_diag")
 
 
 """## plotting
 """
-fig, axes = cov19.plot.timeseries_overview(this_model, trace, offset=cum_cases[0])
+fig, axes = cov19.plot.timeseries_overview(this_model, idata, offset=cum_cases[0])
 
+%%capture
 fig, axes = plt.subplots(6, 3, figsize=(4, 6.4))
 axes[0, 2].set_visible(False)
 axes[1, 2].set_visible(False)
 
 # left column
-for i, key in enumerate(
-    ["weekend_factor", "mu", "lambda_0", "lambda_1", "lambda_2", "lambda_3"]
+for i, (key, math) in enumerate(
+    zip(["weekend_factor", "mu", "lambda_0", "lambda_1", "lambda_2", "lambda_3"],
+    ["\Phi_w","\mu","\lambda_0", "\lambda_1", "\lambda_2", "\lambda_3"])
 ):
-    cov19.plot._distribution(this_model, trace, key, ax=axes[i, 0])
+    cov19.plot.distribution(this_model, idata, key, ax=axes[i, 0], dist_math=math)
 
 # mid column
-for i, key in enumerate(
-    [
+for i, (key, math) in enumerate(
+    zip([
         "offset_modulation",
         "sigma_obs",
         "I_begin",
-        # beware, these guys were the begin of the transient in the paper,
-        # now they are the center points (shifted by transient_len_i)
         "transient_day_1",
         "transient_day_2",
         "transient_day_3",
-    ]
+    ],    [
+        "f_w",
+        "\sigma_{obs}",
+        "I_0",
+        "t_1",
+        "t_2",
+        "t_3",
+    ])
 ):
-    cov19.plot._distribution(this_model, trace, key, ax=axes[i, 1])
+    cov19.plot.distribution(this_model, idata, key, ax=axes[i, 1],dist_math=math,)
 
 # right column
-for i, key in enumerate(
-    ["delay", "transient_len_1", "transient_len_2", "transient_len_3",]
+for i, (key,math) in enumerate(
+    zip([
+        "delay",
+        "transient_len_1",
+        "transient_len_2",
+        "transient_len_3",
+    ],[
+        "D",
+        "\Delta t_1",
+        "\Delta t_2",
+        "\Delta t_3"
+    ])
 ):
-    cov19.plot._distribution(this_model, trace, key, ax=axes[i + 2, 2])
+    cov19.plot.distribution(this_model, idata, key, ax=axes[i + 2, 2],dist_math=math,)
 
 fig.tight_layout()
 fig  # To show figure in jupyter notebook

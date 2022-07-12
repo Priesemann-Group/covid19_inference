@@ -7,16 +7,14 @@
     The first thing we need to do is import some essential stuff. Theses have to be installed and are prerequisites.
 """
 import datetime
-import time as time_module
 import sys
-import pandas as pd
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import scipy.stats
-import theano
-import theano.tensor as tt
-import pymc3 as pm
+import aesara
+import aesara.tensor as at
+import pymc as pm
 
 # Now to the fun stuff, we import our module!
 try:
@@ -27,13 +25,15 @@ except ModuleNotFoundError:
 
 """## Data retrieval
 
-    The next thing we want to do is load a dataset from somewhere.
-    There are multiple download sources which can be found [here](https://covid19-inference.readthedocs.io/en/latest/doc/data_retrieval.html).
+    The next thing we want to do is (down)load a dataset. We have retrievers for multiple download sources.
+    Documentation can be found [here](https://covid19-inference.readthedocs.io/en/latest/doc/data_retrieval.html).
     In this example we will use the RKI dataset.
 """
-rki = cov19.data_retrieval.RKI()  # It is important to download the dataset!
+
+rki = (
+    cov19.data_retrieval.RKI()
+)  # One could also parse True to the constructor of the class to force an auto download
 rki.download_all_available_data()
-# One could also parse True to the constructor of the class to force an auto download
 
 """
     We can now access this downloaded data by the attribute
@@ -45,8 +45,9 @@ rki.download_all_available_data()
 
     Next we retrieve the filtered data from our source in this example we will get all new cases and the total (cumulative) cases for the bundesland "Sachsen".
 """
+
 bd = datetime.datetime(2020, 3, 10)  # For the date filter
-ed = datetime.datetime.now()
+ed = datetime.datetime(2020, 6, 10)
 
 total_cases_obs = rki.get_total(
     value="confirmed", bundesland="Sachsen", data_begin=bd, data_end=ed
@@ -174,18 +175,18 @@ with cov19.model.Cov19Model(**params_model) as this_model:
 
 """## MCMC sampling
 
-    After the model is built, it is sampled using an MCMC sampler.
+    After the model is built, it is sampled using a MCMC sampler.
     The number of parallel runs can be set with the argument `cores=`.
-    In particular, due to a bug in Theano, Windows users should set `cores=1`.
     The sampling can take a long time.
 """
 
-trace = pm.sample(model=this_model, tune=500, draws=1000, init="advi+adapt_diag")
+idata = pm.sample(model=this_model, tune=1000, draws=1000, init="advi+adapt_diag")
 
 
 """## Plotting
-    Plotting tools are rudimentary right now. But one can always write custom plotting function
-    by accessing the samples stored in the trace.
+Plotting tools are rudimentary right now. But one can always write custom plotting function
+by accessing the samples stored in the inference data. See the arviz [documentation](https://arviz-devs.github.io/arviz/getting_started/XarrayforArviZ.html#xarray-for-arviz) for a indepth explanation of the inference data structure.
+
 
     ### Distributions
 """
@@ -196,30 +197,48 @@ varnames = this_model.untransformed_freeRVs
 print(varnames)
 
 # Plot them
-for i, key in enumerate(
+for i, (key, math) in enumerate(
     # left column
-    ["weekend_factor", "mu", "lambda_0", "lambda_1", "lambda_2", "lambda_3"]
+    zip(["weekend_factor", "mu", "lambda_0", "lambda_1", "lambda_2", "lambda_3"],
+    ["\Phi_w","\mu","\lambda_0", "\lambda_1", "\lambda_2", "\lambda_3"])
 ):
-    cov19.plot._distribution(this_model, trace, key, ax=axes[i, 0])
+    cov19.plot.distribution(this_model, idata, key, ax=axes[i, 0], dist_math=math)
 
-for i, key in enumerate(
+for i, (key, math) in enumerate(
     # mid column
-    [
+    zip([
         "offset_modulation",
         "sigma_obs",
         "I_begin",
         "transient_day_1",
         "transient_day_2",
         "transient_day_3",
-    ]
+    ],    [
+        "f_w",
+        "\sigma_{obs}",
+        "I_0",
+        "t_1",
+        "t_2",
+        "t_3",
+    ])
 ):
-    cov19.plot._distribution(this_model, trace, key, ax=axes[i, 1])
+    cov19.plot.distribution(this_model, idata, key, ax=axes[i, 1],dist_math=math,)
 
-for i, key in enumerate(
+for i, (key,math) in enumerate(
     # right column
-    ["delay", "transient_len_1", "transient_len_2", "transient_len_3",]
+    zip([
+        "delay",
+        "transient_len_1",
+        "transient_len_2",
+        "transient_len_3",
+    ],[
+        "D",
+        "\Delta t_1",
+        "\Delta t_2",
+        "\Delta t_3"
+    ])
 ):
-    cov19.plot._distribution(this_model, trace, key, ax=axes[i + 2, 2])
+    cov19.plot.distribution(this_model, idata, key, ax=axes[i + 2, 2],dist_math=math,)
 
 fig.tight_layout()
 fig  # To print in jupyter notebook
@@ -227,4 +246,8 @@ fig  # To print in jupyter notebook
 """### Timeseries
     timeseries overview, for now needs an offset variable to get cumulative cases
 """
-fig, axes = cov19.plot.timeseries_overview(this_model, trace, offset=total_cases_obs[0])
+fig, axes = cov19.plot.timeseries_overview(this_model, idata, offset=total_cases_obs[0])
+
+
+%load_ext watermark
+%watermark --iversions -v

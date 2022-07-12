@@ -134,21 +134,21 @@ class OxCGRT(Retrieval):
 
     def get_possible_countries(self):
         """
-            Can be used to obtain all different possible countries in the dataset.
+        Can be used to obtain all different possible countries in the dataset.
 
-            Returns
-            -------
-            : pandas.DataFrame
+        Returns
+        -------
+        : pandas.DataFrame
         """
         return self.data["country"].unique()
 
     def get_possible_policies(self):
         """
-            Can be used to obtain all policies in there corresponding categories possible countries in the dataset.
+        Can be used to obtain all policies in there corresponding categories possible countries in the dataset.
 
-            Returns
-            -------
-            : dict
+        Returns
+        -------
+        : dict
         """
 
         ret = dict()
@@ -190,20 +190,20 @@ class OxCGRT(Retrieval):
 
     def get_change_points(self, policies, country):
         """
-            Returns a list of change points, depending on the selected measure and country.
+        Returns a list of change points, depending on the selected measure and country.
 
-            Parameters
-            ----------
-            policies : str, array of str
-                The wanted policies. Can be an array of strings, use get_possible_policies() to get
-                a dict of possible policies.
+        Parameters
+        ----------
+        policies : str, array of str
+            The wanted policies. Can be an array of strings, use get_possible_policies() to get
+            a dict of possible policies.
 
-            country : str
-                Filter for country, use get_possible_countries() to get a list of possible ones.
+        country : str
+            Filter for country, use get_possible_countries() to get a list of possible ones.
 
-            Returns
-            -------
-            :array of dicts
+        Returns
+        -------
+        :array of dicts
         """
 
         if isinstance(policies, str):
@@ -236,22 +236,22 @@ class OxCGRT(Retrieval):
 
     def get_time_data(self, policy, country, data_begin=None, data_end=None):
         """
-            Parameters
-            ----------
-            policy : str
-                The wanted policy.
-            country : str
-                Filter for country, use get_possible_countries() to get a list of possible ones.
-            data_begin : datetime.datetime, optional
-                intial date for the returned data, if no value is given the first date in the dataset is used,
-                if none is given could yield errors
-            data_end : datetime.datetime, optional
-                last date for the returned data, if no value is given the most recent date in the dataset is used
+        Parameters
+        ----------
+        policy : str
+            The wanted policy.
+        country : str
+            Filter for country, use get_possible_countries() to get a list of possible ones.
+        data_begin : datetime.datetime, optional
+            intial date for the returned data, if no value is given the first date in the dataset is used,
+            if none is given could yield errors
+        data_end : datetime.datetime, optional
+            last date for the returned data, if no value is given the most recent date in the dataset is used
 
-            Returns
-            -------
-            :
-                Pandas dataframe with policy
+        Returns
+        -------
+        :
+            Pandas dataframe with policy
         """
         if data_begin is None:
             data_begin = self.__get_first_date()

@@ -163,7 +163,7 @@ class Latvia(Retrieval):
             last date for the returned data, if no value is given the most recent date in the dataset is used
         age_group : str, optional
             Possible are '0-9', '10-19', '20-29', '30-39', '40-49', '50-59', '60-69', '70-79', '80-'
-            
+
         Returns
         -------
         : pandas.DataFrame
@@ -199,7 +199,7 @@ class Latvia(Retrieval):
             last date for the returned data, if no value is given the most recent date in the dataset is used
         age_group : str, optional
             Possible are '0-9', '10-19', '20-29', '30-39', '40-49', '50-59', '60-69', '70-79', '80-'
-            
+
         Returns
         -------
         : pandas.DataFrame

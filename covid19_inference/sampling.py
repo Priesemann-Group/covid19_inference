@@ -5,8 +5,7 @@ from collections import Counter
 import pickle
 import glob
 import os
-
-import pymc3 as pm
+import pymc as pm
 import arviz as az
 import matplotlib.pyplot as plt
 import numpy as np
@@ -68,7 +67,7 @@ class Callback:
     path : str
         Path to save the trace
 
-    name : str 
+    name : str
         Name of the model, should be used when running multiple
         models in parallel (default: "model")
 
@@ -190,7 +189,10 @@ def burn_in(
     elif num_start_points > n_chains_final:
         p = np.exp(logl_starting_points - max(logl_starting_points))
         start_points = np.random.choice(
-            start_points, size=n_chains_final, p=p / np.sum(p), replace=False,
+            start_points,
+            size=n_chains_final,
+            p=p / np.sum(p),
+            replace=False,
         )
     return start_points, trace_tuning_az
 
@@ -331,7 +333,8 @@ def robust_sample(
             ]
             with warnings.catch_warnings():
                 warnings.filterwarnings(
-                    "ignore", message="The group .* is not defined in the .* scheme",
+                    "ignore",
+                    message="The group .* is not defined in the .* scheme",
                 )
                 trace.add_groups(
                     {n: o for n, o in zip(new_names, trace_burn_in.values())}

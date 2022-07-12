@@ -20,6 +20,7 @@ how our model works. Otherwise, here is a quick overview:
 
 Example
 -------
+
 .. code-block:: python
 
     import datetime
@@ -118,7 +119,6 @@ and :math:`I(0)` are set to
             \text{pr\_beta\_I\_begin}
         \right]
 
----------------------------------------
 
 SEIR-like ---  susceptible-exposed-infected-recovered
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -169,9 +169,6 @@ References
     The Incubation Period of Coronavirus Disease 2019 (COVID-19) From Publicly Reported Confirmed Cases: Estimation and Application.
     Ann Intern Med 2020. https://doi.org/10.7326/M20-0504.
 
----------------------------------------
-.. autofunction:: covid19_inference.model.uncorrelated_prior_I
-
 
 Likelihood
 ----------
@@ -181,6 +178,9 @@ Likelihood
 Spreading Rate
 --------------
 .. autofunction:: covid19_inference.model.lambda_t_with_sigmoids
+
+.. autofunction:: covid19_inference.model.uncorrelated_prior_I
+
 
 Delay
 -----
@@ -213,7 +213,7 @@ Week modulation
 
 
 
-Utility
--------
+Model utilities
+---------------
 .. automodule:: covid19_inference.model.utility
     :members:

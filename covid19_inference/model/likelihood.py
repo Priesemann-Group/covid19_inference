@@ -4,11 +4,11 @@
 
 import logging
 
-import theano
-import theano.tensor as tt
+import pymc as pm
+from aesara import scan
+import aesara.tensor as at
 import numpy as np
 from scipy import ndimage as ndi
-import pymc3 as pm
 
 from .model import *
 from . import utility as ut
@@ -45,7 +45,7 @@ def student_t_likelihood(
 
         Parameters
         ----------
-        cases : :class:`~theano.tensor.TensorVariable`
+        cases : :class:`~aesara.tensor.TensorVariable`
             The daily new cases estimated by the model.
             Will be compared to  the real world data ``data_obs``.
             One or two dimensonal array. If 2 dimensional, the first dimension is time
@@ -119,10 +119,10 @@ def student_t_likelihood(
                         if np.isnan(cases_obs):
                             update = True
                         elif update:
-                            cases_i = tt.set_subtensor(
+                            cases_i = at.set_subtensor(
                                 cases[i + model.diff_data_sim][..., c], new_cases
                             )
-                            cases = tt.set_subtensor(
+                            cases = at.set_subtensor(
                                 cases[i + model.diff_data_sim], cases_i
                             )
                             new_cases = 0
@@ -143,22 +143,21 @@ def student_t_likelihood(
                     if np.isnan(cases_obs):
                         update = True
                     elif update:
-                        cases = tt.set_subtensor(
+                        cases = at.set_subtensor(
                             cases[i + model.diff_data_sim], new_cases
                         )
                         new_cases = 0
                         update = False
 
     cases = cases[model.diff_data_sim : model.data_len + model.diff_data_sim]
-    # theano.printing.Print(f'cases')(cases)
     sigma_obs = pm.HalfCauchy(
         name_sigma_obs,
         beta=pr_beta_sigma_obs,
         shape=model.shape_of_regions if sigma_shape is None else sigma_shape,
     )
     sigma = (
-        tt.abs_(cases + offset_sigma) ** 0.5 * sigma_obs
-    )  # offset and tt.abs to avoid nans
+        at.abs_(cases + offset_sigma) ** 0.5 * sigma_obs
+    )  # offset and at.abs to avoid nans
 
     pm.StudentT(
         name=name_student_t,

@@ -114,7 +114,12 @@ class Netherlands(Retrieval):
     def _to_iso(self):
         df = self.data
 
-        df = df.rename(columns={"Date_file": "date_sub", "Date_statistics": "date",})
+        df = df.rename(
+            columns={
+                "Date_file": "date_sub",
+                "Date_statistics": "date",
+            }
+        )
         df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d %H:%M:%S")
         df["date_sub"] = pd.to_datetime(df["date_sub"], format="%Y-%m-%d")
         df = df.set_index("date")
@@ -146,7 +151,7 @@ class Netherlands(Retrieval):
             last date for the returned data, if no value is given the most recent date in the dataset is used
         age_group : str, optional
             Possible are '0-9','10-19','20-29','30-39','40-49', '50-59','60-69','70-79', '80-89','90+','<50', 'Unknown'
-            
+
         Returns
         -------
         : pandas.DataFrame

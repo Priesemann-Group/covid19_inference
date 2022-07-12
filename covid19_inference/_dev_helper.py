@@ -1,9 +1,4 @@
 # ------------------------------------------------------------------------------ #
-# @Author:        F. Paul Spitzner
-# @Email:         paul.spitzner@ds.mpg.de
-# @Created:       2020-04-21 08:57:53
-# @Last Modified: 2020-05-20 10:48:23
-# ------------------------------------------------------------------------------ #
 # Let's have a dummy instance of model and trace so we can play around with the
 # interface and plotting.
 # Analog to example_bundeslaender.ipynb
@@ -12,7 +7,7 @@
 import logging
 
 import numpy as np
-import pymc3 as pm
+import pymc as pm
 import datetime
 
 from .model import *
@@ -23,14 +18,14 @@ log = logging.getLogger(__name__)
 
 def create_example_instance(num_change_points=3):
     """
-        Parameters
-        ----------
-            num_change_points : int
-                the standard change points to inlcude, at most 3
+    Parameters
+    ----------
+        num_change_points : int
+            the standard change points to inlcude, at most 3
 
-        Retruns
-        -------
-            (model, trace) with example data
+    Retruns
+    -------
+        (model, trace) with example data
     """
 
     jhu = data_retrieval.JHU()
@@ -98,6 +93,6 @@ def create_example_instance(num_change_points=3):
         student_t_likelihood(new_cases_inferred)
 
     # make it fast
-    trace = pm.sample(model=model, tune=1, draws=1)
+    idata = pm.sample(model=model, tune=1, draws=1)
 
-    return model, trace
+    return model, idata

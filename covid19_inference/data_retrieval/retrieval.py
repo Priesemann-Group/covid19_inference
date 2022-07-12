@@ -26,10 +26,10 @@ _format_date = lambda date_py: "{}/{}/{}".format(
 
 def set_data_dir(fname=None, permissions=None):
     """
-        Set the global variable _data_dir. New downloaded data is placed there.
-        If no argument provided we try the default tmp directory.
-        If permissions are not provided, uses defaults if fname is in user folder.
-        If not in user folder, tries to set 777.
+    Set the global variable _data_dir. New downloaded data is placed there.
+    If no argument provided we try the default tmp directory.
+    If permissions are not provided, uses defaults if fname is in user folder.
+    If not in user folder, tries to set 777.
     """
 
     target = "/tmp" if platform.system() == "Darwin" else tempfile.gettempdir()
@@ -135,12 +135,14 @@ def iso_3166_country_in_iso_format(country: str) -> bool:
 
 
 def backup_instances(
-    trace=None, model=None, fname="latest_",
+    trace=None,
+    model=None,
+    fname="latest_",
 ):
     """
-        helper to save or load trace and model instances.
-        loads from `fname` if provided traces and model variables are None,
-        else saves them there.
+    helper to save or load trace and model instances.
+    loads from `fname` if provided traces and model variables are None,
+    else saves them there.
     """
 
     try:
@@ -164,12 +166,12 @@ def backup_instances(
 
 class Retrieval:
     """
-        Each source class should inherit this base retrieval class, it streamlines alot
-        of base functions. It manages downloads, multiple fallbacks and local backups
-        via timestamp. At init of the parent class the Retrieval init should be called
-        with the following arguments, these get saved as attributes.
+    Each source class should inherit this base retrieval class, it streamlines alot
+    of base functions. It manages downloads, multiple fallbacks and local backups
+    via timestamp. At init of the parent class the Retrieval init should be called
+    with the following arguments, these get saved as attributes.
 
-        An example for the usage can be seen in the _Google, _RKI and _JHU source files.
+    An example for the usage can be seen in the _Google, _RKI and _JHU source files.
     """
 
     url_csv = ""

@@ -3,9 +3,9 @@
 # ------------------------------------------------------------------------------ #
 
 import logging
-import pymc3 as pm
-import theano
-import theano.tensor as tt
+import pymc as pm
+import aesara.tensor as at
+
 import scipy.special
 from .model import *
 from . import utility as ut
@@ -109,11 +109,11 @@ def R_t_log_with_longtailed_dist(
 
     # Build the model equations
     scale = pm.HalfCauchy("Delta_rho_scale", beta=rho_scale_prior)
-    R_t_log = R_0_log + tt.cumsum(scale * dist, axis=0)
+    R_t_log = R_0_log + at.cumsum(scale * dist, axis=0)
 
     # Create responding R_t pymc3 variable with given name (from parameters)
     if name_R_t is not None:
-        pm.Deterministic(name_R_t, tt.exp(R_t_log))
+        pm.Deterministic(name_R_t, at.exp(R_t_log))
 
     return R_t_log
 
@@ -130,9 +130,12 @@ def lambda_t_with_sigmoids(
     prefix_lambdas="",
     shape=None,
 ):
-    """
-    Builds a time dependent spreading rate :math:`\lambda_t` with change points. The change points are marked by
-    a transient with a sigmoidal shape, with at
+    r"""
+    Builds a time dependent spreading rate :math:`\lambda_t` with change points. The change points are marked by a transient with a sigmoidal shape.
+
+    TODO
+    ----
+    Add a bit more detailed documentation.
 
     Parameters
     ----------
@@ -145,10 +148,6 @@ def lambda_t_with_sigmoids(
     Returns
     -------
     lambda_t_log
-
-    TODO
-    ----
-    Documentation on this
     """
     log.info("Lambda_t with sigmoids")
     # Get our default mode context
@@ -175,7 +174,7 @@ def lambda_t_with_sigmoids(
     )
 
     # Build the time-dependent spreading rate
-    lambda_log_t_list = [lambda_log_list[0] * tt.ones((model.sim_len,) + shape)]
+    lambda_log_t_list = [lambda_log_list[0] * at.ones((model.sim_len,) + shape)]
     lambda_before = lambda_log_list[0]
 
     # Loop over all lambda values and there corresponding transient values
@@ -190,7 +189,7 @@ def lambda_t_with_sigmoids(
             t = np.repeat(t[:, None], shape, axis=-1)
 
         # Applies standart sigmoid nonlinearity
-        lambda_t = tt.nnet.sigmoid((t - tr_time) / tr_len * 4) * (
+        lambda_t = at.nnet.basic.sigmoid((t - tr_time) / tr_len * 4) * (
             lambda_after - lambda_before
         )  # tr_len*4 because the derivative of the sigmoid at zero is 1/4, we want to set it to 1/tr_len
 
@@ -205,7 +204,7 @@ def lambda_t_with_sigmoids(
 
     # Create responding lambda_t pymc3 variable with given name (from parameters)
     if name_lambda_t is not None:
-        pm.Deterministic(name_lambda_t, tt.exp(lambda_t_log))
+        pm.Deterministic(name_lambda_t, at.exp(lambda_t_log))
 
     return lambda_t_log
 
@@ -245,7 +244,7 @@ def lambda_t_with_linear_interp(
 
     # Build the time-dependent spreading rate
     lambda_t_list = [
-        tt.exp(lambda_log_list[0]) * tt.ones(model.sim_shape)
+        at.exp(lambda_log_list[0]) * at.ones(model.sim_shape)
     ]  # model.sim_shape = (time, state)
     lambda_log_before = lambda_log_list[0]
 
@@ -260,19 +259,19 @@ def lambda_t_with_linear_interp(
         if model.is_hierarchical:
             t = np.repeat(t[:, None], model.sim_shape[1], axis=-1)
 
-        step_t = tt.clip((t - tr_time + tr_len / 2) / tr_len, 0, 1)
+        step_t = at.clip((t - tr_time + tr_len / 2) / tr_len, 0, 1)
 
         # create the time series of lambda
-        lambda_t = step_t * (tt.exp(lambda_log_after) - tt.exp(lambda_log_before))
+        lambda_t = step_t * (at.exp(lambda_log_after) - at.exp(lambda_log_before))
 
         lambda_log_before = lambda_log_after
         lambda_t_list.append(lambda_t)
 
     # Sum up all lambda values from the list
-    lambda_t_log = tt.log(sum(lambda_t_list))
+    lambda_t_log = at.log(sum(lambda_t_list))
 
     # Create responding lambda_t pymc3 variable with given name (from parameters)
-    pm.Deterministic(name_lambda_t, tt.exp(lambda_t_log))
+    pm.Deterministic(name_lambda_t, at.exp(lambda_t_log))
 
     return lambda_t_log
 
@@ -320,8 +319,8 @@ def _make_change_point_RVs(
             shape=shape,
         )
         lambda_L1_log_list = []
-        pm.Deterministic("lambda_0_hc_L2", tt.exp(lambda_0_hc_L2_log))
-        pm.Deterministic("lambda_0_hc_L1", tt.exp(lambda_0_hc_L1_log))
+        pm.Deterministic("lambda_0_hc_L2", at.exp(lambda_0_hc_L2_log))
+        pm.Deterministic("lambda_0_hc_L1", at.exp(lambda_0_hc_L1_log))
         lambda_log_list.append(lambda_0_hc_L2_log)
         lambda_L1_log_list.append(lambda_0_hc_L1_log)
 
@@ -336,7 +335,7 @@ def _make_change_point_RVs(
                         name_L1=f"factor_lambda_{i + 1}_hc_L1_log",
                         name_L2=f"factor_lambda_{i + 1}_hc_L2_log",
                         name_sigma=f"sigma_lambda_{i + 1}_hc_L1",
-                        pr_mean=tt.log(cp["pr_factor_to_previous"]),
+                        pr_mean=at.log(cp["pr_factor_to_previous"]),
                         pr_sigma=cp["pr_sigma_lambda"],
                         error_cauchy=False,
                         shape=shape,
@@ -383,8 +382,8 @@ def _make_change_point_RVs(
                     error_cauchy=False,
                     shape=shape,
                 )
-            pm.Deterministic(f"lambda_{i + 1}_hc_L2", tt.exp(lambda_cp_hc_L2_log))
-            pm.Deterministic(f"lambda_{i + 1}_hc_L1", tt.exp(lambda_cp_hc_L1_log))
+            pm.Deterministic(f"lambda_{i + 1}_hc_L2", at.exp(lambda_cp_hc_L2_log))
+            pm.Deterministic(f"lambda_{i + 1}_hc_L1", at.exp(lambda_cp_hc_L1_log))
             lambda_log_list.append(lambda_cp_hc_L2_log)
             lambda_L1_log_list.append(lambda_cp_hc_L1_log)
 
@@ -419,9 +418,9 @@ def _make_change_point_RVs(
                 )
                 pm.Deterministic(
                     f"{prefix_lambdas}transient_len_{i + 1}",
-                    tt.nnet.softplus(tr_len_raw),
+                    at.nnet.basic.softplus(tr_len_raw),
                 )
-                tr_len_list.append(tt.nnet.softplus(tr_len_raw))
+                tr_len_list.append(at.nnet.basic.softplus(tr_len_raw))
         else:
             for i, cp in enumerate(change_points_list):
                 dt_begin_transient = cp["pr_mean_date_transient"]
@@ -458,16 +457,18 @@ def _make_change_point_RVs(
                 )
                 if tr_len_L1_raw is not None:
                     pm.Deterministic(
-                        f"transient_len_{i + 1}_hc_L1", tt.nnet.softplus(tr_len_L1_raw)
+                        f"transient_len_{i + 1}_hc_L1",
+                        at.nnet.basic.softplus(tr_len_L1_raw),
                     )
                     pm.Deterministic(
-                        f"transient_len_{i + 1}_hc_L2", tt.nnet.softplus(tr_len_L2_raw)
+                        f"transient_len_{i + 1}_hc_L2",
+                        at.nnet.basic.softplus(tr_len_L2_raw),
                     )
                 else:
                     pm.Deterministic(
-                        f"transient_len_{i + 1}", tt.nnet.softplus(tr_len_L2_raw)
+                        f"transient_len_{i + 1}", at.nnet.basic.softplus(tr_len_L2_raw)
                     )
-                tr_len_list.append(tt.nnet.softplus(tr_len_L2_raw))
+                tr_len_list.append(at.nnet.basic.softplus(tr_len_L2_raw))
 
     def non_hierarchical_mod():
         lambda_0_log = pm.Normal(
@@ -476,13 +477,13 @@ def _make_change_point_RVs(
             sigma=pr_sigma_lambda_0,
             shape=shape,
         )
-        pm.Deterministic(f"{prefix_lambdas}lambda_0", tt.exp(lambda_0_log))
+        pm.Deterministic(f"{prefix_lambdas}lambda_0", at.exp(lambda_0_log))
         lambda_log_list.append(lambda_0_log)
 
         # Create lambda_log list
         for i, cp in enumerate(change_points_list):
             if cp["relative_to_previous"]:
-                pr_mean_lambda = lambda_log_list[-1] + tt.log(
+                pr_mean_lambda = lambda_log_list[-1] + at.log(
                     cp["pr_factor_to_previous"]
                 )
                 if sigma_lambda_cp is not None:
@@ -511,7 +512,7 @@ def _make_change_point_RVs(
                     sigma=cp["pr_sigma_lambda"],
                     shape=shape,
                 )
-            pm.Deterministic(f"{prefix_lambdas}lambda_{i + 1}", tt.exp(lambda_cp_log))
+            pm.Deterministic(f"{prefix_lambdas}lambda_{i + 1}", at.exp(lambda_cp_log))
             lambda_log_list.append(lambda_cp_log)
 
         # Create transient time list
@@ -541,9 +542,9 @@ def _make_change_point_RVs(
             )
             pm.Deterministic(
                 f"{prefix_lambdas}transient_len_{i + 1}",
-                tt.nnet.softplus(tr_len_raw),
+                at.nnet.basic.softplus(tr_len_raw),
             )
-            tr_len_list.append(tt.nnet.softplus(tr_len_raw))
+            tr_len_list.append(at.nnet.basic.softplus(tr_len_raw))
 
     # ------------------------------------------------------------------------------ #
     # Start of function body
@@ -585,29 +586,29 @@ def _smooth_step_function(start_val, end_val, t_begin, t_end, t_total):
 
     Parameters
     ----------
-        start_val : number
+        start_val : float
             Starting value
 
-        end_val : number
+        end_val : float
             Target value
 
-        t_begin : number or array (theano)
+        t_begin : int or array_like or :class:`~aesara.tensor.Variable`
             Time point (inbetween 0 and t_total) where start_val is placed
 
-        t_end : number or array (theano)
+        t_end : int or array_like or :class:`~aesara.tensor.Variable`
             Time point (inbetween 0 and t_total) where end_val is placed
 
-        t_total : integer
+        t_total : int
             Total number of time points
 
     Returns
     -------
-        : theano vector
+        : :class:`~aesara.tensor.Variable`
             vector of length t_total with the values of the parameterised f(t)
     """
     t = np.arange(t_total)
 
     return (
-        tt.clip((t - t_begin) / (t_end - t_begin), 0, 1) * (end_val - start_val)
+        at.clip((t - t_begin) / (t_end - t_begin), 0, 1) * (end_val - start_val)
         + start_val
     )
