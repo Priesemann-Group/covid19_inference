@@ -1,6 +1,7 @@
 numpy
 matplotlib
 pymc
+aesara>=2.1
 arviz
 pandas
 pytest

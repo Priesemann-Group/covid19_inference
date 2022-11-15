@@ -157,7 +157,7 @@ def delay_cases(
             shape=shape_of_delays,
         )
         # transformation such that it is positive, and not too small:
-        width = at.nnet.basic.softplus(width_log) + 0.01
+        width = at.softplus(width_log) + 0.01
         pm.Deterministic(f"{name_width}", width)
 
     # enable this function for custom data and data ranges
@@ -310,14 +310,14 @@ def _interpolate(array, delay, delay_matrix):
     """
     if array.ndim == 2:
         interp_matrix = at.maximum(
-            1 - at.abs_(at.shape_padaxis(delay_matrix, axis=-1) - delay), 0
+            1 - at.abs(at.shape_padaxis(delay_matrix, axis=-1) - delay), 0
         )
         mat_shuf = interp_matrix.dimshuffle((2, 0, 1))
         array_shuf = array.dimshuffle((1, 0))
         delayed_arr = at.batched_dot(array_shuf, mat_shuf)
         interpolation = delayed_arr.dimshuffle((1, 0))
     elif array.ndim == 1:
-        interp_matrix = at.maximum(1 - at.abs_(delay_matrix - delay), 0)
+        interp_matrix = at.maximum(1 - at.abs(delay_matrix - delay), 0)
         interpolation = at.dot(array, interp_matrix)
     else:
         raise RuntimeError(

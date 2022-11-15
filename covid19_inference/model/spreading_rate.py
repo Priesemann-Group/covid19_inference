@@ -189,7 +189,7 @@ def lambda_t_with_sigmoids(
             t = np.repeat(t[:, None], shape, axis=-1)
 
         # Applies standart sigmoid nonlinearity
-        lambda_t = at.nnet.basic.sigmoid((t - tr_time) / tr_len * 4) * (
+        lambda_t = at.sigmoid((t - tr_time) / tr_len * 4) * (
             lambda_after - lambda_before
         )  # tr_len*4 because the derivative of the sigmoid at zero is 1/4, we want to set it to 1/tr_len
 
@@ -418,9 +418,9 @@ def _make_change_point_RVs(
                 )
                 pm.Deterministic(
                     f"{prefix_lambdas}transient_len_{i + 1}",
-                    at.nnet.basic.softplus(tr_len_raw),
+                    at.softplus(tr_len_raw),
                 )
-                tr_len_list.append(at.nnet.basic.softplus(tr_len_raw))
+                tr_len_list.append(at.softplus(tr_len_raw))
         else:
             for i, cp in enumerate(change_points_list):
                 dt_begin_transient = cp["pr_mean_date_transient"]
@@ -458,17 +458,17 @@ def _make_change_point_RVs(
                 if tr_len_L1_raw is not None:
                     pm.Deterministic(
                         f"transient_len_{i + 1}_hc_L1",
-                        at.nnet.basic.softplus(tr_len_L1_raw),
+                        at.softplus(tr_len_L1_raw),
                     )
                     pm.Deterministic(
                         f"transient_len_{i + 1}_hc_L2",
-                        at.nnet.basic.softplus(tr_len_L2_raw),
+                        at.softplus(tr_len_L2_raw),
                     )
                 else:
                     pm.Deterministic(
-                        f"transient_len_{i + 1}", at.nnet.basic.softplus(tr_len_L2_raw)
+                        f"transient_len_{i + 1}", at.softplus(tr_len_L2_raw)
                     )
-                tr_len_list.append(at.nnet.basic.softplus(tr_len_L2_raw))
+                tr_len_list.append(at.softplus(tr_len_L2_raw))
 
     def non_hierarchical_mod():
         lambda_0_log = pm.Normal(
@@ -542,9 +542,9 @@ def _make_change_point_RVs(
             )
             pm.Deterministic(
                 f"{prefix_lambdas}transient_len_{i + 1}",
-                at.nnet.basic.softplus(tr_len_raw),
+                at.softplus(tr_len_raw),
             )
-            tr_len_list.append(at.nnet.basic.softplus(tr_len_raw))
+            tr_len_list.append(at.softplus(tr_len_raw))
 
     # ------------------------------------------------------------------------------ #
     # Start of function body

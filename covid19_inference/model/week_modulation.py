@@ -96,7 +96,7 @@ def week_modulation(
         offset_rad = pm.VonMises(name_offset_modulation + "_rad", mu=0, kappa=0.01)
         offset = pm.Deterministic(name_offset_modulation, offset_rad / (2 * np.pi) * 7)
         t = np.arange(shape_modulation[0]) - model.sim_begin.weekday()  # Sunday @ zero
-        modulation = 1 - at.abs_(at.sin(t / 7 * np.pi + offset_rad / 2))
+        modulation = 1 - at.abs(at.sin(t / 7 * np.pi + offset_rad / 2))
         return modulation
 
     log.info("Week modulation")
@@ -146,7 +146,7 @@ def week_modulation(
         modulation = at.shape_padaxis(modulation, axis=-1)
         modulation = at.shape_padaxis(modulation, axis=-1)
 
-    multiplication_vec = at.abs_(np.ones(model.sim_shape) - weekend_factor * modulation)
+    multiplication_vec = at.abs(np.ones(model.sim_shape) - weekend_factor * modulation)
 
     new_cases_inferred_eff = cases * multiplication_vec
 

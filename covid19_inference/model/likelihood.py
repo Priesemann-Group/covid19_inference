@@ -156,7 +156,7 @@ def student_t_likelihood(
         shape=model.shape_of_regions if sigma_shape is None else sigma_shape,
     )
     sigma = (
-        at.abs_(cases + offset_sigma) ** 0.5 * sigma_obs
+        at.abs(cases + offset_sigma) ** 0.5 * sigma_obs
     )  # offset and at.abs to avoid nans
 
     pm.StudentT(
