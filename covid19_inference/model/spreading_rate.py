@@ -21,11 +21,11 @@ def R_t_log_with_longtailed_dist(
 
     .. math::
 
-        log(R_t) &= log(R_0) + cumsum(  \cdot \Delta rho))
-        s &\sim \text{HalfCauchy}(\text{rho_scale_prior})
+        log(R_t) &= log(R_0) + cumsum( s \cdot \Delta \rho) \\
+        s &\sim \text{HalfCauchy}(\mu=0.1)
 
-    The parameter :math:`\Delta rho` is dependent on the given distribution. Possible values are
-    ``studentT``,``weibull``,``cauchy``. In theory you can also pass your another function of type
+    The parameter :math:`\Delta \rho` is dependent on the given distribution. Possible values are
+    ``studentT``, ``weibull``, ``cauchy``. In theory you can also pass your another function of type
     :class:`pm.distributions.Continuous`.
 
 
@@ -34,7 +34,7 @@ def R_t_log_with_longtailed_dist(
     R_0_log : number
         Initial value of the reproduction number in log transform
     dist : string or :class:`pm.distributions.Continuous`
-        Distribution to use. Possible values are ``studentT``,``weibull``,``cauchy``.
+        Distribution to use. Possible values are ``studentT``, ``weibull``, ``cauchy``.
         You can also pass your own distribution. If you use your own, be sure to configure the kwargs of the distribution
         using the ``dist_priors`` parameter. The distribution should have the time dimension as first axis.
     dist_priors : dict

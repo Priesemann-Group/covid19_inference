@@ -22,7 +22,7 @@
     :maxdepth: 2
     :caption: Reference
 
-    doc/model
+    doc/model/__index__
     doc/data_retrieval
     doc/sampling
     doc/plotting

@@ -18,6 +18,7 @@ def get_start_points(trace, trace_az, frames_start=None, SD_chain_logl=2.5):
     r"""
     Returns the starting points such that the chains deviate at most SD_chain_logl
     standard deviations from the chain with the highest likelihood.
+
     Parameters
     ----------
     trace : multitrace object
@@ -27,12 +28,15 @@ def get_start_points(trace, trace_az, frames_start=None, SD_chain_logl=2.5):
         By default it is set to the last third of the tuning samples
     SD_chain_logl : None or float
         The number of standard deviations. 2.5 as default. If None, keep all chains
+
+
     Returns
     -------
     start_points :
         A list of starting points
     logl_mean :
         The mean log-likelihood of the starting points
+
     """
     logl = trace_az.warmup_sample_stats["lp"]
     n_tune = logl.shape[1]
@@ -215,6 +219,7 @@ def robust_sample(
     Samples the model by starting more chains than needed (burn-in chains) and using only
     a reduced number final_chains for the final sampling. The final chains are randomly
     chosen (without replacement) weighted by their likelihood.
+
     Parameters
     ----------
     model : :class:`Cov19Model`

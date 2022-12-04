@@ -6,20 +6,20 @@ Getting Started
 Installation
 ------------
 
-There exist three different possibilities to run the models:
+There exist three different possibilities for usage:
 
 1. Clone the repository, with the latest release:
 
 .. code-block:: console
 
-    git clone --branch v0.1.8 https://github.com/Priesemann-Group/covid19_inference
+    git clone https://github.com/Priesemann-Group/covid19_inference
 
 
 2. Install the module via pip
 
 .. code-block:: console
 
-    pip install git+https://github.com/Priesemann-Group/covid19_inference.git@v0.1.8
+    pip install covid19_inference
 
 
 3. Run the notebooks directly in Google Colab. At the top of the notebooks files
@@ -40,7 +40,7 @@ To get started, we recommend to look at one of the currently two example noteboo
 
 We can for example recommend the following articles about Bayesian modeling:
 
-As a introduction to Bayesian statistics and the python package (PyMC3) that we use:
+As a introduction to Bayesian statistics and the python package (PyMc) that we use:
 https://docs.pymc.io/notebooks/api_quickstart.html
 
 This is a good post about hierarchical Bayesian models in general:
