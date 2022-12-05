@@ -17,8 +17,8 @@ log = logging.getLogger(__name__)
 # can we rename this guy to model base or something?
 class Cov19Model(Model):
     """
-    Abstract base class for the dynamic model of covid-19 propagation.
-    Derived from :class:`pymc3.Model`.
+    Abstract base class for the dynamic model of COVID-19 propagation.
+    Derived from :class:`~pymc.Model`.
 
     Parameters below are passed to the constructor.
 
@@ -40,7 +40,7 @@ class Cov19Model(Model):
     new_cases_obs : 1 or 2d array
         If the array is two-dimensional, an hierarchical model will be constructed.
         First dimension is then time, the second the region/country.
-    data_begin : datatime.datetime
+    data_begin : :class:`~datetime.datetime`
         Date of the first data point
     fcast_len : int
         Number of days the simulations runs longer than the data
@@ -63,22 +63,22 @@ class Cov19Model(Model):
     new_cases_obs : 1 or 2d array
         as passed during construction
 
-    data_begin : datatime.datetime
+    data_begin : :class:`~datetime.datetime`
         date of the first data point in the data
 
-    data_end : datatime.datetime
+    data_end : :class:`~datetime.datetime`
         date of the last data point in the data
 
-    sim_begin : datatime.datetime
+    sim_begin : :class:`~datetime.datetime`
         date at which the simulation begins
 
-    sim_end : datatime.datetime
+    sim_end : :class:`~datetime.datetime`
         date at which the simulation ends (should match fcast_end)
 
-    fcast_begin : datatime.datetime
+    fcast_begin : :class:`~datetime.datetime`
         date at which the forecast starts (should be one day after data_end)
 
-    fcast_end : datatime.datetime
+    fcast_end : :class:`~datetime.datetime`
         data at which the forecast ends
 
     data_len : int
@@ -110,7 +110,7 @@ class Cov19Model(Model):
         diff_data_sim,
         N_population,
         data_end=None,
-        name="",
+        name="covid19_inference",
         model=None,
         shifted_cases=True,
     ):

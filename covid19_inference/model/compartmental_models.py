@@ -346,15 +346,20 @@ def SEIR(
 
 def kernelized_spread(
     R_t,
-    name_new_I_t="new_I_t",
-    name_new_E_t="new_E_t",
-    name_S_t="S_t",
-    name_new_E_begin="new_E_begin",
-    name_median_incubation="median_incubation",
-    pr_new_E_begin=50,
-    pr_mean_median_incubation=4,
-    pr_sigma_median_incubation=1,
+    # new exposed at t=0
+    new_E_begin=None,
+    new_E_begin_name="new_E_begin",
+    new_E_begin_prior_beta=50,
+    # median incubation
+    median_incubation=None,
+    median_incubation_name="median_incubation",
+    median_incubation_prior_mu=4,
+    median_incubation_prior_sigma=1,
     sigma_incubation=0.4,
+    # other
+    new_I_t_name="new_I_t",
+    new_E_t_name="new_E_t",
+    S_t_name="S_t",
     model=None,
     return_all=False,
 ):
@@ -365,44 +370,43 @@ def kernelized_spread(
 
     Parameters
     ----------
-    R_t: :class:`~aesara.tensor.TensorVariable`
+    R_t : :class:`~aesara.tensor.TensorVariable`
         Time series of of the reproduction number, 1 or 2-dimensional. If 2-dimensional, the first
         dimension is time.
         shape: (time) or (time, regions)
 
-    name_new_I_t : str, optional
-        Name of the ``new_I_t`` variable
+    new_E_begin : None or :class:`~pm.distributions.Continuous`
+        The initial exposed. This distribution must be of shape (11,...)!. If ``None`` it is
+        constructed from the parameters ``new_E_begin_prior``using a HalfCauchy distribution.
 
-    name_new_E_t : str, optional
-        Name of the ``new_E_t`` variable
-
-    name_S_t : str, optional
-        Name of the ``S_t`` variable
-
-    name_new_E_begin : str, optional
-        Name of the ``new_E_begin`` variable
-
-    name_median_incubation : str, optional
-        The name under which the median incubation time is saved in the trace.
-
-    pr_new_E_begin : float or array_like, optional
+    new_E_begin_prior_beta : float
         Prior beta of the :class:`~pymc.distributions.continuous.HalfCauchy`
         distribution of :math:`E(0)`. Defaults to 50.
 
-    pr_mean_median_incubation : number, optional
-        Prior mean of the :class:`~pymc.distributions.continuous.Normal`
-        distribution of the median incubation delay :math:`d_{\text{incubation}}`.
+    new_E_begin_name : str
+        The name of the initial exposed in the trace if it is constructed from the HalfCauchy
+        distribution.
+
+    median_incubation : None or :class:`~pm.distributions.Continuous`
+        Distribution of the median incubation delay :math:`d_{\text{incubation}}`.
+        If ``None`` it is constructed from the parameters ``media_incubation_prior_mu`` and
+        ``media_incubation_prior_sigma``.
+
+    media_incubation_prior_mu : float
+        Prior mean of the :class:`~pymc.distributions.continuous.Normal` distribution of the median incubation delay :math:`d_{\text{incubation}}`.
         Defaults to 4 days [Nishiura2020]_, which is the median serial interval (the
         important measure here is not exactly the incubation period, but the delay
         until a person becomes infectious which seems to be about 1 day earlier as
         showing symptoms).
 
-    pr_sigma_median_incubation : number, optional
+    media_incubation_prior_sigma : float
         Prior sigma of the :class:`~pymc.distributions.continuous.Normal`
         distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
-        If None, the incubation time will be fixed to the value of
-        ``pr_mean_median_incubation`` instead of a random variable.
         Default is 1 day.
+
+    median_incubation_name : str
+        The name under which the median incubation time is saved in the trace. Defaults to
+        `median_incubation`.
 
     sigma_incubation : number, optional
         Scale parameter of the :class:`~pymc.distributions.continuous.Lognormal`
@@ -414,23 +418,23 @@ def kernelized_spread(
         if none, it is retrieved from the context
 
     return_all : bool, optional
-        if True, returns ``name_new_I_t``, ``name_new_E_t``,  ``name_I_t``,
-        ``name_S_t`` otherwise returns only ``name_new_I_t``
+        if True, returns ``new_I_t``, ``new_E_t``,  ``S_t``,
+        otherwise returns only ``new_I_t``
 
     Returns
     -------
-    name_new_I_t : :class:`~aesara.tensor.TensorVariable`
+    new_I_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly infected persons.
 
-    name_new_E_t : :class:`~aesara.tensor.TensorVariable`
+    new_E_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
 
-    name_S_t : :class:`~aesara.tensor.TensorVariable`
+    S_t : :class:`~aesara.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
 
     """
-    log.info("kernelized spread")
+    log.info("Kernelized spread")
     model = modelcontext(model)
 
     # Build prior distributions:
@@ -441,31 +445,43 @@ def kernelized_spread(
 
     # Prior distributions of starting populations (exposed, infectious, susceptibles)
     # We choose to consider the transitions of newly exposed people of the last 10 days.
-    if isinstance(pr_new_E_begin, at.Variable):
-        new_E_begin = pr_new_E_begin
-    else:
+    if new_E_begin is None:
+        if new_E_begin_name is None or new_E_begin_prior_beta is None:
+            raise ValueError(
+                "If new_E_begin is not passed as a distribution, new_E_begin_name, and new_E_begin_prior_beta have to be set."
+            )
+
+        # Create HalfCauchy distribution
         if not model.is_hierarchical:
             new_E_begin = pm.HalfCauchy(
-                name=name_new_E_begin, beta=pr_new_E_begin, shape=11
+                name=new_E_begin_name, beta=new_E_begin_prior_beta, shape=11
             )
         else:
             new_E_begin = pm.HalfCauchy(
-                name=name_new_E_begin,
-                beta=pr_new_E_begin,
+                name=new_E_begin_name,
+                beta=new_E_begin_prior_beta,
                 shape=(11, model.shape_of_regions),
             )
 
     S_begin = N - pm.math.sum(new_E_begin, axis=0)
-
     new_I_0 = at.zeros(model.shape_of_regions)
 
-    if pr_sigma_median_incubation is None:
-        median_incubation = pr_mean_median_incubation
-    else:
+    # Prior distribution for median incubation
+    if median_incubation is None:
+        if (
+            median_incubation_name is None
+            or median_incubation_prior_sigma is None
+            or median_incubation_prior_mu is None
+        ):
+            raise ValueError(
+                "If incubation is not passed as a distribution, incubation_name,incubation_prior_sigma, and incubation_prior_mu have to be set."
+            )
+
+        # Normally there should not be a hierachical incubation
         median_incubation = pm.Normal(
-            name_median_incubation,
-            mu=pr_mean_median_incubation,
-            sigma=pr_sigma_median_incubation,
+            median_incubation_name,
+            mu=median_incubation_prior_mu,
+            sigma=median_incubation_prior_sigma,
         )
 
     # Choose transition rates (E to I) according to incubation period distribution
@@ -524,12 +540,12 @@ def kernelized_spread(
         non_sequences=[beta, N],
     )
     S_t, new_E_t, new_I_t = outputs
-    pm.Deterministic(name_new_I_t, new_I_t)
+    pm.Deterministic(new_I_t_name, new_I_t)
 
-    if name_S_t is not None:
-        pm.Deterministic(name_S_t, S_t)
-    if name_new_E_t is not None:
-        pm.Deterministic(name_new_E_t, new_E_t)
+    if S_t_name is not None:
+        pm.Deterministic(S_t_name, S_t)
+    if new_E_t_name is not None:
+        pm.Deterministic(new_E_t_name, new_E_t)
 
     if return_all:
         return new_I_t, new_E_t, S_t
