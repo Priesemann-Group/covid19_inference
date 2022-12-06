@@ -73,9 +73,11 @@ def step_modulation(
     weekend_days=(5, 6),
     # weekend_factor,
     weekend_factor=None,
-    weekend_factor_name="weekend_factor",
-    weekend_factor_prior_mu=0.3,
-    weekend_factor_prior_sigma=0.5,
+    weekend_factor_kwargs={
+        "name": "weekend_factor",
+        "mu": np.log(0.3),
+        "sigma": 0.5,
+    },
     # other
     model=None,
 ):
@@ -112,16 +114,9 @@ def step_modulation(
         a Lognormal distribution. If the input is two-dimensional, the distribution is hierarchically constructed
         using the function :func:`hierarchical_normal` with default arguments.
 
-    weekend_factor_prior_mu : float
-        The prior mean of the weekend factor :math:`f_w` if it is constructed from a Lognormal distribution.
-        Ignored if ``weekend_factor`` is not ``None``.
-    
-    weekend_factor_prior_sigma : float
-        The prior sigma of the weekend factor :math:`f_w` if it is constructed from a Lognormal distribution.
-        Ignored if ``weekend_factor`` is not ``None``.
-    
-    weekend_factor_name : str
-        The name of the weekend factor :math:`f_w` if it is constructed from a Lognormal distribution.
+    weekend_factor_kwargs : dict
+        Keyword arguments passed to the pymc distribution of ``weekend_factor`` if it is constructed.
+        See :class:`pymc.Normal` for available arguments. Default is ``{"name":"weekend_factor", "mu": log(0.3), "sigma": 0.5}``.
 
     Returns
     -------
@@ -136,31 +131,23 @@ def step_modulation(
 
     # Check if weekend_factor is passed as a distribution
     if weekend_factor is None:
-        if (
-            weekend_factor_prior_mu is None
-            or weekend_factor_prior_sigma is None
-            or weekend_factor_name is None
-        ):
-            raise ValueError(
-                "If weekend_factor is not passed as a distribution, weekend_factor_prior_mu, weekend_factor_prior_sigma and weekend_factor_name have to be set."
-            )
-
         # Create LogNormal distribution f_w
+        weekend_factor_name = weekend_factor_kwargs.pop("name", "weekend_factor")
         if not model.is_hierarchical:
             weekend_factor_log = pm.Normal(
                 name=weekend_factor_name + "_log",
-                mu=at.log(weekend_factor_prior_mu),
-                sigma=weekend_factor_prior_sigma,
+                **weekend_factor_kwargs,
             )
-            weekend_factor = at.exp(weekend_factor_log)
-            pm.Deterministic(weekend_factor_name, weekend_factor)
+            weekend_factor = pm.Deterministic(
+                weekend_factor_name, at.exp(weekend_factor_log)
+            )
         else:  # hierarchical
             weekend_factor_L2_log, weekend_factor_L1_log = ut.hierarchical_normal(
                 name_L1=weekend_factor_name + "_hc_L1_log",
                 name_L2=weekend_factor_name + "_hc_L2_log",
                 name_sigma="sigma_" + weekend_factor_name,
-                pr_mean=at.log(weekend_factor_prior_mu),
-                pr_sigma=weekend_factor_prior_sigma,
+                pr_mean=weekend_factor_kwargs["mu"],
+                pr_sigma=weekend_factor_kwargs["sigma"],
             )
             weekend_factor = at.exp(weekend_factor_L2_log)
             pm.Deterministic(
@@ -196,12 +183,18 @@ def abs_sine_modulation(
     cases_raw,
     # weekend_factor,
     weekend_factor=None,
-    weekend_factor_name="weekend_factor",
-    weekend_factor_prior_mu=0.3,
-    weekend_factor_prior_sigma=0.5,
+    weekend_factor_kwargs={
+        "name": "weekend_factor",
+        "mu": np.log(0.3),
+        "sigma": 0.5,
+    },
     # offset_modulation,
     offset_modulation=None,
-    offset_modulation_name="offset_modulation",
+    offset_modulation_kwargs={
+        "name": "offset_modulation",
+        "mu": 0,
+        "sigma": 0.01,
+    },
     # other
     model=None,
 ):
@@ -236,22 +229,16 @@ def abs_sine_modulation(
         a Lognormal distribution. If the input is two-dimensional, the distribution is hierarchically constructed
         using the function :func:`hierarchical_normal` with default arguments.
 
-    weekend_factor_prior_mu : float
-        The prior mean of the weekend factor :math:`f_w` if it is constructed from a Lognormal distribution.
-        Ignored if ``weekend_factor`` is not ``None``.
-    
-    weekend_factor_prior_sigma : float
-        The prior sigma of the weekend factor :math:`f_w` if it is constructed from a Lognormal distribution.
-        Ignored if ``weekend_factor`` is not ``None``.
-    
-    weekend_factor_name : str
-        The name of the weekend factor :math:`f_w` if it is constructed from a Lognormal distribution.
+    weekend_factor_kwargs : dict
+        Keyword arguments passed to the pymc distribution of ``weekend_factor`` if it is constructed.
+        See :class:`pymc.Normal` for available arguments. Default is ``{"name":"weekend_factor", "mu": log(0.3), "sigma": 0.5}``.
 
     offset_modulation : None or :class:`~pm.distributions.Continuous`
         The offset from Sunday :math:`\Phi_w` can be passed as a PyMC3 distribution. If ``None`` it is a flat VonMises distribution (mu=0, kappa=0.01).
 
-    offset_modulation_name : str
-        The name of the offset from Sunday :math:`\Phi_w` if it is constructed from a VonMises distribution.
+    offset_modulation_kwargs : dict
+        Keyword arguments passed to the pymc distribution of ``offset_modulation`` if it is constructed.
+        See :class:`pymc.VonMises` for available arguments. Default is ``{"name":"offset_modulation", "mu": 0, "kappa": 0.01}``.
 
     Returns
     -------
@@ -266,31 +253,23 @@ def abs_sine_modulation(
 
     # Check if weekend_factor is passed as a distribution
     if weekend_factor is None:
-        if (
-            weekend_factor_prior_mu is None
-            or weekend_factor_prior_sigma is None
-            or weekend_factor_name is None
-        ):
-            raise ValueError(
-                "If weekend_factor is not passed as a distribution, weekend_factor_prior_mu, weekend_factor_prior_sigma and weekend_factor_name have to be set."
-            )
-
         # Create LogNormal distribution f_w
         if not model.is_hierarchical:
+
+            weekend_factor_name = weekend_factor_kwargs.pop("name", "weekend_factor")
             weekend_factor_log = pm.Normal(
-                name=weekend_factor_name + "_log",
-                mu=at.log(weekend_factor_prior_mu),
-                sigma=weekend_factor_prior_sigma,
+                name=weekend_factor_name + "_log", **weekend_factor_kwargs
             )
-            weekend_factor = at.exp(weekend_factor_log)
-            pm.Deterministic(weekend_factor_name, weekend_factor)
+            weekend_factor = pm.Deterministic(
+                weekend_factor_name, at.exp(weekend_factor_log)
+            )
         else:  # hierarchical
             weekend_factor_L2_log, weekend_factor_L1_log = ut.hierarchical_normal(
                 name_L1=weekend_factor_name + "_hc_L1_log",
                 name_L2=weekend_factor_name + "_hc_L2_log",
                 name_sigma="sigma_" + weekend_factor_name,
-                pr_mean=at.log(weekend_factor_prior_mu),
-                pr_sigma=weekend_factor_prior_sigma,
+                pr_mean=weekend_factor_kwargs["mu"],
+                pr_sigma=weekend_factor_kwargs["sigma"],
             )
             weekend_factor = at.exp(weekend_factor_L2_log)
             pm.Deterministic(
@@ -299,17 +278,16 @@ def abs_sine_modulation(
             pm.Deterministic(
                 weekend_factor_name + "_hc_L2", at.exp(weekend_factor_L2_log)
             )
-    elif not isinstance(weekend_factor, pm.Distribution):
-        raise ValueError("weekend_factor has to be a PyMC distribution.")
 
     # Check if offset_modulation is passed as a distribution
     if offset_modulation is None:
+        offset_modulation_name = offset_modulation_kwargs.pop(
+            "name", "offset_modulation"
+        )
         offset_modulation = pm.VonMises(
-            offset_modulation_name + "_rad", mu=0, kappa=0.01
+            offset_modulation_name + "_rad", **offset_modulation_kwargs
         )
         pm.Deterministic(offset_modulation_name, offset_modulation / (2 * np.pi) * 7)
-    elif not isinstance(offset_modulation, pm.Distribution):
-        raise ValueError("offset_modulation has to be a PyMC distribution.")
 
     # Modulation
     t = at.arange(shape_modulation[0]) - model.sim_begin.weekday()  # Sunday is 0
