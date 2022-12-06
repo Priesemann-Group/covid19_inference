@@ -10,33 +10,38 @@ import pymc as pm
 from aesara import scan
 import aesara.tensor as at
 from . import utility as ut
-from .model import Cov19Model, modelcontext, set_missing_priors_with_default
+from .model import modelcontext, set_missing_priors_with_default
 
 log = logging.getLogger(__name__)
 
 
 def delay_cases(
     cases,
-    name_delay="delay",
-    name_cases=None,
-    name_width="delay-width",
-    pr_mean_of_median=10,
-    pr_sigma_of_median=0.2,
-    pr_median_of_width=0.3,
-    pr_sigma_of_width=None,
-    model=None,
+    # Median delay
+    median_delay=None,
+    median_delay_kwargs={
+        "name": "delay",
+        "mu": np.log(10),
+        "sigma": 0.2,
+    },
+    # Scale of delay
+    scale_delay=None,
+    scale_delay_kwargs={"name": "delay-width", "mu": 0.3, "sigma": None},
+    # convolution specific
     len_input_arr=None,
     len_output_arr=None,
     diff_input_output=None,
+    use_gamma=False,
     seperate_on_axes=True,
     num_seperated_axes=None,
-    use_gamma=False,
+    # Other
+    model=None,
 ):
     """
     Convolves the input by a lognormal distribution, in order to model a delay:
 
     * We have a kernel (a distribution) of delays, one realization of this kernel is
-      applied to each pymc3 sample.
+      applied to each pymc sample.
 
     * The kernel has a median delay D and a width that correspond to this one
       sample. Doing the ensemble average over all samples and the respective
@@ -57,40 +62,26 @@ def delay_cases(
         The input, typically the number of newly infected cases from the output of
         :func:`SIR` or :func:`SEIR`.
 
-    name_delay : str
-        The name under which the delay is saved in the trace, suffixes and prefixes
-        are added depending on which variable is saved.
-        Default : "delay"
 
-    name_cases : str or None
-        The name under which the delayed cases are saved in the trace.
-        If None, no variable will be added to the trace.
-        Default: "delayed_cases"
+    median_delay : None or :class:`~pymc.distributions.Continuous`
+        The median of the delay distribution. If None, the median is sampled from
+        a lognormal distribution with mean `median_delay_kwargs["mu"]` and
+        standard deviation `median_delay_kwargs["sigma"]`.
 
-    pr_mean_of_median : float
-        The mean of the :class:`~pymc3.normal` distribution
-        which models the prior median of the
-        :class:`~pymc3.LogNormal` delay kernel.
-        Default: 10.0 (days)
+    median_delay_kwargs : dict
+        Dict containing the kwargs for the median delay distribution see :class:`~pymc.Normal` . Default:
+        {"name":"delay", "mu": np.log(10), "sigma": 0.2}
 
-    pr_sigma_of_median : float
-        The standart devaiation of :class:`~pymc3.normal`
-        distribution which models the prior median of the
-        :class:`~pymc3.LogNormal` delay kernel.
-        Default: 0.2
+    scale_delay : None or :class:`~pymc.distributions.Continuous`
+        The scale of the delay distribution. If None, the scale is sampled from
+        a lognormal distribution with mean `scale_delay_kwargs["mu"]` and
+        standard deviation `scale_delay_kwargs["sigma"]`. If `scale_delay_kwargs["sigma"]`
+        is None, the scale is fixed to `scale_delay_kwargs["mu"]`.
 
-    pr_median_of_width : float
-        The scale (width) of the :class:`~pymc3.LogNormal`
-        delay kernel.
-        Default: 0.3
+    scale_delay_kwargs : dict
+        Dict containing the kwargs for the scale delay distribution see :class:`~pymc.Normal` . Default:
+        {"name":"delay-width", "mu": 0.3, "sigma": None}
 
-    pr_sigma_of_width : float or None
-        Whether to put a prior distribution on the scale (width)
-        of the distribution of the delays, too.
-        If a number is provided, the scale of the delay kernel follows
-        a prior :class:`~pymc3.LogNormal` distribution, with median
-        `pr_median_scale_delay` and scale `pr_sigma_scale_delay`.
-        Default: None, and no distribution is applied.
 
     model : :class:`Cov19Model` or None
         The model to use.
@@ -99,7 +90,7 @@ def delay_cases(
 
     Other Parameters
     ----------------
-    len_input_arr :
+    len_input_arr : int
         Length of ``new_I_t``. By default equal to ``model.sim_len``. Necessary
         because the shape of aesara tensors are not defined at when the graph is
         built.
@@ -113,13 +104,19 @@ def delay_cases(
         significantly larger than the median delay. By default it is set to the
         ``model.diff_data_sim``.
 
-    seperate_on_axes : Bool
+    seperate_on_axes : bool
         This decides whether or not the delay is applied on every
         axes separately. I.e. Different delay times for the different axes. If
-        None **no** axes is modelled separately!
+        None **no** axes is modelled separately! Is ignored if own delay is
+        provided.
 
     num_seperated_axes: int or None
-        If you are not using separated axes, this is the number of axes.
+        If you are not using separated axes, this is the number of axes. Is ignored
+        if own delay is provided.
+
+    use_gamma : bool
+        If True, the delay is modelled using a gamma distribution instead of a
+        lognormal distribution.
 
     Returns
     -------
@@ -130,35 +127,48 @@ def delay_cases(
     log.info("Delaying cases")
     model = modelcontext(model)
 
-    # Define the shape of the delays i.e. seperate for different axes
-    shape_of_delays = (1,) if not seperate_on_axes else model.shape_of_regions
-
-    # log normal distributed delays (the median values)
-    delay_log = pm.Normal(
-        name=f"{name_delay}_log",
-        mu=np.log(pr_mean_of_median),
-        sigma=pr_sigma_of_median,
-        shape=shape_of_delays,
-    )
-    pm.Deterministic(f"{name_delay}", at.exp(delay_log))
-
-    # We may also have a distribution of the width (of the kernel of delays) within
-    # each sample/trace.
-    if pr_sigma_of_width is None:
-        # Default: width of kernel has no distribution, and a shape of (1,)
-        width_log = at.as_tensor_variable(np.log(pr_median_of_width))[None]
-        width = at.exp(width_log)
-    else:
-        # Alternatively, put a prior distribution on the witdh, too
-        width_log = pm.Normal(
-            name=f"{name_width}_log",
-            mu=pr_median_of_width,
-            sigma=pr_sigma_of_width,
+    # Construct median delay distribution
+    if median_delay is None:
+        # Define the shape of the delays i.e. seperate for different axes
+        shape_of_delays = (1,) if not seperate_on_axes else model.shape_of_regions
+        # Parse kwargs
+        delay_name = median_delay_kwargs.pop("name", delay_name)
+        # Lognormal distributed delays (the median values)
+        median_delay_log = pm.Normal(
+            name=delay_name + "_log",
             shape=shape_of_delays,
+            **median_delay_kwargs,
         )
-        # transformation such that it is positive, and not too small:
-        width = at.softplus(width_log) + 0.01
-        pm.Deterministic(f"{name_width}", width)
+        median_delay = pm.Deterministic(f"{delay_name}", at.exp(median_delay_log))
+
+        # We need to stack the delay_log and width_log
+        # depending on the give input shape.
+        if cases.ndim >= 2 and not seperate_on_axes:
+            median_delay = at.stack([median_delay] * num_seperated_axes, axis=1)
+
+    # Construct delay width distribution
+    if scale_delay is None:
+        scale_name = scale_delay_kwargs.pop("name", scale_name)
+        scale_sigma = scale_delay_kwargs.pop("sigma", None)
+
+        # Fixed (no dist)
+        if scale_sigma is None:
+            scale_delay_log = at.as_tensor_variable(np.log(pr_median_of_width))[None]
+            scale_delay = at.exp(scale_delay_log)
+        else:
+            scale_delay_log = pm.Normal(
+                name=scale_name + "_log",
+                sigma=scale_sigma,
+                **scale_delay_kwargs,
+            )
+            # transformation such that it is positive, and not too small:
+            scale_delay = at.softplus(scale_delay_log) + 0.01
+            scale_delay = pm.Deterministic(f"{scale_name}", scale_delay)
+
+        # We need to stack the delay_log and width_log
+        # depending on the give input shape.
+        if cases.ndim >= 2 and not seperate_on_axes:
+            scale_delay = at.stack([scale_delay] * num_seperated_axes, axis=1)
 
     # enable this function for custom data and data ranges
     if len_output_arr is None:
@@ -168,26 +178,16 @@ def delay_cases(
     if len_input_arr is None:
         len_input_arr = model.sim_len
 
-    # We need to stack the delay_log and width_log
-    # depending on the give input shape.
-    if cases.ndim >= 2 and not seperate_on_axes:
-        delay_log = at.stack([delay_log] * num_seperated_axes, axis=1)
-        width = at.stack([width] * num_seperated_axes, axis=1)
-
     # delay the input cases
     delayed_cases = _delay_lognormal(
         input_arr=cases,
         len_input_arr=len_input_arr,
         len_output_arr=len_output_arr,
-        median_delay=at.exp(delay_log),
-        scale_delay=width,
+        median_delay=median_delay,
+        scale_delay=scale_delay,
         delay_betw_input_output=diff_input_output,
         use_gamma=use_gamma,
     )
-
-    # optionally, add the cases to the trace. maybe let the user do this in the future.
-    if name_cases is not None:
-        pm.Deterministic(f"{name_cases}", delayed_cases)
 
     return delayed_cases
 
