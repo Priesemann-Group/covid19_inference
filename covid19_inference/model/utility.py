@@ -2,7 +2,6 @@
 # Helper functions that are used by other parts of the modeling
 # ------------------------------------------------------------------------------ #
 
-import platform
 import logging
 import pymc as pm
 from aesara import scan
@@ -143,7 +142,7 @@ def tt_lognormal(x, mu, sigma):
     Calculates a lognormal pdf for integer spaced x input.
     """
     x = at.nnet.relu(x - 1e-12) + 1e-12  # clip values at 1e-12
-    distr = 1 / x * at.exp(-((at.log(x) - mu) ** 2) / (2 * sigma ** 2))
+    distr = 1 / x * at.exp(-((at.log(x) - mu) ** 2) / (2 * sigma**2))
 
     # normalize, add a small offset in case the sum is zero
     return distr / at.sum(distr, axis=0) + 1e-8
@@ -156,10 +155,10 @@ def tt_gamma(x, mu=None, sigma=None, alpha=None, beta=None):
     """
     assert (alpha is None and beta is None) != (mu is None and sigma is None)
     if alpha is None and beta is None:
-        alpha = mu ** 2 / (sigma ** 2 + 1e-8)
-        beta = mu / (sigma ** 2 + 1e-8)
+        alpha = mu**2 / (sigma**2 + 1e-8)
+        beta = mu / (sigma**2 + 1e-8)
     x = at.nnet.relu(x - 1e-12) + 1e-12  # clip values at 1e-12
-    distr = beta ** alpha * x ** (alpha - 1) * at.exp(-beta * x)
+    distr = beta**alpha * x ** (alpha - 1) * at.exp(-beta * x)
 
     # normalize, add a small offset in case the sum is zero
     return distr / (at.sum(distr, axis=0) + 1e-8)
