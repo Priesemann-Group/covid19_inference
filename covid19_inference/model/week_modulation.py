@@ -4,7 +4,7 @@
 
 import logging
 import numpy as np
-
+from datetime import timedelta
 import pymc as pm
 from aesara import scan
 import aesara.tensor as at
@@ -70,7 +70,7 @@ def week_modulation(
 
 def step_modulation(
     cases_raw,
-    weekend_days=(5, 6),
+    weekend_days=(6, 7),
     # weekend_factor,
     weekend_factor=None,
     weekend_factor_kwargs={
@@ -162,7 +162,7 @@ def step_modulation(
         # Modulation
     modulation = np.zeros(shape_modulation[0])
     for i in range(shape_modulation[0]):
-        date_curr = model.sim_begin + datetime.timedelta(days=i)
+        date_curr = model.sim_begin + timedelta(days=i)
         if date_curr.isoweekday() in weekend_days:
             modulation[i] = 1
 

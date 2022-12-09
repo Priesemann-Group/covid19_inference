@@ -186,7 +186,6 @@ latex_elements = {
     # 'figure_align': 'htbp',
 }
 
-
 # -- Extension configuration -------------------------------------------------
 
 intersphinx_mapping = {

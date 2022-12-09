@@ -11,8 +11,6 @@ import sys
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import scipy.stats
-import aesara
 import aesara.tensor as at
 import pymc as pm
 
@@ -126,7 +124,7 @@ with cov19.model.Cov19Model(**params_model) as this_model:
     # This builds a decorrelated prior for I_begin for faster inference.
     # It is not necessary to use it, one can simply remove it and use the default argument
     # for pr_I_begin in cov19.SIR
-    prior_I = cov19.model.uncorrelated_prior_I(
+    I_begin = cov19.model.uncorrelated_prior_I(
         lambda_t_log=lambda_t_log,
         mu=mu,
         pr_median_delay=pr_delay,
@@ -140,35 +138,33 @@ with cov19.model.Cov19Model(**params_model) as this_model:
     new_cases = cov19.model.SIR(
         lambda_t_log=lambda_t_log,
         mu=mu,
-        name_new_I_t="new_I_t",
-        name_I_t="I_t",
-        name_I_begin="I_begin",
-        pr_I_begin=prior_I,
+        I_begin=I_begin,
     )
 
     # Delay the cases by a lognormal reporting delay
     new_cases = cov19.model.delay_cases(
         cases=new_cases,
-        name_cases="delayed_cases",
-        name_delay="delay",
-        name_width="delay-width",
-        pr_mean_of_median=pr_delay,
-        pr_sigma_of_median=0.2,
-        pr_median_of_width=0.3,
+        delay_kernel="lognormal",
+        median_delay_kwargs={
+            "name": "delay",
+            "mu": np.log(pr_delay),
+            "sigma": 0.2,
+        },
     )
 
     # Modulate the inferred cases by a abs(sin(x)) function, to account for weekend effects
     # Also adds the "new_cases" variable to the trace that has all model features.
     new_cases = cov19.model.week_modulation(
         cases=new_cases,
-        name_cases="new_cases",
-        name_weekend_factor="weekend_factor",
-        name_offset_modulation="offset_modulation",
-        week_modulation_type="abs_sine",
-        pr_mean_weekend_factor=0.3,
-        pr_sigma_weekend_factor=0.5,
+        week_modulation_type="step",
+        weekend_factor_kwargs={
+            "name": "weekend_factor",
+            "mu": np.log(0.3),
+            "sigma": 0.5,
+        },
         weekend_days=(6, 7),
     )
+    pm.Deterministic("new_cases", new_cases)
 
     # Define the likelihood, uses the new_cases_obs set as model parameter
     cov19.model.student_t_likelihood(new_cases)
@@ -199,46 +195,61 @@ print(varnames)
 # Plot them
 for i, (key, math) in enumerate(
     # left column
-    zip(["weekend_factor", "mu", "lambda_0", "lambda_1", "lambda_2", "lambda_3"],
-    ["\Phi_w","\mu","\lambda_0", "\lambda_1", "\lambda_2", "\lambda_3"])
+    zip(
+        ["weekend_factor", "mu", "lambda_0", "lambda_1", "lambda_2", "lambda_3"],
+        ["\Phi_w", "\mu", "\lambda_0", "\lambda_1", "\lambda_2", "\lambda_3"],
+    )
 ):
     cov19.plot.distribution(this_model, idata, key, ax=axes[i, 0], dist_math=math)
 
 for i, (key, math) in enumerate(
     # mid column
-    zip([
-        "offset_modulation",
-        "sigma_obs",
-        "I_begin",
-        "transient_day_1",
-        "transient_day_2",
-        "transient_day_3",
-    ],    [
-        "f_w",
-        "\sigma_{obs}",
-        "I_0",
-        "t_1",
-        "t_2",
-        "t_3",
-    ])
+    zip(
+        [
+            "offset_modulation",
+            "sigma_obs",
+            "I_begin",
+            "transient_day_1",
+            "transient_day_2",
+            "transient_day_3",
+        ],
+        [
+            "f_w",
+            "\sigma_{obs}",
+            "I_0",
+            "t_1",
+            "t_2",
+            "t_3",
+        ],
+    )
 ):
-    cov19.plot.distribution(this_model, idata, key, ax=axes[i, 1],dist_math=math,)
+    cov19.plot.distribution(
+        this_model,
+        idata,
+        key,
+        ax=axes[i, 1],
+        dist_math=math,
+    )
 
-for i, (key,math) in enumerate(
+for i, (key, math) in enumerate(
     # right column
-    zip([
-        "delay",
-        "transient_len_1",
-        "transient_len_2",
-        "transient_len_3",
-    ],[
-        "D",
-        "\Delta t_1",
-        "\Delta t_2",
-        "\Delta t_3"
-    ])
+    zip(
+        [
+            "delay",
+            "transient_len_1",
+            "transient_len_2",
+            "transient_len_3",
+        ],
+        ["D", "\Delta t_1", "\Delta t_2", "\Delta t_3"],
+    )
 ):
-    cov19.plot.distribution(this_model, idata, key, ax=axes[i + 2, 2],dist_math=math,)
+    cov19.plot.distribution(
+        this_model,
+        idata,
+        key,
+        ax=axes[i + 2, 2],
+        dist_math=math,
+    )
 
 fig.tight_layout()
 fig  # To print in jupyter notebook
@@ -247,7 +258,3 @@ fig  # To print in jupyter notebook
     timeseries overview, for now needs an offset variable to get cumulative cases
 """
 fig, axes = cov19.plot.timeseries_overview(this_model, idata, offset=total_cases_obs[0])
-
-
-%load_ext watermark
-%watermark --iversions -v
