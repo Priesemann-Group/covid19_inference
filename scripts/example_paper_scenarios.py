@@ -91,7 +91,7 @@ with cov19.Cov19Model(**params_model) as this_model:
     )
 
     # Adds the recovery rate mu to the model as a random variable
-    mu = pm.Lognormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
+    mu = pm.LogNormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
 
     # This builds a decorrelated prior for I_begin for faster inference. It is not
     # necessary to use it, one can simply remove it and use the default argument for

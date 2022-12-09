@@ -7,10 +7,9 @@
 import logging
 import numpy as np
 import pymc as pm
-from aesara import scan
 import aesara.tensor as at
 from . import utility as ut
-from .model import modelcontext, set_missing_priors_with_default
+from .model import modelcontext
 
 log = logging.getLogger(__name__)
 
@@ -67,23 +66,23 @@ def delay_cases(
         The kernel to use for the delay. Currently only "lognormal" and "gamma" are
         supported. Default: "lognormal".
 
-    median_delay : None or :class:`~pymc.distributions.Continuous`, optional
+    median_delay : None or :class:`pymc.Continuous`, optional
         The median of the delay distribution. If None, the median is sampled from
         a lognormal distribution with mean `median_delay_kwargs["mu"]` and
         standard deviation `median_delay_kwargs["sigma"]`.
 
     median_delay_kwargs : dict
-        Dict containing the kwargs for the median delay distribution see :class:`~pymc.Normal` . Default:
+        Dict containing the kwargs for the median delay distribution see :class:`pymc.Normal` . Default:
         {"name":"delay", "mu": np.log(10), "sigma": 0.2}
 
-    scale_delay : None or :class:`~pymc.distributions.Continuous`, optional
+    scale_delay : None or :class:`pymc.Continuous`, optional
         The scale of the delay distribution. If None, the scale is sampled from
         a lognormal distribution with mean `scale_delay_kwargs["mu"]` and
         standard deviation `scale_delay_kwargs["sigma"]`. If `scale_delay_kwargs["sigma"]`
         is None, the scale is fixed to `scale_delay_kwargs["mu"]`.
 
     scale_delay_kwargs : dict, optional
-        Dict containing the kwargs for the scale delay distribution see :class:`~pymc.Normal` . Default:
+        Dict containing the kwargs for the scale delay distribution see :class:`pymc.Normal` . Default:
         {"name":"delay-width", "mu": 0.3, "sigma": None}
 
 

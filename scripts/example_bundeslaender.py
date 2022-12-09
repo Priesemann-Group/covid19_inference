@@ -28,7 +28,7 @@ except ModuleNotFoundError:
 """
     ## Creating the model
 
-    This cell downloads data and builds the pymc3 model for the Bayesian inference.
+    This cell downloads data and builds the pymc model for the Bayesian inference.
     More information can be found in the
     [documentation](https://covid19-inference.readthedocs.io/en/latest/doc/gettingstarted.html).
 """
@@ -122,7 +122,7 @@ with cov19.model.Cov19Model(**params_model) as this_model:
     )
 
     # Adds the recovery rate mu to the model as a random variable
-    mu = pm.Lognormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
+    mu = pm.LogNormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
 
     # This builds a decorrelated prior for I_begin for faster inference. It is not
     # necessary to use it, one can simply remove it and use the default argument for

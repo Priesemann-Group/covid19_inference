@@ -6,7 +6,7 @@
 import logging
 import numpy as np
 from datetime import datetime, timedelta
-from pymc import Model  # this import is needed to get pymc3-style "with ... as model:"
+from pymc import Model  # this import is needed to get pymc-style "with ... as model:"
 
 # we cannot import utility, would create recursive dependencies
 # from . import utility as ut
@@ -18,7 +18,7 @@ log = logging.getLogger(__name__)
 class Cov19Model(Model):
     """
     Abstract base class for the dynamic model of COVID-19 propagation.
-    Derived from :class:`~pymc.Model`.
+    Derived from :class:`pymc.Model`.
 
     Parameters below are passed to the constructor.
 
@@ -267,7 +267,7 @@ class Cov19Model(Model):
         """
 
         """
-            For every free random varibale in pymc3 with the _log__ suffix there exists
+            For every free random varibale in pymc with the _log__ suffix there exists
             an Random Variable without logscale i.e. without _log__. There is no
             easy function to return the names of these function that's why we
             Get the names like that.
@@ -284,18 +284,3 @@ def modelcontext(model):
     if model is None:
         return Cov19Model.get_context()
     return model
-
-
-def set_missing_priors_with_default(priors_dict, default_priors):
-    """
-    Takes a dict with custom priors and a dict with defaults and sets keys that
-    are not given
-    """
-    for prior_name in priors_dict.keys():
-        if prior_name not in default_priors:
-            log.warning(f"Prior with name {prior_name} not known")
-
-    for prior_name, value in default_priors.items():
-        if prior_name not in priors_dict:
-            priors_dict[prior_name] = value
-            log.info(f"{prior_name} was set to default value {value}")

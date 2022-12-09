@@ -37,8 +37,8 @@ Low level functions
 
 .. autofunction:: covid19_inference.plot.distribution._distribution
 
-Example
-^^^^^^^
+Plotting example
+^^^^^^^^^^^^^^^^
 In this example we want to use the low level time series function to plot the new daily cases and deaths reported by the Robert Koch institute.
 
 .. code-block:: python

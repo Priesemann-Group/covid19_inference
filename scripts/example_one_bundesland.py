@@ -121,7 +121,7 @@ with cov19.model.Cov19Model(**params_model) as this_model:
     )
 
     # set prior distribution for the recovery rate
-    mu = pm.Lognormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
+    mu = pm.LogNormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
 
     # This builds a decorrelated prior for I_begin for faster inference.
     # It is not necessary to use it, one can simply remove it and use the default argument

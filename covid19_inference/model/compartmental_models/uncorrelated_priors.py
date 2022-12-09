@@ -33,9 +33,9 @@ def uncorrelated_prior_I(
         time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional
         the first dimension is time.
 
-    mu : :class:`~pymc.distribution.Continuous`
+    mu : :class:`pymc.Continuous`
         Distribution of the recovery rate :math:`\mu`. Defaults to
-        :class:`~pymc.distributions.continuous.Lognormal` with the arguments defined
+        :class:`pymc.LogNormal` with the arguments defined
         in ``mu_kwargs``. Can be 0 or 1-dimensional. If 1-dimensional, the dimension
         are the different regions.
 
@@ -109,7 +109,7 @@ def uncorrelated_prior_I(
 
     # I_begin = I0_ref * at.exp(diff_I_begin_L2_log)
 
-    # I_begin = pm.Lognormal(
+    # I_begin = pm.LogNormal(
     #   name_I_begin_ratio_log, mu=at.log(I0_ref), sigma=2.5, shape=num_regions
     # )
     if name_I_begin is not None:

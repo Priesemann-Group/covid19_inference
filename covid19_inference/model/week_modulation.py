@@ -85,13 +85,13 @@ def step_modulation(
     being reported or being reported less.
 
     .. math::
-        \text{cases} &= \text{cases\_raw} \cdot (1-f(t))\,, \qquad\text{with}\\
+        \text{cases} &= \text{cases_raw} \cdot (1-f(t))\,, \qquad\text{with}\\
         f(t) &= \begin{cases}
             1 & \text{if } t \text{ is a weekend day}\\
             0 & \text{otherwise}
         \end{cases}
     
-    By default, weekend factor :math:`f_w` follows a Lognormal distribution with
+    By default, weekend factor :math:`f_w` follows a LogNormal distribution with
     median ``weekend_factor_prior_mu`` and sigma ``weekend_factor_prior_sigma``. It is hierarchically
     constructed if the input is two-dimensional by the function :func:`hierarchical_normal` with default arguments.
 
@@ -108,8 +108,8 @@ def step_modulation(
     weekend_days : tuple of ints
         The days counted as weekend (isoweekday: 1 is Monday, 7 is Sunday). Default is Saturday and Sunday (6,7).
 
-    weekend_factor : None or :class:`~pm.distributions.Continuous`
-        The weekend factor :math:`f_w` can be passed as a PyMC3 distribution. If ``None`` it is
+    weekend_factor : None or :class:`pymc.Continuous`
+        The weekend factor :math:`f_w` can be passed as a PyMC distribution. If ``None`` it is
         constructed from the parameters ``weekend_factor_prior_mu`` and ``weekend_factor_prior_sigma`` using 
         a Lognormal distribution. If the input is two-dimensional, the distribution is hierarchically constructed
         using the function :func:`hierarchical_normal` with default arguments.
@@ -193,7 +193,7 @@ def abs_sine_modulation(
     offset_modulation_kwargs={
         "name": "offset_modulation",
         "mu": 0,
-        "sigma": 0.01,
+        "kappa": 0.01,
     },
     # other
     model=None,
@@ -201,7 +201,7 @@ def abs_sine_modulation(
     r"""Adds weekly modulation to the cases, following an absolute sine function.
 
     .. math::
-        \text{cases} &= \text{cases\_raw} \cdot (1-f(t))\,, \qquad\text{with}\\
+        \text{cases} &= \text{cases_raw} \cdot (1-f(t))\,, \qquad\text{with}\\
         f(t) &= f_w \cdot \left(1 - \left|\sin\left(\frac{\pi}{7} t- \frac{1}{2}\Phi_w\right)\right| \right),
 
 
@@ -209,7 +209,7 @@ def abs_sine_modulation(
     median ``weekend_factor_prior_mu`` and sigma ``weekend_factor_prior_sigma``. It is hierarchically
     constructed if the input is two-dimensional by the function :func:`hierarchical_normal` with default arguments.
 
-    The offset from Sunday :math:`\Phi_w` follows a flat :class:`~pymc3.distributions.continuous.VonMises`
+    The offset from Sunday :math:`\Phi_w` follows a flat :class:`pymc.VonMises`
     distribution and is the same for all regions.
 
     This method was used in the paper `Dehning et al. 2020`_. It might not be
@@ -223,8 +223,8 @@ def abs_sine_modulation(
         The input array of daily new cases, can be one- or two-dimensional. First dimension
         has to be the time dimension.
 
-    weekend_factor : None or :class:`~pm.distributions.Continuous`
-        The weekend factor :math:`f_w` can be passed as a PyMC3 distribution. If ``None`` it is
+    weekend_factor : None or :class:`pymc.Continuous`
+        The weekend factor :math:`f_w` can be passed as a Pymc distribution. If ``None`` it is
         constructed from the parameters ``weekend_factor_prior_mu`` and ``weekend_factor_prior_sigma`` using 
         a Lognormal distribution. If the input is two-dimensional, the distribution is hierarchically constructed
         using the function :func:`hierarchical_normal` with default arguments.
@@ -233,8 +233,8 @@ def abs_sine_modulation(
         Keyword arguments passed to the pymc distribution of ``weekend_factor`` if it is constructed.
         See :class:`pymc.Normal` for available arguments. Default is ``{"name":"weekend_factor", "mu": log(0.3), "sigma": 0.5}``.
 
-    offset_modulation : None or :class:`~pm.distributions.Continuous`
-        The offset from Sunday :math:`\Phi_w` can be passed as a PyMC3 distribution. If ``None`` it is a flat VonMises distribution (mu=0, kappa=0.01).
+    offset_modulation : None or :class:`pymc.Continuous`
+        The offset from Sunday :math:`\Phi_w` can be passed as a PyMC distribution. If ``None`` it is a flat VonMises distribution (mu=0, kappa=0.01).
 
     offset_modulation_kwargs : dict
         Keyword arguments passed to the pymc distribution of ``offset_modulation`` if it is constructed.

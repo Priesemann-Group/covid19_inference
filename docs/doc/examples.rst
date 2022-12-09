@@ -2,6 +2,7 @@ Examples
 ========
 
 .. automodule:: covid19_inference
+    :noindex:
 
 We supply a number of examples which can be found in the `scripts <https://github.com/Priesemann-Group/covid19_inference/tree/master/scripts>`_ 
 folder of the GitHub repository.

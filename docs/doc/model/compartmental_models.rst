@@ -13,6 +13,7 @@ SIR --- susceptible-infected-recovered
 .. admonition:: More Details
 
     .. math::
+
         I_{new}(t) &= \lambda_t I(t-1)  \frac{S(t-1)}{N}   \\
         S(t) &= S(t-1) - I_{new}(t)  \\
         I(t) &= I(t-1) + I_{new}(t) - \mu  I(t)
@@ -21,11 +22,12 @@ SIR --- susceptible-infected-recovered
     and :math:`I(0)` are set to
 
     .. math::
+
         \mu &\sim \text{LogNormal}\left[
-                \log(\text{pr\_median\_mu}), \text{pr\_sigma\_mu}
+                \log(\text{pr_median_mu}), \text{pr_sigma_mu}
             \right] \\
         I(0) &\sim \text{HalfCauchy}\left[
-                \text{pr\_beta\_I\_begin}
+                \text{pr_beta_I_begin}
             \right]
 
 
@@ -37,32 +39,35 @@ SEIR-like ---  susceptible-exposed-infected-recovered
 .. admonition:: More Details
 
     .. math::
+
         E_{\text{new}}(t) &= \lambda_t I(t-1) \frac{S(t)}{N}   \\
         S(t) &= S(t-1) - E_{\text{new}}(t)  \\
         I_\text{new}(t) &= \sum_{k=1}^{10} \beta(k) E_{\text{new}}(t-k)   \\
         I(t) &= I(t-1) + I_{\text{new}}(t) - \mu  I(t) \\
         \beta(k) & = P(k) \sim \text{LogNormal}\left[
-                \log(d_{\text{incubation}}), \text{sigma\_incubation}
+                \log(d_{\text{incubation}}), \text{sigma_incubation}
             \right]
 
     The recovery rate :math:`\mu` and the incubation period is the same for all regions and follow respectively:
 
     .. math::
+
         P(\mu) &\sim \text{LogNormal}\left[
-                \text{log(pr\_median\_mu), pr\_sigma\_mu}
+                \text{log(pr_median_mu), pr_sigma_mu}
             \right] \\
         P(d_{\text{incubation}}) &\sim \text{Normal}\left[
-                \text{pr\_mean\_median\_incubation, pr\_sigma\_median\_incubation}
+                \text{pr_mean_median_incubation, pr_sigma_median_incubation}
             \right]
 
-    The initial number of infected and newly exposed differ for each region and follow prior :class:`~pymc.distributions.continuous.HalfCauchy` distributions:
+    The initial number of infected and newly exposed differ for each region and follow prior :class:`pymc.HalfCauchy` distributions:
 
     .. math::
+
         E(t)  &\sim \text{HalfCauchy}\left[
-                \text{pr\_beta\_E\_begin}
+                \text{pr_beta_E_begin}
             \right] \:\: \text{for} \: t \in {-9, -8, ..., 0}\\
         I(0)  &\sim \text{HalfCauchy}\left[
-                \text{pr\_beta\_I\_begin}
+                \text{pr_beta_I_begin}
             \right].
 
 

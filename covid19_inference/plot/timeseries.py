@@ -11,7 +11,6 @@ from .utils import *
 log = logging.getLogger(__name__)
 
 
-
 # ------------------------------------------------------------------------------ #
 # Time series plotting functions
 # ------------------------------------------------------------------------------ #
@@ -150,10 +149,10 @@ def timeseries_overview(
     # lambda*, effective growth rate
     # ------------------------------------------------------------------------------ #
     ax = axes[0]
-    mu = get_array_from_idata(idata,"mu")
+    mu = get_array_from_idata(idata, "mu")
 
     lambda_t, x = get_array_from_idata_via_date(model, idata, "lambda_t")
-    y = lambda_t[:, :, region] - mu[...,None]
+    y = lambda_t[:, :, region] - mu[..., None]
     _timeseries(x=x, y=y, ax=ax, what="model", color=color_fcast)
     ax.set_ylabel(label_y_lam)
     ax.set_ylim(ylim_lam)
@@ -168,7 +167,7 @@ def timeseries_overview(
                 delay_vars = [var for var in trace.varnames if "delay" in var]
                 delay_var = delay_vars.sort(key=len)[0]
                 delay = mpl.dates.date2num(model.data_end) - np.percentile(
-                    get_array_from_idata(idata,delay_var), q=75
+                    get_array_from_idata(idata, delay_var), q=75
                 )
                 ax.vlines(delay, -10, 10, linestyles="-", colors=color_annot)
                 ax.text(
@@ -619,4 +618,3 @@ def _new_cases_to_cum_cases(x, y, what, offset=0):
     x_cum = x
 
     return x_cum, y_cum
-

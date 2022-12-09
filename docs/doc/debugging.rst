@@ -18,7 +18,7 @@ Sample from prior:
 
 ::
 
-    from pymc3.util import (
+    from pymc.util import (
         get_untransformed_name,
         is_transformed_name)
 
@@ -109,7 +109,7 @@ the starting point of chain. Run this to see which distribution throws nans or i
     for RV in model.basic_RVs:
         print(RV.name, RV.logp(model.test_point))
 
-However, this is only evaluates the test_point. When PyMC3 starts sampling, it adds some jitter
+However, this is only evaluates the test_point. When Pymc starts sampling, it adds some jitter
 around this test_point, which then could lead to nans. Run this to add jitter and then evaluate
 the logp:
 
@@ -125,8 +125,8 @@ the logp:
                 val[...] += 2 * np.random.rand(*val.shape) - 1
             print(RV.logp(mean))
 
-This code could potentially change in newer versions of PyMC3 (this is tested in 3.8).
-Read the source code, to know which random jitter PyMC3 currently adds at beginning.
+This code could potentially change in newer versions of Pymc (this is tested in 3.8).
+Read the source code, to know which random jitter Pymc currently adds at beginning.
 
 Nans occur during sampling
 ^^^^^^^^^^^^^^^^^^^^^^^^^^

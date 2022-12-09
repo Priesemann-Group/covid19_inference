@@ -10,30 +10,8 @@ from .. import utility as ut
 
 log = logging.getLogger(__name__)
 
-import warnings
-import functools
 
-
-def deprecated(func):
-    """This is a decorator which can be used to mark functions
-    as deprecated. It will result in a warning being emitted
-    when the function is used."""
-
-    @functools.wraps(func)
-    def new_func(*args, **kwargs):
-        warnings.simplefilter("always", DeprecationWarning)  # turn off filter
-        warnings.warn(
-            "Call to deprecated function {}.".format(func.__name__),
-            category=DeprecationWarning,
-            stacklevel=2,
-        )
-        warnings.simplefilter("default", DeprecationWarning)  # reset filter
-        return func(*args, **kwargs)
-
-    return new_func
-
-
-@deprecated
+@ut.deprecated
 def SIR_variants(
     lambda_t_log,
     mu,
@@ -56,9 +34,9 @@ def SIR_variants(
         Time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional
         the first dimension is time.
 
-    mu : None or :class:`~pymc.distribution.Continuous`, optional
+    mu : None or :class:`pymc.Continuous`, optional
         Distribution of the recovery rate :math:`\mu`. Defaults to
-        :class:`~pymc.distributions.continuous.Lognormal` with the arguments defined
+        :class:`pymc.LogNormal` with the arguments defined
         in ``mu_kwargs``. Can be 0 or 1-dimensional. If 1-dimensional, the dimension
         are the different regions.
 
@@ -67,7 +45,7 @@ def SIR_variants(
 
     pr_I_begin : float or array_like or :class:`~aesara.tensor.Variable`
         Prior beta of the Half-Cauchy distribution of :math:`I(0)`.
-        if type is ``at.Constant``, I_begin will not be inferred by pymc3.
+        if type is ``at.Constant``, I_begin will not be inferred by pymc.
     model : :class:`Cov19Model`
         if none, it is retrieved from the context
     num_variants : number,
@@ -155,7 +133,7 @@ def SIR_variants(
         return new_I_tv
 
 
-@deprecated
+@ut.deprecated
 def kernelized_spread_variants(
     R_t_log,
     f,
@@ -205,17 +183,17 @@ def kernelized_spread_variants(
         The name under which the median incubation time is saved in the trace
 
     pr_I_begin : float or array_like
-        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
+        Prior beta of the :class:`pymc.HalfCauchy`
         distribution of :math:`I(0)`.
         if type is ``at.Variable``, ``I_begin`` will be set to the provided prior as
         a constant.
 
     pr_new_E_begin : float or array_like
-        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
+        Prior beta of the :class:`pymc.HalfCauchy`
         distribution of :math:`E(0)`.
 
     pr_mean_median_incubation :
-        Prior mean of the :class:`~pymc3.distributions.continuous.Normal`
+        Prior mean of the :class:`pymc.Normal`
         distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
         Defaults to 4 days [Nishiura2020]_, which is the median serial interval (the
         important measure here is not exactly the incubation period, but the delay
@@ -223,14 +201,14 @@ def kernelized_spread_variants(
         showing symptoms).
 
     pr_sigma_median_incubation : number or None
-        Prior sigma of the :class:`~pymc3.distributions.continuous.Normal`
+        Prior sigma of the :class:`pymc.Normal`
         distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
         If None, the incubation time will be fixed to the value of
         ``pr_mean_median_incubation`` instead of a random variable
         Default is 1 day.
 
     sigma_incubation :
-        Scale parameter of the :class:`~pymc3.distributions.continuous.Lognormal`
+        Scale parameter of the :class:`pymc.Lognormal`
         distribution of the incubation time/ delay until infectiousness. The default
         is set to 0.4, which is about the scale found in [Nishiura2020]_,
         [Lauer2020]_.
@@ -387,7 +365,7 @@ def kernelized_spread_variants(
         return new_I_tv
 
 
-@deprecated
+@ut.deprecated
 def kernelized_spread_gender(
     lambda_t_log,
     gender_interaction_matrix,
@@ -432,17 +410,17 @@ def kernelized_spread_gender(
         The name under which the median incubation time is saved in the trace
 
     pr_I_begin : float or array_like
-        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
+        Prior beta of the :class:`pymc.HalfCauchy`
         distribution of :math:`I(0)`.
         if type is ``at.Variable``, ``I_begin`` will be set to the provided prior as
         a constant.
 
     pr_new_E_begin : float or array_like
-        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
+        Prior beta of the :class:`pymc.HalfCauchy`
         distribution of :math:`E(0)`.
 
     pr_mean_median_incubation :
-        Prior mean of the :class:`~pymc3.distributions.continuous.Normal`
+        Prior mean of the :class:`pymc.Normal`
         distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
         Defaults to 4 days [Nishiura2020]_, which is the median serial interval (the
         important measure here is not exactly the incubation period, but the delay
@@ -450,14 +428,14 @@ def kernelized_spread_gender(
         showing symptoms).
 
     pr_sigma_median_incubation : number or None
-        Prior sigma of the :class:`~pymc3.distributions.continuous.Normal`
+        Prior sigma of the :class:`pymc.Normal`
         distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
         If None, the incubation time will be fixed to the value of
         ``pr_mean_median_incubation`` instead of a random variable
         Default is 1 day.
 
     sigma_incubation :
-        Scale parameter of the :class:`~pymc3.distributions.continuous.Lognormal`
+        Scale parameter of the :class:`pymc.Lognormal`
         distribution of the incubation time/ delay until infectiousness. The default
         is set to 0.4, which is about the scale found in [Nishiura2020]_,
         [Lauer2020]_.
@@ -608,7 +586,7 @@ def kernelized_spread_gender(
         return new_I_t
 
 
-@deprecated
+@ut.deprecated
 def kernelized_spread_with_interaction(
     R_t_log,
     interaction_matrix,
@@ -658,17 +636,17 @@ def kernelized_spread_with_interaction(
         The name under which the median incubation time is saved in the trace
 
     pr_I_begin : float or array_like
-        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
+        Prior beta of the :class:`pymc.HalfCauchy`
         distribution of :math:`I(0)`.
         if type is ``at.Variable``, ``I_begin`` will be set to the provided prior as
         a constant.
 
     pr_new_E_begin : float or array_like
-        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
+        Prior beta of the :class:`pymc.HalfCauchy`
         distribution of :math:`E(0)`.
 
     pr_mean_median_incubation :
-        Prior mean of the :class:`~pymc3.distributions.continuous.Normal`
+        Prior mean of the :class:`pymc.Normal`
         distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
         Defaults to 4 days [Nishiura2020]_, which is the median serial interval (the
         important measure here is not exactly the incubation period, but the delay
@@ -676,14 +654,14 @@ def kernelized_spread_with_interaction(
         showing symptoms).
 
     pr_sigma_median_incubation : number or None
-        Prior sigma of the :class:`~pymc3.distributions.continuous.Normal`
+        Prior sigma of the :class:`pymc.Normal`
         distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
         If None, the incubation time will be fixed to the value of
         ``pr_mean_median_incubation`` instead of a random variable
         Default is 1 day.
 
     sigma_incubation :
-        Scale parameter of the :class:`~pymc3.distributions.continuous.Lognormal`
+        Scale parameter of the :class:`pymc.Lognormal`
         distribution of the incubation time/ delay until infectiousness. The default
         is set to 0.4, which is about the scale found in [Nishiura2020]_,
         [Lauer2020]_.
@@ -835,7 +813,7 @@ def kernelized_spread_with_interaction(
         return new_I_t
 
 
-@deprecated
+@ut.deprecated
 def kernelized_spread_tmp(
     R_t_log,
     name_new_I_t="new_I_t",
@@ -878,17 +856,17 @@ def kernelized_spread_tmp(
         The name under which the median incubation time is saved in the trace
 
     pr_I_begin : float or array_like
-        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
+        Prior beta of the :class:`pymc.HalfCauchy`
         distribution of :math:`I(0)`.
         if type is ``at.Variable``, ``I_begin`` will be set to the provided prior as
         a constant.
 
     pr_new_E_begin : float or array_like
-        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
+        Prior beta of the :class:`pymc.HalfCauchy`
         distribution of :math:`E(0)`.
 
     pr_mean_median_incubation :
-        Prior mean of the :class:`~pymc3.distributions.continuous.Normal`
+        Prior mean of the :class:`pymc.Normal`
         distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
         Defaults to 4 days [Nishiura2020]_, which is the median serial interval (the
         important measure here is not exactly the incubation period, but the delay
@@ -896,14 +874,14 @@ def kernelized_spread_tmp(
         showing symptoms).
 
     pr_sigma_median_incubation : number or None
-        Prior sigma of the :class:`~pymc3.distributions.continuous.Normal`
+        Prior sigma of the :class:`pymc.Normal`
         distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
         If None, the incubation time will be fixed to the value of
         ``pr_mean_median_incubation`` instead of a random variable
         Default is 1 day.
 
     sigma_incubation :
-        Scale parameter of the :class:`~pymc3.distributions.continuous.Lognormal`
+        Scale parameter of the :class:`pymc.Lognormal`
         distribution of the incubation time/ delay until infectiousness. The default
         is set to 0.4, which is about the scale found in [Nishiura2020]_,
         [Lauer2020]_.

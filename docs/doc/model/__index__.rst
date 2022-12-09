@@ -84,7 +84,7 @@ in-depth example, have a look at the `example notebooks <https://github.com/Prie
         )
 
         # set prior distribution for the recovery rate
-        mu = pm.Lognormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
+        mu = pm.LogNormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
 
         # Use lambda_t_log and mu to run a SIR model
         new_I_t = cov19.model.SIR(lambda_t_log, mu)

@@ -12,7 +12,7 @@ import datetime
 import copy
 import sys
 
-import pymc3 as pm
+import pymc as pm
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -126,7 +126,7 @@ def create_model(change_points, params_model):
             name_lambda_t="lambda_t",
         )
 
-        mu = pm.Lognormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
+        mu = pm.LogNormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
 
         new_cases = cov19.model.SIR(lambda_t_log=lambda_t_log, mu=mu)
         new_cases = cov19.model.delay_cases(

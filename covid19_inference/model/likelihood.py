@@ -5,13 +5,11 @@
 import logging
 
 import pymc as pm
-from aesara import scan
 import aesara.tensor as at
 import numpy as np
 from scipy import ndimage as ndi
 
-from .model import *
-from . import utility as ut
+from .model import modelcontext
 
 log = logging.getLogger(__name__)
 
@@ -33,23 +31,23 @@ def student_t_likelihood(
 ):
     r"""
         Set the likelihood to apply to the model observations (`model.new_cases_obs`)
-        We assume a :class:`~pymc.distributions.continuous.StudentT` distribution because it is robust against outliers [Lange1989]_.
+        We assume a :class:`pymc.StudentT` distribution because it is robust against outliers [Lange1989]_.
         The likelihood follows:
 
         .. math::
 
-            P(\text{data\_obs}) &\sim StudentT(\text{mu} = \text{new\_cases\_inferred}, sigma =\sigma,
+            P(\text{data_obs}) &\sim StudentT(\text{mu} = \text{new_cases_inferred}, sigma =\sigma,
             \text{nu} = \text{nu})\\
-            \sigma &= \sigma_r \sqrt{\text{new\_cases\_inferred} + \text{offset\_sigma}}
+            \sigma &= \sigma_r \sqrt{\text{new_cases_inferred} + \text{offset_sigma}}
 
         The parameter :math:`\sigma_r` follows
-        a :class:`~pymc.distributions.continuous.HalfCauchy` prior distribution with parameter beta set by
-        ``pr_beta_sigma_obs``. If the input is 2 dimensional, the parameter :math:`\sigma_r` is different for every region,
+        a :class:`pymc.HalfCauchy` prior distribution with parameter beta set by
+        ``sigma_obs_kwargs``. If the input is 2 dimensional, the parameter :math:`\sigma_r` is different for every region,
         this can be changed be using the ``sigma_shape`` Parameter.
 
         Parameters
         ----------
-        
+
         cases : :class:`~aesara.tensor.TensorVariable`
             The daily new cases estimated by the model.
             Will be compared to  the real world data ``data_obs``.
@@ -66,13 +64,13 @@ def student_t_likelihood(
         data_obs : None or array, optional
             The data that is observed. By default it is ``model.new_cases_obs``
         
-        sigma_obs : None or :class:`~pymc.distributions.Continuous`, optional
-            The distribution of the observable error. By default it is a :class:`~pymc.distributions.continuous.HalfCauchy`
+        sigma_obs : None or :class:`pymc.Continuous`, optional
+            The distribution of the observable error. By default it is a :class:`pymc.HalfCauchy`
             with parameter beta set by ``sigma_obs_kwargs``.
 
         sigma_obs_kwargs : dict, optional
             The keyword arguments for the observable error distribution if ``sigma_obs`` is None. Defaults to
-            ``{"name": "sigma_obs", "beta": 30}``. See :class:`~pymc.distributions.continuous.HalfCauchy` for more options.
+            ``{"name": "sigma_obs", "beta": 30}``. See :class:`pymc.HalfCauchy` for more options.
 
         Other Parameters
         ----------------
@@ -106,10 +104,15 @@ def student_t_likelihood(
     if data_obs is None:
         data_obs = model.new_cases_obs
 
+    # Mask the data
+    cases = cases[model.diff_data_sim : model.data_len + model.diff_data_sim]
+
     # Check if sigma_obs is given
     if sigma_obs is None:
+        shape = sigma_obs_kwargs.pop("shape", None)
         sigma_obs = pm.HalfCauchy(
             **sigma_obs_kwargs,
+            shape=shape,
         )
         sigma = (
             at.abs(cases + offset_sigma) ** 0.5 * sigma_obs
@@ -166,9 +169,6 @@ def student_t_likelihood(
                         )
                         new_cases = 0
                         update = False
-
-    # Mask the data
-    cases = cases[model.diff_data_sim : model.data_len + model.diff_data_sim]
 
     # StudentT likelihood
     pm.StudentT(

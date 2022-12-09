@@ -91,7 +91,7 @@ class Callback:
         self.ax.set_ylabel("Logp")
         self.ax.set_title(name)
 
-    """This function is called by pymc3 every iterations
+    """This function is called by pymc every iterations
     """
 
     def __call__(self, trace, draw):
@@ -133,7 +133,7 @@ class Callback:
             with open(f, "rb") as f:
                 trace = pickle.load(f)
                 traces[trace.chain] = trace
-        return az.from_pymc3(pm.backends.base.MultiTrace(traces.values()))
+        return az.from_pymc(pm.backends.base.MultiTrace(traces.values()))
 
 
 def burn_in(
@@ -177,7 +177,7 @@ def burn_in(
                 raise error
         i = 1000
 
-    trace_tuning_az = az.from_pymc3(trace_tuning, model=model, save_warmup=True)
+    trace_tuning_az = az.from_pymc(trace_tuning, model=model, save_warmup=True)
     if args_start_points is None:
         args_start_points = {}
     start_points, logl_starting_points = get_start_points(
@@ -329,7 +329,7 @@ def robust_sample(
             callback=callback,
             **sample_kwargs,
         )
-        trace_az = az.from_pymc3(trace, model=model, save_warmup=True)
+        trace_az = az.from_pymc(trace, model=model, save_warmup=True)
 
         def append_burn_in_samples(trace, trace_burn_in, num):
             new_names = [

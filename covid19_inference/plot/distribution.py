@@ -39,7 +39,7 @@ def distribution(
 
     data = idata.posterior[key]
 
-    # This function all may change in a future pymc3 version
+    # This function all may change in a future pymc version
     try:
         prior = pm.sample_prior_predictive(
             samples=nSamples_prior, model=model, var_names=[key]

@@ -45,32 +45,32 @@ def kernelized_spread(
         Time series of of the reproduction number, 1 or 2-dimensional. If 2-dimensional, the
         first dimension is time.
 
-    new_E_begin : None or :class:`~pymc.distribution.Continuous`, optional
+    new_E_begin : None or :class:`pymc.Continuous`, optional
         Distribution for initial value of exposed pool i.e. :math:`E(0)`. Defaults to
-        :class:`~pymc.distributions.continuous.HalfCauchy` with the arguments defined
+        :class:`pymc.HalfCauchy` with the arguments defined
         in ``new_E_begin_kwargs``. Can be 1 or 2-dimensional, the first dimension always
         being a running window of the last 10 days. E.g. `(11, shape_of_regions)`.
 
     new_E_begin_kwargs : dict, optional
         Arguments for the initial value of exposed pool distribution. Defaults to
-        ``{"name": "new_E_begin", "beta": 50}``. See :class:`~pymc.distributions.continuous.HalfCauchy`
+        ``{"name": "new_E_begin", "beta": 50}``. See :class:`pymc.HalfCauchy`
         for more options. If no shape is given, the shape is inferred from the model. E.g.
         (11, shape_of_regions). Ignored if ``new_E_begin`` is not None.
 
-    median_incubation : None or :class:`~pymc.distribution.Continuous`, optional
+    median_incubation : None or :class:`pymc.Continuous`, optional
         Distribution for the median incubation period :math:`d_{\text{incubation}}`. Defaults to
-        :class:`~pymc.distributions.continuous.Normal` with the arguments defined
+        :class:`pymc.Normal` with the arguments defined
         in ``median_incubation_kwargs``. Can be 0 or 1-dimensional. If 1-dimensional,
         the dimension are the different regions.
 
     median_incubation_kwargs : dict, optional
         Arguments for the median incubation period distribution. Defaults to
-        ``{"name": "median_incubation", "mu": 4, "sigma": 1}``. See :class:`~pymc.distributions.continuous.Normal`
+        ``{"name": "median_incubation", "mu": 4, "sigma": 1}``. See :class:`pymc.Normal`
         for more options. If no shape is given, the shape is inferred from the model.
         Ignored if ``median_incubation`` is not None. mu defaults to 4 days [Nishiura2020]_, which is the median serial interval (the important measure here is not exactly the incubation period, but the delay until a person becomes infectious which seems to be about 1 day earlier as showing symptoms).
 
-    sigma_incubation : number or :class:`~pymc.distributions.Continous`, optional
-        Scale parameter of the :class:`~pymc.distributions.continuous.Lognormal`
+    sigma_incubation : number or :class:`pymc.Continuous`, optional
+        Scale parameter of the :class:`pymc.LogNormal`
         distribution of the incubation time/ delay until infectiousness. The default
         is set to 0.4, which is about the scale found in [Nishiura2020]_,
         [Lauer2020]_.

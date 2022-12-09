@@ -4,12 +4,14 @@
 
 import logging
 import pymc as pm
-from aesara import scan
 import aesara.tensor as at
 
-from .model import *
+from .model import modelcontext
 
 log = logging.getLogger(__name__)
+
+import warnings
+import functools
 
 # workaround for macos, sufficient to do this once
 # if platform.system() == "Darwin":
@@ -151,7 +153,7 @@ def tt_lognormal(x, mu, sigma):
 def tt_gamma(x, mu=None, sigma=None, alpha=None, beta=None):
     """
     Calculates a gamma distribution pdf for integer spaced x input. Parametrized similarly to
-    :class:`~pymc3.distributions.continuous.Gamma`
+    :class:`pymc.Gamma`
     """
     assert (alpha is None and beta is None) != (mu is None and sigma is None)
     if alpha is None and beta is None:
@@ -162,3 +164,37 @@ def tt_gamma(x, mu=None, sigma=None, alpha=None, beta=None):
 
     # normalize, add a small offset in case the sum is zero
     return distr / (at.sum(distr, axis=0) + 1e-8)
+
+
+def set_missing_priors_with_default(priors_dict, default_priors):
+    """
+    Takes a dict with custom priors and a dict with defaults and sets keys that
+    are not given
+    """
+    for prior_name in priors_dict.keys():
+        if prior_name not in default_priors:
+            log.warning(f"Prior with name {prior_name} not known")
+
+    for prior_name, value in default_priors.items():
+        if prior_name not in priors_dict:
+            priors_dict[prior_name] = value
+            log.info(f"{prior_name} was set to default value {value}")
+
+
+def deprecated(func):
+    """This is a decorator which can be used to mark functions
+    as deprecated. It will result in a warning being emitted
+    when the function is used."""
+
+    @functools.wraps(func)
+    def new_func(*args, **kwargs):
+        warnings.simplefilter("always", DeprecationWarning)  # turn off filter
+        warnings.warn(
+            "Call to deprecated function {}.".format(func.__name__),
+            category=DeprecationWarning,
+            stacklevel=2,
+        )
+        warnings.simplefilter("default", DeprecationWarning)  # reset filter
+        return func(*args, **kwargs)
+
+    return new_func

@@ -41,25 +41,25 @@ def SIR(
         time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional the first
         dimension is time.
 
-    mu : None or :class:`~pymc.distribution.Continuous`
+    mu : None or :class:`pymc.Continuous`
         Distribution of the recovery rate :math:`\mu`. Defaults to
-        :class:`~pymc.distributions.continuous.Lognormal` with the arguments defined
+        :class:`pymc.LogNormal` with the arguments defined
         in ``mu_kwargs``. Can be 0 or 1-dimensional. If 1-dimensional, the dimension
         are the different regions.
 
     mu_kwargs : dict
-        Arguments for the recovery rate distribution. Defaults to ``{"name": "mu", "mu":log(1/8), "sigma":0.2}``. See :class:`~pymc.distributions.continuous.Lognormal` for more
+        Arguments for the recovery rate distribution. Defaults to ``{"name": "mu", "mu":log(1/8), "sigma":0.2}``. See :class:`pymc.LogNormal` for more
         options. If no shape is given, the shape is inferred from the model.
 
     I_begin : None or :class:`~aesara.tensor.TensorVariable`
         Distribution for initial value of infected pool i.e. :math:`I(0)`. Defaults to
-        :class:`~pymc.distributions.continuous.HalfCauchy` with the arguments defined
+        :class:`pymc.HalfCauchy` with the arguments defined
         in ``I_begin_kwargs``. Can be 0 or 1-dimensional. If 1-dimensional,
         the dimension are the different regions.
 
     I_begin_kwargs : dict
         Arguments for the initial value of infected pool distribution. Defaults to
-        ``{"name": "I_begin", "beta": 100}``. See :class:`~pymc.distributions.continuous.HalfCauchy`
+        ``{"name": "I_begin", "beta": 100}``. See :class:`pymc.HalfCauchy`
         for more options. If no shape is given, the shape is inferred from the model.
 
     Other Parameters
@@ -76,10 +76,10 @@ def SIR(
         Name of the ``S_t`` variable in the trace, set to None to avoid adding as trace
         variable. Defaults to ``S_t``.
 
-    model : :class:`Cov19Model`
-        If none, it is retrieved from the context
+    model : :class:`Cov19Model`, optional
+        Is retrieved from the context by default.
 
-    return_all : bool
+    return_all : bool, optional
         If True, returns ``new_I_t``, ``I_t``, ``S_t`` tensors otherwise returns only ``new_I_t``
         tensor.
 
@@ -99,7 +99,7 @@ def SIR(
     # Defaults for mu
     if mu is None:
         shape = mu_kwargs.pop("shape", model.shape_of_regions)
-        mu = pm.Lognormal(**mu_kwargs, shape=shape)
+        mu = pm.LogNormal(**mu_kwargs, shape=shape)
 
     # Defaults for I_begin
     if I_begin is None:
