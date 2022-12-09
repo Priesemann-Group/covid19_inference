@@ -19,17 +19,21 @@ log = logging.getLogger(__name__)
 def student_t_likelihood(
     cases,
     name_student_t="_new_cases_studentT",
-    name_sigma_obs="sigma_obs",
-    pr_beta_sigma_obs=30,
     nu=4,
+    data_obs=None,
+    # Sigma obs
+    sigma_obs=None,
+    sigma_obs_kwargs={
+        "name": "sigma_obs",
+        "beta": 30,
+    },
+    # Other
     offset_sigma=1,
     model=None,
-    data_obs=None,
-    sigma_shape=None,
 ):
     r"""
         Set the likelihood to apply to the model observations (`model.new_cases_obs`)
-        We assume a :class:`~pymc3.distributions.continuous.StudentT` distribution because it is robust against outliers [Lange1989]_.
+        We assume a :class:`~pymc.distributions.continuous.StudentT` distribution because it is robust against outliers [Lange1989]_.
         The likelihood follows:
 
         .. math::
@@ -39,47 +43,51 @@ def student_t_likelihood(
             \sigma &= \sigma_r \sqrt{\text{new\_cases\_inferred} + \text{offset\_sigma}}
 
         The parameter :math:`\sigma_r` follows
-        a :class:`~pymc3.distributions.continuous.HalfCauchy` prior distribution with parameter beta set by
+        a :class:`~pymc.distributions.continuous.HalfCauchy` prior distribution with parameter beta set by
         ``pr_beta_sigma_obs``. If the input is 2 dimensional, the parameter :math:`\sigma_r` is different for every region,
         this can be changed be using the ``sigma_shape`` Parameter.
 
         Parameters
         ----------
+        
         cases : :class:`~aesara.tensor.TensorVariable`
             The daily new cases estimated by the model.
             Will be compared to  the real world data ``data_obs``.
             One or two dimensonal array. If 2 dimensional, the first dimension is time
             and the second are the regions/countries
 
-        name_student_t :
+        name_student_t : str, optional
             The name under which the studentT distribution is saved in the trace.
 
-        name_sigma_obs :
-            The name under which the distribution of the observable error is saved in the trace
-
-        pr_beta_sigma_obs : float
-            The beta of the :class:`~pymc3.distributions.continuous.HalfCauchy` prior distribution of :math:`\sigma_r`.
-
-        nu : float
-            How flat the tail of the distribution is. Larger nu should  make the model
+        nu : float, optional
+            How flat the tail of the studentT distribution is. Larger nu should  make the model
             more robust to outliers. Defaults to 4 [Lange1989]_.
+
+        data_obs : None or array, optional
+            The data that is observed. By default it is ``model.new_cases_obs``
+        
+        sigma_obs : None or :class:`~pymc.distributions.Continuous`, optional
+            The distribution of the observable error. By default it is a :class:`~pymc.distributions.continuous.HalfCauchy`
+            with parameter beta set by ``sigma_obs_kwargs``.
+
+        sigma_obs_kwargs : dict, optional
+            The keyword arguments for the observable error distribution if ``sigma_obs`` is None. Defaults to
+            ``{"name": "sigma_obs", "beta": 30}``. See :class:`~pymc.distributions.continuous.HalfCauchy` for more options.
+
+        Other Parameters
+        ----------------
 
         offset_sigma : float
             An offset added to the sigma, to make the inference procedure robust. Otherwise numbers of
             ``cases`` would lead to very small errors and diverging likelihoods. Defaults to 1.
 
-        model:
-            The model on which we want to add the distribution
-
-        data_obs : array
-            The data that is observed. By default it is ``model.new_cases_obs``
-        
-        sigma_shape : int, array
-            Shape of the sigma distribution i.e. the data error term. 
-
+        model : None or :class:`Cov19Model`, optional
+            The model to use.
+            Default: None, model is retrieved automatically from the context
 
         Returns
         -------
+
         None
 
         References
@@ -91,14 +99,24 @@ def student_t_likelihood(
             84(408), 881-896. doi:10.2307/2290063
 
     """
-
+    log.info("StudentT likelihood")
     model = modelcontext(model)
 
+    # Check if data_obs is given
     if data_obs is None:
         data_obs = model.new_cases_obs
 
-    if model.shifted_cases:
+    # Check if sigma_obs is given
+    if sigma_obs is None:
+        sigma_obs = pm.HalfCauchy(
+            **sigma_obs_kwargs,
+        )
+        sigma = (
+            at.abs(cases + offset_sigma) ** 0.5 * sigma_obs
+        )  # offset and at.abs to avoid nans
 
+    # Check if the data is shifted
+    if model.shifted_cases:
         no_cases = data_obs == 0
         if len(data_obs.shape) > 1:
 
@@ -149,16 +167,10 @@ def student_t_likelihood(
                         new_cases = 0
                         update = False
 
+    # Mask the data
     cases = cases[model.diff_data_sim : model.data_len + model.diff_data_sim]
-    sigma_obs = pm.HalfCauchy(
-        name_sigma_obs,
-        beta=pr_beta_sigma_obs,
-        shape=model.shape_of_regions if sigma_shape is None else sigma_shape,
-    )
-    sigma = (
-        at.abs(cases + offset_sigma) ** 0.5 * sigma_obs
-    )  # offset and at.abs to avoid nans
 
+    # StudentT likelihood
     pm.StudentT(
         name=name_student_t,
         nu=nu,
