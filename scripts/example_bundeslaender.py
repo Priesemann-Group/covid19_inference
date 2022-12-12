@@ -22,7 +22,7 @@ import pymc as pm
 try:
     import covid19_inference as cov19
 except ModuleNotFoundError:
-    sys.path.append("../../")
+    sys.path.append("../")
     import covid19_inference as cov19
 
 """
@@ -127,25 +127,32 @@ with cov19.model.Cov19Model(**params_model) as this_model:
     # This builds a decorrelated prior for I_begin for faster inference. It is not
     # necessary to use it, one can simply remove it and use the default argument for
     # pr_I_begin in cov19.SIR
-    prior_I = cov19.model.uncorrelated_prior_I(
+    I_begin = cov19.model.uncorrelated_prior_I(
         lambda_t_log=lambda_t_log, mu=mu, pr_median_delay=pr_delay
     )
 
     # Use lambda_t_log and mu as parameters for the SIR model.
     # The SIR model generates the inferred new daily cases.
-    new_cases = cov19.model.SIR(lambda_t_log=lambda_t_log, mu=mu, pr_I_begin=prior_I)
+    new_cases = cov19.model.SIR(lambda_t_log=lambda_t_log, mu=mu, I_begin=I_begin)
 
     # Delay the cases by a lognormal reporting delay and add them as a trace variable
     new_cases = cov19.model.delay_cases(
         cases=new_cases,
-        name_cases="delayed_cases",
-        pr_mean_of_median=pr_delay,
-        pr_median_of_width=0.3,
+        delay_kernel="lognormal",
+        median_delay_kwargs={
+            "name": "delay",
+            "mu": np.log(pr_delay),
+            "sigma": 0.3,
+        },
     )
 
     # Modulate the inferred cases by a abs(sin(x)) function, to account for weekend effects
     # Also adds the "new_cases" variable to the trace that has all model features.
-    new_cases = cov19.model.week_modulation(cases=new_cases, name_cases="new_cases")
+    new_cases = cov19.model.week_modulation(
+        cases=new_cases,
+        week_modulation_type="abs_sine",
+    )
+    pm.Deterministic("new_cases", new_cases)
 
     # Define the likelihood, uses the new_cases_obs set as model parameter
     cov19.model.student_t_likelihood(cases=new_cases)
@@ -193,7 +200,7 @@ var_names = {
 # Plots violin plots
 for var_name in var_names.keys():
     f, ax = plt.subplots()
-    posterior_samples = cov19.plot.utils.get_array_from_idata(idata,var_name)
+    posterior_samples = cov19.plot.utils.get_array_from_idata(idata, var_name)
     ax.violinplot(posterior_samples, showextrema=False, vert=False, showmedians=True)
     ax.set_yticks(np.arange(1, 17))
     ax.set_yticklabels(df_bundeslaender.columns)
@@ -214,16 +221,15 @@ y_all_regions, x = cov19.plot.utils.get_array_from_idata_via_date(
     this_model, idata, "new_cases", bd, ed
 )
 
-%%capture
 # After retrieving the trace var for our specified time period, we plot the timeseries for each region. Additionaly we set the format of the date (x-)axis.
 # We have 16 regions in this example -> we create 16 subplots
-fig, axes = plt.subplots(16, 1, figsize=(10, 35), gridspec_kw={"hspace":0.5});
+fig, axes = plt.subplots(16, 1, figsize=(10, 35), gridspec_kw={"hspace": 0.5})
 
 for i in range(16):
     y = y_all_regions[:, :, i]
     cov19.plot.timeseries._timeseries(x, y, axes[i], what="fcast")
     axes[i].set_title(df_bundeslaender.columns[i])
-    #cov19.plot._format_date_xticks(axes[i])
+    # cov19.plot._format_date_xticks(axes[i])
 
 # Furthermore, we can plot our observable i.e. our new_cases_obs.
 x_dat = pd.date_range(this_model.data_begin, this_model.data_end)
@@ -231,5 +237,5 @@ for i in range(16):
     y = new_cases_obs[:, i]
     cov19.plot.timeseries._timeseries(x_dat, y, axes[i], what="data", lw=0)
 
-#plt.tight_layout()
+# plt.tight_layout()
 fig  # To show figure in jupyter notebook

@@ -1,4 +1,5 @@
 import logging
+import pandas as pd
 import pymc as pm
 import numpy as np
 import aesara.tensor as at
@@ -309,3 +310,44 @@ def _make_change_point_RVs(
         non_hierarchical_mod()
 
     return lambda_log_list, tr_time_list, tr_len_list
+
+
+def get_cps(data_begin, data_end, interval=7, offset=0, **priors_dict):
+    """
+    Generates and returns change point array.
+    Parameters
+    ----------
+    data_begin : dateteime
+        First date for possible changepoints
+    data_end : datetime
+        Last date for possible changepoints
+    interval : int, optional
+        Interval for the proposed cp in days. default:7
+    offset : int, optional
+        Offset for the first cp to data_begin
+    """
+    change_points = []
+    count = interval - offset
+    default_params = dict(
+        pr_sigma_date_transient=1.5,
+        pr_sigma_lambda=0.2,  # wiggle compared to previous point
+        relative_to_previous=True,
+        pr_factor_to_previous=1.0,
+        pr_sigma_transient_len=1,
+        pr_median_transient_len=4,
+        pr_median_lambda=0.125,
+    )
+    ut.set_missing_priors_with_default(priors_dict, default_params)
+
+    for day in pd.date_range(start=data_begin, end=data_end):
+        if count / interval >= 1.0:
+            # Add cp
+            change_points.append(
+                dict(  # one possible change point every sunday
+                    pr_mean_date_transient=day, **priors_dict
+                )
+            )
+            count = 1
+        else:
+            count = count + 1
+    return change_points

@@ -27,6 +27,7 @@ def kernelized_spread(
         "sigma": 1,
     },
     sigma_incubation=0.4,
+    kernel_incubation="gamma",
     # other
     name_new_I_t="new_I_t",
     name_new_E_t="new_E_t",
@@ -74,6 +75,9 @@ def kernelized_spread(
         distribution of the incubation time/ delay until infectiousness. The default
         is set to 0.4, which is about the scale found in [Nishiura2020]_,
         [Lauer2020]_.
+
+    kernel_incubation : str, optional
+        Can be `lognormal` or `gamma`. Defaults to `gamma`.
 
 
     Other Parameters
@@ -137,7 +141,12 @@ def kernelized_spread(
     else:
         x = np.arange(1, 11)[:, None]
 
-    beta = ut.tt_lognormal(x, at.log(median_incubation), sigma_incubation)
+    if kernel_incubation == "gamma":
+        beta = ut.tt_gamma(x, median_incubation, np.exp(sigma_incubation))
+    elif kernel_incubation == "lognormal":
+        beta = ut.tt_lognormal(x, at.log(median_incubation), sigma_incubation)
+    else:
+        raise ValueError("Unknown kernel type: " + kernel_incubation)
 
     # Runs kernelized spread model:
     def next_day(
