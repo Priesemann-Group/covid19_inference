@@ -19,6 +19,7 @@ try:
     import covid19_inference as cov19
 except ModuleNotFoundError:
     sys.path.append("../")
+    import covid19_inference as cov19
 
 """## Data retrieval
 
@@ -29,15 +30,14 @@ except ModuleNotFoundError:
 jhu = cov19.data_retrieval.JHU()
 jhu.download_all_available_data()
 
+
 """
     We select the data range and country we want to analyze.
 """
-
 bd = datetime.datetime(2021, 3, 10)  # For the date filter
-ed = datetime.datetime(2022, 8, 10)
-
+ed = datetime.datetime(2021, 8, 10)
 new_cases_obs = jhu.get_new(
-    value="confirmed", country="France", data_begin=bd, data_end=ed
+    value="confirmed", country="Germany", data_begin=bd, data_end=ed
 )
 
 """
@@ -48,17 +48,18 @@ new_cases_obs = jhu.get_new(
 
 diff_data_sim = 16  # should be significantly larger than the expected delay, in
 # order to always fit the same number of data points.
-num_days_forecast = 10
+num_days_forecast = 16
 
 # We set the priors for the changepoints here
 # We set a possible change point every 10 days
 from covid19_inference.model.spreading_rate.change_points import get_cps
 
 change_points = get_cps(
-    data_begin=bd,
+    data_begin=bd - datetime.timedelta(days=10),
     data_end=ed,
+    offset=5,
     interval=10,
-    priors_dict=dict(
+    **dict(
         relative_to_previous=True,
         pr_factor_to_previous=1.0,
         pr_sigma_transient_len=1,
@@ -66,7 +67,6 @@ change_points = get_cps(
         pr_sigma_date_transient=2.5,
     ),
 )
-
 pr_delay = 4
 
 params_model = dict(
@@ -74,7 +74,7 @@ params_model = dict(
     data_begin=bd,
     fcast_len=num_days_forecast,
     diff_data_sim=diff_data_sim,
-    N_population=67e6,
+    N_population=84e6,
 )
 
 
@@ -87,7 +87,7 @@ with cov19.model.Cov19Model(**params_model) as this_model:
     sigma_lambda_cp = pm.HalfCauchy(
         name="sigma_lambda_cp",
         beta=1,
-        transform=pm.transforms.log_exp_m1,
+        transform=pm.distributions.transforms.log_exp_m1,
     )
     sigma_lambda_week_cp = None
 
@@ -97,8 +97,8 @@ with cov19.model.Cov19Model(**params_model) as this_model:
         pr_sigma_lambda_0=0.3,
         sigma_lambda_cp=sigma_lambda_cp,
         sigma_lambda_week_cp=sigma_lambda_week_cp,
-        name_lambda_t="R_t",
     )
+    R_t = pm.Deterministic("R_t", at.exp(R_t_log))
 
     # This builds a decorrelated prior for E_begin for faster inference. It is not
     # necessary to use it, one can simply remove it and use the default argument for
@@ -106,11 +106,7 @@ with cov19.model.Cov19Model(**params_model) as this_model:
     new_E_begin = cov19.model.uncorrelated_prior_E()
 
     # Compartmental model using kernelized spread
-    I = cov19.model.kernelized_spread(
-        R_t=at.exp(R_t_log),
-        new_E_begin=new_E_begin,
-        use_gamma=True,
-    )
+    I = cov19.model.kernelized_spread(R_t=R_t, new_E_begin=new_E_begin)
 
     # Delay the cases by a gamma reporting delay
     new_cases = cov19.model.delay_cases(
@@ -121,8 +117,8 @@ with cov19.model.Cov19Model(**params_model) as this_model:
             "sigma": 0.1,
         },
         scale_delay_kwargs={
-            "mu": 1 / 5,
-            "sigma": 0.4 / 5,
+            "mu": 1 / 5 * pr_delay,
+            "sigma": 0.4 / 5 * pr_delay,
         },
     )
 
@@ -141,7 +137,6 @@ with cov19.model.Cov19Model(**params_model) as this_model:
     The number of parallel runs can be set with the argument `cores=`.
     The sampling can take a long time.
 """
-
 idata = pm.sample(model=this_model, tune=1000, draws=1000, init="advi+adapt_diag")
 
 
@@ -150,7 +145,6 @@ idata = pm.sample(model=this_model, tune=1000, draws=1000, init="advi+adapt_diag
     As our goal is to infer the reproduction number, we plot the posterior of the reproduction number
     here.
 """
-
 from covid19_inference.plot import _timeseries, get_array_from_idata_via_date
 
 # Get R_t and cases trace with util function
@@ -158,20 +152,17 @@ R_t, dates_RT = get_array_from_idata_via_date(this_model, idata, "R_t")
 cases, dates_cases = get_array_from_idata_via_date(this_model, idata, "new_cases")
 
 # Create figure
-# - panel 1: R_t
-# - panel 2: cases
 fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-
 # Plot Rt
 _timeseries(
     x=dates_RT,
     y=R_t,
     ax=axes[0],
 )
-
 # Plot cases
 _timeseries(
     x=dates_cases,
     y=cases,
     ax=axes[1],
 )
+plt.show()
