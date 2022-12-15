@@ -3,13 +3,14 @@
 
     This example shows how to infer the time dependent reproduction number R_t from the number of new cases.
 
-    Runtime ~ 30mins
+    Runtime ~ 1.5h
 
     As always first some imports
 """
 import datetime
 import sys
 import numpy as np
+import pickle
 import aesara.tensor as at
 import matplotlib.pyplot as plt
 import pymc as pm
@@ -35,7 +36,7 @@ jhu.download_all_available_data()
     We select the data range and country we want to analyze.
 """
 bd = datetime.datetime(2021, 3, 10)  # For the date filter
-ed = datetime.datetime(2021, 8, 10)
+ed = datetime.datetime(2021, 5, 10)
 new_cases_obs = jhu.get_new(
     value="confirmed", country="Germany", data_begin=bd, data_end=ed
 )
@@ -48,7 +49,7 @@ new_cases_obs = jhu.get_new(
 
 diff_data_sim = 16  # should be significantly larger than the expected delay, in
 # order to always fit the same number of data points.
-num_days_forecast = 16
+num_days_forecast = 10
 
 # We set the priors for the changepoints here
 # We set a possible change point every 10 days
@@ -67,7 +68,7 @@ change_points = get_cps(
         pr_sigma_date_transient=2.5,
     ),
 )
-pr_delay = 4
+pr_delay = 7
 
 params_model = dict(
     new_cases_obs=new_cases_obs,
@@ -90,7 +91,6 @@ with cov19.model.Cov19Model(**params_model) as this_model:
         transform=pm.distributions.transforms.log_exp_m1,
     )
     sigma_lambda_week_cp = None
-
     R_t_log = cov19.model.lambda_t_with_sigmoids(
         change_points_list=change_points,
         pr_median_lambda_0=1,
@@ -124,7 +124,7 @@ with cov19.model.Cov19Model(**params_model) as this_model:
 
     # Modulate the inferred cases by a abs(sin(x)) function, to account for weekend effects
     # Also adds the "new_cases" variable to the trace that has all model features.
-    new_cases = cov19.model.week_modulation(new_cases)
+    new_cases = cov19.model.week_modulation(new_cases,week_modulation_type="by_weekday")
     pm.Deterministic("new_cases", new_cases)
 
     # Define the likelihood, uses the new_cases_obs set as model parameter
@@ -137,7 +137,20 @@ with cov19.model.Cov19Model(**params_model) as this_model:
     The number of parallel runs can be set with the argument `cores=`.
     The sampling can take a long time.
 """
-idata = pm.sample(model=this_model, tune=1000, draws=1000, init="advi+adapt_diag")
+idata = pm.sample(model=this_model, tune=1000, draws=1000)
+
+
+""" ### Optional Save & Load the trace
+You can run the box below to save the trace or load it.
+"""
+with open("./germany_inferring_Rt_idata.pkl", "wb") as f:
+        pickle.dump(idata, f)
+        
+        
+def load(fstr):
+    with open(fstr, "rb") as f:
+         return pickle.load(f)
+idata = load("./germany_inferring_Rt_idata.pkl")
 
 
 """ ## Plotting
@@ -152,17 +165,32 @@ R_t, dates_RT = get_array_from_idata_via_date(this_model, idata, "R_t")
 cases, dates_cases = get_array_from_idata_via_date(this_model, idata, "new_cases")
 
 # Create figure
-fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+fig, axes = plt.subplots(2, 1, figsize=(10, 5))
 # Plot Rt
 _timeseries(
     x=dates_RT,
     y=R_t,
     ax=axes[0],
+    what="model"
 )
-# Plot cases
+# Plot cases (model)
 _timeseries(
     x=dates_cases,
     y=cases,
     ax=axes[1],
+    what="model"
 )
+# Plot cases (data)
+_timeseries(
+    x=new_cases_obs.index,
+    y=new_cases_obs,
+    ax=axes[1]
+)
+# Markup
+for ax in axes:
+    ax.set_xlim(this_model.data_begin,this_model.data_end)
+
+# 
+axes[0].set_ylabel("Reproduction number $R_t$")
+axes[1].set_ylabel("Reported cases") 
 plt.show()

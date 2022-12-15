@@ -96,7 +96,7 @@ with cov19.Cov19Model(**params_model) as this_model:
     # This builds a decorrelated prior for I_begin for faster inference. It is not
     # necessary to use it, one can simply remove it and use the default argument for
     # pr_I_begin in cov19.model.SIR
-    prior_I = cov19.model.uncorrelated_prior_I(
+    I_begin = cov19.model.uncorrelated_prior_I(
         lambda_t_log=lambda_t_log,
         mu=mu,
         pr_median_delay=pr_delay,
@@ -106,17 +106,18 @@ with cov19.Cov19Model(**params_model) as this_model:
 
     # Use lambda_t_log and mu as parameters for the SIR model.
     # The SIR model generates the inferred new daily cases.
-    new_cases = cov19.model.SIR(lambda_t_log=lambda_t_log, mu=mu, pr_I_begin=prior_I)
+    new_cases = cov19.model.SIR(lambda_t_log=lambda_t_log, mu=mu, I_begin=I_begin)
 
-    # Delay the cases by a lognormal reporting delay and add them as a trace variable
+    # Delay the cases by a lognormal reporting delay
     new_cases = cov19.model.delay_cases(
         cases=new_cases,
-        name_cases="delayed_cases",
-        pr_mean_of_median=pr_delay,
-        pr_sigma_of_median=0.2,
-        pr_median_of_width=0.3,
+        median_delay_kwargs={
+            "name": "delay",
+            "mu":pr_delay,
+            "sigma":0.2
+        }
     )
-
+    
     # Modulate the inferred cases by a abs(sin(x)) function, to account for weekend effects
     # Also adds the "new_cases" variable to the trace that has all model features.
     new_cases = cov19.model.week_modulation(cases=new_cases, name_cases="new_cases")
@@ -135,7 +136,6 @@ idata = pm.sample(model=this_model, tune=500, draws=1000, init="advi+adapt_diag"
 """
 fig, axes = cov19.plot.timeseries_overview(this_model, idata, offset=cum_cases[0])
 
-%%capture
 fig, axes = plt.subplots(6, 3, figsize=(4, 6.4))
 axes[0, 2].set_visible(False)
 axes[1, 2].set_visible(False)

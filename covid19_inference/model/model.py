@@ -110,8 +110,8 @@ class Cov19Model(Model):
         diff_data_sim,
         N_population,
         data_end=None,
-        name="covid19_inference",
         model=None,
+        name="",
         shifted_cases=True,
     ):
 

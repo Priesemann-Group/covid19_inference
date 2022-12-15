@@ -125,22 +125,15 @@ def create_model(change_points, params_model):
             change_points_list=change_points,
             name_lambda_t="lambda_t",
         )
-
         mu = pm.LogNormal(name="mu", mu=np.log(1 / 8), sigma=0.2)
-
         new_cases = cov19.model.SIR(lambda_t_log=lambda_t_log, mu=mu)
         new_cases = cov19.model.delay_cases(
             cases=new_cases,
-            name_cases="delayed_cases",
-            pr_mean_of_median=pr_delay,
-            pr_median_of_width=0.3,
         )
-        new_cases = cov19.model.week_modulation(cases=new_cases, name_cases="new_cases")
-
+        new_cases = cov19.model.week_modulation(cases=new_cases)
+        pm.Deterministic("new_cases",new_cases)
         cov19.model.student_t_likelihood(cases=new_cases)
-
     return this_model
-
 
 mod_a = create_model(cp_a, params_model)
 mod_b = create_model(cp_b, params_model)

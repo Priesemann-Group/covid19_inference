@@ -21,7 +21,7 @@ def delay_cases(
     median_delay=None,
     median_delay_kwargs={
         "name": "delay",
-        "mu": np.log(10),
+        "mu": 10,
         "sigma": 0.2,
     },
     # Scale of delay
@@ -132,9 +132,11 @@ def delay_cases(
         shape_of_delays = (1,) if not seperate_on_axes else model.shape_of_regions
         # Parse kwargs
         delay_name = median_delay_kwargs.pop("name", "delay")
+        delay_mu = median_delay_kwargs.pop("mu", 10)
         # Lognormal distributed delays (the median values)
         median_delay_log = pm.Normal(
             name=delay_name + "_log",
+            mu=np.log(delay_mu),
             shape=shape_of_delays,
             **median_delay_kwargs,
         )
@@ -284,9 +286,9 @@ def _apply_delay(array, delay, sigma_delay, delay_mat, kernel_type="lognormal"):
 
     # Decide on the kernel type
     if kernel_type == "lognormal":
-        mat = ut.tt_lognormal(delay_mat, mu=np.log(delay), sigma=sigma_delay)
+        mat = ut.tt_lognormal(delay_mat, mu=at.log(delay), sigma=sigma_delay)
     elif kernel_type == "gamma":
-        mat = ut.tt_gamma(delay_mat, mu=np.log(delay), sigma=sigma_delay)
+        mat = ut.tt_gamma(delay_mat, mu=delay, sigma=sigma_delay)
     else:
         raise ValueError("Unknown kernel type: " + kernel_type)
 
