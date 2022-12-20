@@ -1,12 +1,9 @@
 numpy
 matplotlib
-pymc
-aesara>=2.1
-arviz
+pymc==4.*
 pandas
 pytest
 requests
 numpyro
 cairosvg
-filelock>=3.2.0
 watermark
