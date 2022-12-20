@@ -47,7 +47,9 @@ class OxCGRT(Retrieval):
         """
         The url to the main dataset as csv, if none if supplied the fallback routines get used
         """
-        url_csv = "https://raw.githubusercontent.com/OxCGRT/covid-policy-tracker/master/data/OxCGRT_latest.csv"
+        #url_csv = "https://raw.githubusercontent.com/OxCGRT/covid-policy-tracker-legacy/main/legacy_data_202207/OxCGRT_latest.csv"
+        #url_csv = "https://raw.githubusercontent.com/OxCGRT/covid-policy-tracker/master/data/OxCGRT_latest.csv"
+        url_csv = "https://raw.githubusercontent.com/OxCGRT/covid-policy-tracker/master/data/OxCGRT_nat_latest.csv"
 
         """
         Kwargs for pandas read csv
