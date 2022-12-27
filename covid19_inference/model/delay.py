@@ -202,7 +202,7 @@ def _delay_kernel(
     median_delay,
     scale_delay,
     delay_betw_input_output,
-    kernel_type="lognormal",
+    kernel_type,
 ):
     delay_mat = _make_delay_matrix(
         n_rows=len_input_arr,
