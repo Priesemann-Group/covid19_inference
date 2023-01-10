@@ -166,3 +166,4 @@ def student_t_likelihood(
         sigma=sigma[~np.isnan(data_obs)],
         observed=data_obs[~np.isnan(data_obs)],
     )
+    #print(cases[~np.isnan(data_obs)].shape.eval())

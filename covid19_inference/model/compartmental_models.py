@@ -352,18 +352,16 @@ def SEIR(
 
 
 def kernelized_spread(
-    lambda_t_log,
+    R_t,
     name_new_I_t="new_I_t",
     name_new_E_t="new_E_t",
     name_S_t="S_t",
     name_new_E_begin="new_E_begin",
     name_median_incubation="median_incubation",
     pr_new_E_begin=50,
-    pr_median_mu=1 / 8,
     pr_mean_median_incubation=4,
     pr_sigma_median_incubation=1,
     sigma_incubation=0.4,
-    pr_sigma_mu=0.2,
     model=None,
     return_all=False,
 ):
@@ -371,93 +369,62 @@ def kernelized_spread(
     Implements a model similar to the susceptible-exposed-infected-recovered model.
     Instead of a exponential decaying incubation period, the length of the period is
     lognormal distributed.
-
     Parameters
     ----------
-    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
-        time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional, the first
+    R_t: :class:`~aesara.tensor.TensorVariable`
+        Time series of of the reproduction number, 1 or 2-dimensional. If 2-dimensional, the first
         dimension is time.
-
-    mu : :class:`~aesara.tensor.TensorVariable`
-        the recovery rate :math:`\mu`, typically a random variable. Can be 0 or
-        1-dimensional. If 1-dimensional, the dimension are the different regions.
-
+        shape: (time) or (time, regions)
     name_new_I_t : str, optional
         Name of the ``new_I_t`` variable
-
+    name_new_E_t : str, optional
+        Name of the ``new_E_t`` variable
     name_S_t : str, optional
         Name of the ``S_t`` variable
-
     name_new_E_begin : str, optional
         Name of the ``new_E_begin`` variable
-
-    name_median_incubation : str
-        The name under which the median incubation time is saved in the trace
-
-    pr_I_begin : float or array_like
-        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
-        distribution of :math:`I(0)`.
-        if type is ``at.Variable``, ``I_begin`` will be set to the provided prior as
-        a constant.
-
-    pr_new_E_begin : float or array_like
-        Prior beta of the :class:`~pymc3.distributions.continuous.HalfCauchy`
-        distribution of :math:`E(0)`.
-
-    pr_median_mu : float or array_like
-        Prior for the median of the
-        :class:`~pymc3.distributions.continuous.Lognormal` distribution of the
-        recovery rate :math:`\mu`.
-
-    pr_mean_median_incubation :
-        Prior mean of the :class:`~pymc3.distributions.continuous.Normal`
-        distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
+    name_median_incubation : str, optional
+        The name under which the median incubation time is saved in the trace.
+    pr_new_E_begin : float or array_like, optional
+        Prior beta of the :class:`~pymc.distributions.continuous.HalfCauchy`
+        distribution of :math:`E(0)`. Defaults to 50.
+    pr_mean_median_incubation : number, optional
+        Prior mean of the :class:`~pymc.distributions.continuous.Normal`
+        distribution of the median incubation delay :math:`d_{\text{incubation}}`.
         Defaults to 4 days [Nishiura2020]_, which is the median serial interval (the
         important measure here is not exactly the incubation period, but the delay
         until a person becomes infectious which seems to be about 1 day earlier as
         showing symptoms).
-
-    pr_sigma_median_incubation : number or None
-        Prior sigma of the :class:`~pymc3.distributions.continuous.Normal`
+    pr_sigma_median_incubation : number, optional
+        Prior sigma of the :class:`~pymc.distributions.continuous.Normal`
         distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
         If None, the incubation time will be fixed to the value of
-        ``pr_mean_median_incubation`` instead of a random variable
+        ``pr_mean_median_incubation`` instead of a random variable.
         Default is 1 day.
-
-    sigma_incubation :
-        Scale parameter of the :class:`~pymc3.distributions.continuous.Lognormal`
+    sigma_incubation : number, optional
+        Scale parameter of the :class:`~pymc.distributions.continuous.Lognormal`
         distribution of the incubation time/ delay until infectiousness. The default
         is set to 0.4, which is about the scale found in [Nishiura2020]_,
         [Lauer2020]_.
-
-    pr_sigma_mu : float or array_like
-        Prior for the sigma of the lognormal distribution of recovery rate
-        :math:`\mu`.
-
-    model : :class:`Cov19Model`
+    model : :class:`Cov19Model`, optional
         if none, it is retrieved from the context
-
-    return_all : bool
+    return_all : bool, optional
         if True, returns ``name_new_I_t``, ``name_new_E_t``,  ``name_I_t``,
         ``name_S_t`` otherwise returns only ``name_new_I_t``
-
     Returns
     -------
     name_new_I_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly infected persons.
-
     name_new_E_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
-
     name_S_t : :class:`~aesara.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
-
     """
     log.info("kernelized spread")
     model = modelcontext(model)
 
-    # Build prior distrubutions:
+    # Build prior distributions:
     # --------------------------
 
     # Total number of people in population
@@ -481,7 +448,6 @@ def kernelized_spread(
 
     S_begin = N - pm.math.sum(new_E_begin, axis=0)
 
-    lambda_t = at.exp(lambda_t_log)
     new_I_0 = at.zeros(model.shape_of_regions)
 
     if pr_sigma_median_incubation is None:
@@ -503,7 +469,7 @@ def kernelized_spread(
 
     # Runs kernelized spread model:
     def next_day(
-        lambda_t,
+        R_t,
         S_t,
         nE1,
         nE2,
@@ -531,7 +497,7 @@ def kernelized_spread(
             + beta[8] * nE9
             + beta[9] * nE10
         )
-        new_E_t = lambda_t / N * new_I_t * S_t
+        new_E_t = R_t / N * new_I_t * S_t
         S_t = S_t - new_E_t
         S_t = at.clip(S_t, -1, N)
         return S_t, new_E_t, new_I_t
@@ -540,7 +506,7 @@ def kernelized_spread(
     # what we give in outputs_info : S, E's, new_I
     outputs, _ = scan(
         fn=next_day,
-        sequences=[lambda_t],
+        sequences=[R_t],
         outputs_info=[
             S_begin,
             dict(initial=new_E_begin, taps=[-1, -2, -3, -4, -5, -6, -7, -8, -9, -10]),
