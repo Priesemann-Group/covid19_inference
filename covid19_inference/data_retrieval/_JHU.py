@@ -435,7 +435,7 @@ class JHU(Retrieval):
 
     def _local_helper(self):
         """
-        Overloads the method method from the Base Retrival class
+        Overloads the method method from the Base Retrieval class
         """
         try:
             self._download_csvs_from_source(
@@ -450,7 +450,7 @@ class JHU(Retrieval):
             return True
         except Exception as e:
             log.info(f"Failed to load local files! {e} Trying fallbacks!")
-            self.download_helper(**self.kwargs)
+            self._download_helper(**self.kwargs)
         return False
 
     def _save_to_local(self):
