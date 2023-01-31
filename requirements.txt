@@ -1,0 +1,9 @@
+numpy
+matplotlib
+pymc==4.*
+pandas
+pytest
+requests
+numpyro
+cairosvg
+watermark
