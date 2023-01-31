@@ -1,8 +1,15 @@
 repos:
   - repo: https://github.com/psf/black
+<<<<<<< HEAD
     rev: 22.10.0
     hooks:
       - id: black
         language_version: python3
         exclude: ^scripts/.*$
 
+=======
+    rev: stable
+    hooks:
+      - id: black
+        language_version: python3
+>>>>>>> 5e3b3b1004a3b13ef1132b542870ea84df490b3c
