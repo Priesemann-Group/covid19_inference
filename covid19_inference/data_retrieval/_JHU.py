@@ -272,7 +272,7 @@ class JHU(Retrieval):
         # Retrieve data and filter it
         # ------------------------------------------------------------------------------ #
         df = pd.DataFrame(columns=["date", value]).set_index("date")
-
+        orig = getattr(self, value)
         if country is None:
             df[value] = orig.sum(axis=1, skipna=True)
         else:
@@ -446,7 +446,9 @@ class JHU(Retrieval):
                 ],
                 **self.kwargs,
             )
-            log.info(f"Successfully loaded data from {get_data_dir() + self.name + '_<name>' + '.csv.gz'}")
+            log.info(
+                f"Successfully loaded data from {get_data_dir() + self.name + '_<name>' + '.csv.gz'}"
+            )
             return True
         except Exception as e:
             log.info(f"Failed to load local files! {e} Trying fallbacks!")
