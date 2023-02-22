@@ -446,11 +446,11 @@ class JHU(Retrieval):
                 ],
                 **self.kwargs,
             )
-            log.info(f"Successfully loaded data from local")
+            log.info(f"Successfully loaded data from {get_data_dir() + self.name + '_<name>' + '.csv.gz'}")
             return True
         except Exception as e:
             log.info(f"Failed to load local files! {e} Trying fallbacks!")
-            self.download_helper(**self.kwargs)
+            self._download_helper(**self.kwargs)
         return False
 
     def _save_to_local(self):
@@ -488,6 +488,7 @@ class JHU(Retrieval):
             + "_fallback"
             + ".csv.gz"
         )
+        log.info(f"Use data from local backup: {path_confirmed}")
         path_deaths = (
             _data_dir_fallback + "/" + self.name + "_deaths" + "_fallback" + ".csv.gz"
         )
