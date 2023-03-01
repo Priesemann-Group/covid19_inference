@@ -1,7 +1,7 @@
 import logging
 import pymc as pm
 import numpy as np
-import aesara.tensor as at
+import pytensor.tensor as at
 from .change_points import _make_change_point_RVs
 from ..model import modelcontext
 
@@ -68,7 +68,7 @@ def lambda_t_with_sigmoids(
 
     Returns
     -------
-    lambda_t_log : :class:`aesara.tensor.var.TensorVariable`
+    lambda_t_log : :class:`pytensor.tensor.var.TensorVariable`
         The time dependent spreading rate :math:`\lambda_t` in log space.
 
     """

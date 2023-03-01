@@ -7,7 +7,7 @@
 import logging
 import numpy as np
 import pymc as pm
-import aesara.tensor as at
+import pytensor.tensor as at
 from . import utility as ut
 from .model import modelcontext
 
@@ -58,7 +58,7 @@ def delay_cases(
 
     Parameters
     ----------
-    cases : :class:`~aesara.tensor.TensorVariable`
+    cases : :class:`~pytensor.tensor.TensorVariable`
         The input, typically the number of newly infected cases from the output of
         :func:`SIR` or :func:`SEIR`.
 
@@ -90,7 +90,7 @@ def delay_cases(
     ----------------
     len_input_arr : int, optional
         Length of ``new_I_t``. By default equal to ``model.sim_len``. Necessary
-        because the shape of aesara tensors are not defined at when the graph is
+        because the shape of pytensor tensors are not defined at when the graph is
         built.
 
     len_output_arr : int, optional
@@ -119,7 +119,7 @@ def delay_cases(
 
     Returns
     -------
-    delayed_cases : :class:`~aesara.tensor.TensorVariable`
+    delayed_cases : :class:`~pytensor.tensor.TensorVariable`
         The delayed input :math:`y_\\text{delayed}(t)`,
         typically the daily number new cases that one expects to measure.
     """
@@ -231,7 +231,7 @@ def _delay_timeshift(new_I_t, len_new_I_t, len_out, delay, delay_diff):
 
     Parameters
     ----------
-    new_I_t : ~numpy.ndarray or aesara vector
+    new_I_t : ~numpy.ndarray or pytensor vector
         Input to be delayed.
 
     len_new_I_t : integer

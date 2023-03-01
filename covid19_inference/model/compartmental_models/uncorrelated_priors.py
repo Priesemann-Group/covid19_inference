@@ -2,8 +2,8 @@ import logging
 import numpy as np
 import pymc as pm
 
-from aesara import scan
-import aesara.tensor as at
+from pytensor import scan
+import pytensor.tensor as at
 
 from ..model import *
 from .. import utility as ut
@@ -29,7 +29,7 @@ def uncorrelated_prior_I(
 
     Parameters
     ----------
-    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
+    lambda_t_log : :class:`~pytensor.tensor.TensorVariable`
         time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional
         the first dimension is time.
 
@@ -61,7 +61,7 @@ def uncorrelated_prior_I(
 
     Returns
     ------------------
-    I_begin: :class:`~aesara.tensor.TensorVariable`
+    I_begin: :class:`~pytensor.tensor.TensorVariable`
 
     """
     log.info("Compartmental Model (Uncorrelated prior I)")
@@ -154,7 +154,7 @@ def uncorrelated_prior_E(
 
     Returns
     ------------------
-    E_begin: :class:`~aesara.tensor.TensorVariable`
+    E_begin: :class:`~pytensor.tensor.TensorVariable`
 
     """
     log.info("Compartmental Model (Uncorrelated prior E)")

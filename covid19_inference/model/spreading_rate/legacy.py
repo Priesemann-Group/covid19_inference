@@ -1,6 +1,6 @@
 import logging
 import pymc as pm
-import aesara.tensor as at
+import pytensor.tensor as at
 from ..model import modelcontext
 from ..utility import deprecated
 
@@ -127,10 +127,10 @@ def _smooth_step_function(start_val, end_val, t_begin, t_end, t_total):
         end_val : float
             Target value
 
-        t_begin : int or array_like or :class:`~aesara.tensor.Variable`
+        t_begin : int or array_like or :class:`~pytensor.tensor.Variable`
             Time point (inbetween 0 and t_total) where start_val is placed
 
-        t_end : int or array_like or :class:`~aesara.tensor.Variable`
+        t_end : int or array_like or :class:`~pytensor.tensor.Variable`
             Time point (inbetween 0 and t_total) where end_val is placed
 
         t_total : int
@@ -138,7 +138,7 @@ def _smooth_step_function(start_val, end_val, t_begin, t_end, t_total):
 
     Returns
     -------
-        : :class:`~aesara.tensor.Variable`
+        : :class:`~pytensor.tensor.Variable`
             vector of length t_total with the values of the parameterised f(t)
     """
     t = np.arange(t_total)

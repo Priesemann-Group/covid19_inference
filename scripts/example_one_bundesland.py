@@ -11,7 +11,7 @@ import sys
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import aesara.tensor as at
+import pytensor.tensor as at
 import pymc as pm
 
 # Now to the fun stuff, we import our module!

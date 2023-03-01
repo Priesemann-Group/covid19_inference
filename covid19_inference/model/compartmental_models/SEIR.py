@@ -2,8 +2,8 @@ import logging
 import numpy as np
 import pymc as pm
 
-from aesara import scan
-import aesara.tensor as at
+from pytensor import scan
+import pytensor.tensor as at
 
 from ..model import *
 from .. import utility as ut
@@ -54,7 +54,7 @@ def SEIR(
 
     Parameters
     ----------
-    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
+    lambda_t_log : :class:`~pytensor.tensor.TensorVariable`
         Time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional
         the first dimension is time.
 
@@ -138,17 +138,17 @@ def SEIR(
 
     Returns
     -------
-    name_new_I_t : :class:`~aesara.tensor.TensorVariable`
+    name_new_I_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the number daily newly infected persons.
 
-    name_new_E_t : :class:`~aesara.tensor.TensorVariable`
+    name_new_E_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
 
-    name_I_t : :class:`~aesara.tensor.TensorVariable`
+    name_I_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the infected (if return_all set to True)
 
-    name_S_t : :class:`~aesara.tensor.TensorVariable`
+    name_S_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
     """
     log.info("Compartmental Model (SEIR)")
@@ -231,7 +231,7 @@ def SEIR(
         S_t = at.clip(S_t, -1, N)
         return S_t, new_E_t, I_t, new_I_t
 
-    # aesara scan returns two tuples, first one containing a time series of
+    # pytensor scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, E's, I, new_I
     outputs, _ = scan(
         fn=next_day,

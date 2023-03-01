@@ -2,8 +2,8 @@ import logging
 import numpy as np
 import pymc as pm
 
-from aesara import scan
-import aesara.tensor as at
+from pytensor import scan
+import pytensor.tensor as at
 
 from ..model import *
 from .. import utility as ut
@@ -30,7 +30,7 @@ def SIR_variants(
 
     Parameters
     ----------
-    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
+    lambda_t_log : :class:`~pytensor.tensor.TensorVariable`
         Time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional
         the first dimension is time.
 
@@ -40,10 +40,10 @@ def SIR_variants(
         in ``mu_kwargs``. Can be 0 or 1-dimensional. If 1-dimensional, the dimension
         are the different regions.
 
-    f : :class:`~aesara.tensor.TensorVariable`
+    f : :class:`~pytensor.tensor.TensorVariable`
         TODO
 
-    pr_I_begin : float or array_like or :class:`~aesara.tensor.Variable`
+    pr_I_begin : float or array_like or :class:`~pytensor.tensor.Variable`
         Prior beta of the Half-Cauchy distribution of :math:`I(0)`.
         if type is ``at.Constant``, I_begin will not be inferred by pymc.
     model : :class:`Cov19Model`
@@ -55,11 +55,11 @@ def SIR_variants(
 
     Returns
     ------------------
-    new_I_t : :class:`~aesara.tensor.TensorVariable`
+    new_I_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the number daily newly infected persons.
-    I_t : :class:`~aesara.tensor.TensorVariable`
+    I_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the infected (if return_all set to True)
-    S_t : :class:`~aesara.tensor.TensorVariable`
+    S_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
     """
 
@@ -111,7 +111,7 @@ def SIR_variants(
         S_t = at.clip(S_t, 0, N)
         return S_t, I_tv, new_I_tv
 
-    # aesara scan returns two tuples, first one containing a time series of
+    # pytensor scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, I, new_I
     new_I_0 = at.zeros_like(I_begin)
     outputs, _ = scan(
@@ -159,11 +159,11 @@ def kernelized_spread_variants(
 
     Parameters
     ----------
-    R_t_log : :class:`~aesara.tensor.TensorVariable`
+    R_t_log : :class:`~pytensor.tensor.TensorVariable`
         time series of the logarithm of the reproduction time, 1 or 2-dimensional. If 2-dimensional, the first
         dimension is time.
 
-    f : :class:`~aesara.tensor.TensorVariable`
+    f : :class:`~pytensor.tensor.TensorVariable`
         The factor by which the reproduction number of each variant is multiplied by,
         is of shape num_variants
 
@@ -227,14 +227,14 @@ def kernelized_spread_variants(
 
     Returns
     -------
-    new_I_t : :class:`~aesara.tensor.TensorVariable`
+    new_I_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the number daily newly infected persons.
 
-    new_E_t : :class:`~aesara.tensor.TensorVariable`
+    new_E_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
 
-    S_t : :class:`~aesara.tensor.TensorVariable`
+    S_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
 
     """
@@ -333,7 +333,7 @@ def kernelized_spread_variants(
 
         return S_t, new_E_tv, new_I_tv
 
-    # aesara scan returns two tuples, first one containing a time series of
+    # pytensor scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, E's, new_I
 
     outputs, _ = scan(
@@ -389,12 +389,12 @@ def kernelized_spread_gender(
 
     Parameters
     ----------
-    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
+    lambda_t_log : :class:`~pytensor.tensor.TensorVariable`
         Time series of the logarithm of the spreading rate, 2 or 3-dimensional. If 3-dimensional, the first
         dimension is time.
         shape: time, gender, [country]
 
-    gender_interaction_matrix : :class:`~aesara.tensor.TensorVariable`
+    gender_interaction_matrix : :class:`~pytensor.tensor.TensorVariable`
         Gender interaction matrix should be of shape (num_gender,num_gender)
 
     name_new_I_t : str, optional
@@ -455,14 +455,14 @@ def kernelized_spread_gender(
 
     Returns
     -------
-    name_new_I_t : :class:`~aesara.tensor.TensorVariable`
+    name_new_I_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the number daily newly infected persons.
 
-    name_new_E_t : :class:`~aesara.tensor.TensorVariable`
+    name_new_E_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
 
-    name_S_t : :class:`~aesara.tensor.TensorVariable`
+    name_S_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
 
     """
@@ -558,7 +558,7 @@ def kernelized_spread_gender(
         S_t = at.clip(S_t, -1, N)
         return S_t, new_E_t, new_I_t
 
-    # aesara scan returns two tuples, first one containing a time series of
+    # pytensor scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, E's, new_I
     outputs, _ = scan(
         fn=next_day,
@@ -612,12 +612,12 @@ def kernelized_spread_with_interaction(
 
     Parameters
     ----------
-    R_t_log : :class:`~aesara.tensor.TensorVariable`
+    R_t_log : :class:`~pytensor.tensor.TensorVariable`
         Time series of the logarithm of the spreading rate, 2 or 3-dimensional. The first
         dimension is time.
         shape: time, num_groups, [independent dimension]
 
-    interaction_matrix : :class:`~aesara.tensor.TensorVariable`
+    interaction_matrix : :class:`~pytensor.tensor.TensorVariable`
         Interaction matrix should be of shape (num_groups, num_groups)
 
     num_groups : int
@@ -679,14 +679,14 @@ def kernelized_spread_with_interaction(
 
     Returns
     -------
-    name_new_I_t : :class:`~aesara.tensor.TensorVariable`
+    name_new_I_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the number daily newly infected persons.
 
-    name_new_E_t : :class:`~aesara.tensor.TensorVariable`
+    name_new_E_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
 
-    name_S_t : :class:`~aesara.tensor.TensorVariable`
+    name_S_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
 
     """
@@ -783,7 +783,7 @@ def kernelized_spread_with_interaction(
         S_t = at.clip(S_t, -1, N)
         return S_t, new_E_t, new_I_t
 
-    # aesara scan returns two tuples, first one containing a time series of
+    # pytensor scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, E's, new_I
     outputs, _ = scan(
         fn=next_day,
@@ -835,12 +835,12 @@ def kernelized_spread_tmp(
 
     Parameters
     ----------
-    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
+    lambda_t_log : :class:`~pytensor.tensor.TensorVariable`
         Time series of the logarithm of the spreading rate, 2 or 3-dimensional. If 3-dimensional, the first
         dimension is time.
         shape: time, gender, [country]
 
-    gender_interaction_matrix : :class:`~aesara.tensor.TensorVariable`
+    gender_interaction_matrix : :class:`~pytensor.tensor.TensorVariable`
         Gender interaction matrix should be of shape (num_gender,num_gender)
 
     name_new_I_t : str, optional
@@ -901,14 +901,14 @@ def kernelized_spread_tmp(
 
     Returns
     -------
-    name_new_I_t : :class:`~aesara.tensor.TensorVariable`
+    name_new_I_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the number daily newly infected persons.
 
-    name_new_E_t : :class:`~aesara.tensor.TensorVariable`
+    name_new_E_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
 
-    name_S_t : :class:`~aesara.tensor.TensorVariable`
+    name_S_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
 
     """
@@ -995,7 +995,7 @@ def kernelized_spread_tmp(
         S_t = at.clip(S_t, -1, N)
         return S_t, new_E_t, new_I_t
 
-    # aesara scan returns two tuples, first one containing a time series of
+    # pytensor scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, E's, new_I
     outputs, _ = scan(
         fn=next_day,

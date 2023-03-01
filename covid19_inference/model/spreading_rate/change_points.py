@@ -2,7 +2,7 @@ import logging
 import pandas as pd
 import pymc as pm
 import numpy as np
-import aesara.tensor as at
+import pytensor.tensor as at
 from .. import utility as ut
 from ..model import modelcontext
 

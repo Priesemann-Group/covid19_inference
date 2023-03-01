@@ -3,12 +3,12 @@
 # ------------------------------------------------------------------------------ #
 
 import logging
-import aesara
+import pytensor
 import numpy as np
 from datetime import timedelta
 import pymc as pm
-from aesara import scan
-import aesara.tensor as at
+from pytensor import scan
+import pytensor.tensor as at
 
 
 from .model import *
@@ -36,7 +36,7 @@ def week_modulation(
 
     Parameters
     ----------
-    cases_raw : :class:`~aesara.tensor.TensorVariable`
+    cases_raw : :class:`~pytensor.tensor.TensorVariable`
         The input array of daily new cases, can be one- or two-dimensional.
     week_modulation_type : str
         The type of modulation, accepts ``"step"`` or  ``"abs_sine`` (the default).
@@ -47,7 +47,7 @@ def week_modulation(
 
     Returns
     -------
-    cases : :class:`~aesara.tensor.TensorVariable`
+    cases : :class:`~pytensor.tensor.TensorVariable`
         The new cases with modulation applied.
 
     """
@@ -103,7 +103,7 @@ def step_modulation(
     Parameters
     ----------
 
-    cases_raw : :class:`~aesara.tensor.TensorVariable`
+    cases_raw : :class:`~pytensor.tensor.TensorVariable`
         The input array of daily new cases, can be one- or two-dimensional. First dimension
         has to be the time dimension.
 
@@ -122,7 +122,7 @@ def step_modulation(
 
     Returns
     -------
-    cases : :class:`~aesara.tensor.TensorVariable`
+    cases : :class:`~pytensor.tensor.TensorVariable`
         The new cases with modulation applied.
     """
 
@@ -221,7 +221,7 @@ def abs_sine_modulation(
 
     Parameters
     ----------
-    cases_raw : :class:`~aesara.tensor.TensorVariable`
+    cases_raw : :class:`~pytensor.tensor.TensorVariable`
         The input array of daily new cases, can be one- or two-dimensional. First dimension
         has to be the time dimension.
 
@@ -244,7 +244,7 @@ def abs_sine_modulation(
 
     Returns
     -------
-    cases : :class:`~aesara.tensor.TensorVariable`
+    cases : :class:`~pytensor.tensor.TensorVariable`
         The new cases with modulation applied.
     """
 

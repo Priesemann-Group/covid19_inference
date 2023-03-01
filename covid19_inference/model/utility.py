@@ -4,7 +4,7 @@
 
 import logging
 import pymc as pm
-import aesara.tensor as at
+import pytensor.tensor as at
 
 from .model import modelcontext
 
@@ -15,7 +15,7 @@ import functools
 
 # workaround for macos, sufficient to do this once
 # if platform.system() == "Darwin":
-#    aesara.config.gcc.cxxflags = "-Wno-c++11-narrowing"
+#    pytensor.config.gcc.cxxflags = "-Wno-c++11-narrowing"
 
 
 def hierarchical_normal(
@@ -69,9 +69,9 @@ def hierarchical_normal(
 
     Returns
     -------
-    y : :class:`~aesara.tensor.TensorVariable`
+    y : :class:`~pytensor.tensor.TensorVariable`
         the random variable :math:`y_\text{L2}`
-    x : :class:`~aesara.tensor.TensorVariable`
+    x : :class:`~pytensor.tensor.TensorVariable`
         the random variable :math:`x_\text{L1}`
     """
 

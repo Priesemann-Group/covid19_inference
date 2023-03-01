@@ -77,7 +77,7 @@ autodoc_mock_imports = [
     "mpl_toolkits",
     "scipy",
     "pymc",
-    "aesara",
+    "pytensor",
     "pandas",
     "filelock",
     "arviz",
@@ -194,7 +194,7 @@ intersphinx_mapping = {
     "scipy": ("https://docs.scipy.org/doc/scipy/reference", None),
     "matplotlib": ("https://matplotlib.org/stable/", None),
     "pymc": ("https://www.pymc.io/projects/docs/en/stable", None),
-    "aesara": ("https://aesara.readthedocs.io/en/latest/", None),
+    "pytensor": ("https://pytensor.readthedocs.io/en/latest/", None),
     "pandas": ("https://pandas.pydata.org/docs/", None),
     "arviz": ("https://python.arviz.org/en/stable/", None),
 }

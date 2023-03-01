@@ -11,7 +11,7 @@ import datetime
 import sys
 import numpy as np
 import pickle
-import aesara.tensor as at
+import pytensor.tensor as at
 import matplotlib.pyplot as plt
 import pymc as pm
 

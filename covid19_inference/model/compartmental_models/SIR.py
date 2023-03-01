@@ -2,8 +2,8 @@ import logging
 import numpy as np
 import pymc as pm
 
-from aesara import scan
-import aesara.tensor as at
+from pytensor import scan
+import pytensor.tensor as at
 
 from ..model import *
 
@@ -37,7 +37,7 @@ def SIR(
 
     Parameters
     ----------
-    lambda_t_log : :class:`~aesara.tensor.TensorVariable`
+    lambda_t_log : :class:`~pytensor.tensor.TensorVariable`
         time series of the logarithm of the spreading rate, 1 or 2-dimensional. If 2-dimensional the first
         dimension is time.
 
@@ -51,7 +51,7 @@ def SIR(
         Arguments for the recovery rate distribution. Defaults to ``{"name": "mu", "mu":log(1/8), "sigma":0.2}``. See :class:`pymc.LogNormal` for more
         options. If no shape is given, the shape is inferred from the model.
 
-    I_begin : None or :class:`~aesara.tensor.TensorVariable`
+    I_begin : None or :class:`~pytensor.tensor.TensorVariable`
         Distribution for initial value of infected pool i.e. :math:`I(0)`. Defaults to
         :class:`pymc.HalfCauchy` with the arguments defined
         in ``I_begin_kwargs``. Can be 0 or 1-dimensional. If 1-dimensional,
@@ -85,11 +85,11 @@ def SIR(
 
     Returns
     ------------------
-    new_I_t : :class:`~aesara.tensor.TensorVariable`
+    new_I_t : :class:`~pytensor.tensor.TensorVariable`
         time series of the number daily newly infected persons.
-    I_t : :class:`~aesara.tensor.TensorVariable`, optional
+    I_t : :class:`~pytensor.tensor.TensorVariable`, optional
         time series of the infected (if return_all set to True)
-    S_t : :class:`~aesara.tensor.TensorVariable`, optional
+    S_t : :class:`~pytensor.tensor.TensorVariable`, optional
         time series of the susceptible (if return_all set to True)
 
     """
@@ -122,7 +122,7 @@ def SIR(
         S_t = at.clip(S_t, 0, N)
         return S_t, I_t, new_I_t
 
-    # aesara scan returns two tuples, first one containing a time series of
+    # pytensor scan returns two tuples, first one containing a time series of
     # what we give in outputs_info : S, I, new_I
     outputs, _ = scan(
         fn=next_day,

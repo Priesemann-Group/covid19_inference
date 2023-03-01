@@ -5,7 +5,7 @@
 import logging
 
 import pymc as pm
-import aesara.tensor as at
+import pytensor.tensor as at
 import numpy as np
 from scipy import ndimage as ndi
 
@@ -48,7 +48,7 @@ def student_t_likelihood(
         Parameters
         ----------
 
-        cases : :class:`~aesara.tensor.TensorVariable`
+        cases : :class:`~pytensor.tensor.TensorVariable`
             The daily new cases estimated by the model.
             Will be compared to  the real world data ``data_obs``.
             One or two dimensonal array. If 2 dimensional, the first dimension is time
