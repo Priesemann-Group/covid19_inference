@@ -61,6 +61,10 @@ def _make_change_point_RVs(
         for i, cp in enumerate(change_points_list):
             if cp["relative_to_previous"]:
                 if sigma_lambda_cp is None:
+                    if i == 0:
+                        log.info(
+                            "Create hierarchical change-points with separate variance"
+                        )
                     (
                         factor_lambda_cp_hc_L2_log,
                         factor_lambda_cp_hc_L1_log,
@@ -80,6 +84,10 @@ def _make_change_point_RVs(
                         lambda_L1_log_list[-1] + factor_lambda_cp_hc_L2_log
                     )
                 else:
+                    if i == 0:
+                        log.info(
+                            "Create hierarchical change-points with shared variance"
+                        )
                     if sigma_lambda_week_cp is None:
                         raise RuntimeError("sigma_lambda_week_cp needs also to be set")
                     factor_lambda_week_log = (
@@ -90,20 +98,23 @@ def _make_change_point_RVs(
                     lambda_cp_hc_L1_log = (
                         lambda_L1_log_list[-1] + factor_lambda_week_log
                     )
-                    pr_mean_lambda = lambda_log_list[-1] + factor_lambda_week_log
+
+                    # pr_mean_lambda = lambda_log_list[-1] + factor_lambda_week_log
                     lambda_cp_hc_L2_log = (
                         (
                             pm.Normal(
                                 name=f"diff_lambda_cw_raw_{i + 1}",
-                                mu=pr_mean_lambda,
+                                mu=lambda_cp_hc_L1_log,
                                 sigma=1.0,
                                 shape=shape,
                             )
                         )
-                        - pr_mean_lambda
-                    ) * sigma_lambda_cp + pr_mean_lambda
+                        - lambda_cp_hc_L1_log
+                    ) * sigma_lambda_cp + lambda_cp_hc_L1_log
 
             else:
+                if i == 0: log.info(
+                    "Create hierarchical change-points with prior")
                 pr_mean_lambda = np.log(cp["pr_median_lambda"])
 
                 lambda_cp_hc_L2_log, lambda_cp_hc_L1_log = ut.hierarchical_normal(
@@ -150,8 +161,7 @@ def _make_change_point_RVs(
                     shape=shape,
                 )
                 pm.Deterministic(
-                    f"{prefix_lambdas}transient_len_{i + 1}",
-                    at.softplus(tr_len_raw),
+                    f"{prefix_lambdas}transient_len_{i + 1}", at.softplus(tr_len_raw),
                 )
                 tr_len_list.append(at.softplus(tr_len_raw))
         else:
@@ -190,12 +200,10 @@ def _make_change_point_RVs(
                 )
                 if tr_len_L1_raw is not None:
                     pm.Deterministic(
-                        f"transient_len_{i + 1}_hc_L1",
-                        at.softplus(tr_len_L1_raw),
+                        f"transient_len_{i + 1}_hc_L1", at.softplus(tr_len_L1_raw),
                     )
                     pm.Deterministic(
-                        f"transient_len_{i + 1}_hc_L2",
-                        at.softplus(tr_len_L2_raw),
+                        f"transient_len_{i + 1}_hc_L2", at.softplus(tr_len_L2_raw),
                     )
                 else:
                     pm.Deterministic(
@@ -274,8 +282,7 @@ def _make_change_point_RVs(
                 shape=shape,
             )
             pm.Deterministic(
-                f"{prefix_lambdas}transient_len_{i + 1}",
-                at.softplus(tr_len_raw),
+                f"{prefix_lambdas}transient_len_{i + 1}", at.softplus(tr_len_raw),
             )
             tr_len_list.append(at.softplus(tr_len_raw))
 
