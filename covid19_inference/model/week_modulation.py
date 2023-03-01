@@ -338,7 +338,7 @@ def by_weekday_modulation(cases, model=None):
     )
     r_week = r_base + delta_r
 
-    r_transformed_week = at.nnet.sigm.sigmoid(r_week)
+    r_transformed_week = at.math.sigmoid(r_week)
     pm.Deterministic("fraction_delayed_by_weekday", r_week)
 
     t = np.arange(model.sim_shape[0]) + model.sim_begin.weekday()  # Monday @ zero

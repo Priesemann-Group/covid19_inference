@@ -143,7 +143,7 @@ def tt_lognormal(x, mu, sigma):
     """
     Calculates a lognormal pdf for integer spaced x input.
     """
-    x = at.nnet.relu(x - 1e-12) + 1e-12  # clip values at 1e-12
+    x = at.maximum(x, 1e-12)  # clip values at 1e-12
     distr = 1 / x * at.exp(-((at.log(x) - mu) ** 2) / (2 * sigma**2))
 
     # normalize, add a small offset in case the sum is zero
@@ -159,7 +159,7 @@ def tt_gamma(x, mu=None, sigma=None, alpha=None, beta=None):
     if alpha is None and beta is None:
         alpha = mu**2 / (sigma**2 + 1e-8)
         beta = mu / (sigma**2 + 1e-8)
-    x = at.nnet.relu(x - 1e-12) + 1e-12  # clip values at 1e-12
+    x = at.maximum(x, 1e-12)  # clip values at 1e-12
     distr = beta**alpha * x ** (alpha - 1) * at.exp(-beta * x)
 
     # normalize, add a small offset in case the sum is zero
