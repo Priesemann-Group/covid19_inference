@@ -128,12 +128,12 @@ class RKI(Retrieval):
         df = self.data
         if "Meldedatum" in df.columns:
             df["date"] = df["Meldedatum"].apply(
-                lambda x: datetime.datetime.strptime(x, "%Y-%m-%d")
+                lambda x: datetime.datetime.strptime(x, "%Y/%m/%d 00:00:00")
             )
             df = df.drop(columns="Meldedatum")
         if "Refdatum" in df.columns:
             df["date_ref"] = df["Refdatum"].apply(
-                lambda x: datetime.datetime.strptime(x, "%Y-%m-%d")
+                lambda x: datetime.datetime.strptime(x, "%Y/%m/%d 00:00:00")
             )
             df = df.drop(columns="Refdatum")
 
@@ -187,7 +187,6 @@ class RKI(Retrieval):
 
             # Fills DF with data from all landkreise
             for idlandkreis in unique_ids:
-
                 url_str = (
                     "https://services7.arcgis.com/mOBPykOjAyBO2ZKk/ArcGIS/rest/services/RKI_COVID19/FeatureServer/0//query?where=IdLandkreis%3D"
                     + idlandkreis
