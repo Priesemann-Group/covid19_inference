@@ -12,6 +12,30 @@ import urllib, json
 log = logging.getLogger(__name__)
 
 
+def _bundesland_id_to_name(id):
+    """Given a bundesland id, return the name"""
+
+    names = {
+        1: "Schleswig-Holstein",
+        2: "Hamburg",
+        3: "Niedersachsen",
+        4: "Bremen",
+        5: "Nordrhein-Westfalen",
+        6: "Hessen",
+        7: "Rheinland-Pfalz",
+        8: "Baden-Württemberg",
+        9: "Bayern",
+        10: "Saarland",
+        11: "Berlin",
+        12: "Brandenburg",
+        13: "Mecklenburg-Vorpommern",
+        14: "Sachsen",
+        15: "Sachsen-Anhalt",
+        16: "Thüringen",
+    }
+    return names[id]
+
+
 class RKI(Retrieval):
     """
     This class can be used to retrieve and filter the dataset from the Robert Koch Institute `Robert Koch Institute <https://www.rki.de/>`_.
@@ -147,6 +171,13 @@ class RKI(Retrieval):
 
         df["date"] = pd.to_datetime(df["date"])
         df["date_ref"] = pd.to_datetime(df["date_ref"])
+
+        df["IdBundesland"] = df["IdLandkreis"].apply(
+            lambda x: int(str(x).zfill(5)[:2]) if not pd.isnull(x) else x
+        )
+        df["Bundesland"] = df["IdBundesland"].apply(
+            lambda x: _bundesland_id_to_name(x) if not pd.isnull(x) else x
+        )
         self.data = df
 
     def __download_via_rest_api(self, try_max=10):
