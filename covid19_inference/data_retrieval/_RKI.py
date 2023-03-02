@@ -15,7 +15,7 @@ log = logging.getLogger(__name__)
 class RKI(Retrieval):
     """
     This class can be used to retrieve and filter the dataset from the Robert Koch Institute `Robert Koch Institute <https://www.rki.de/>`_.
-    The data gets retrieved from the `arcgis <https://www.arcgis.com/sharing/rest/content/items/f10774f1c63e40168479a1feb6c7ca74/data>`_  dashboard.
+    The data gets retrieved from the `github repo <https://github.com/robert-koch-institut/SARS-CoV-2-Infektionen_in_Deutschland>`_.
 
     Features
         - download the full dataset
@@ -61,7 +61,7 @@ class RKI(Retrieval):
         """
         The url to the main dataset as csv, if none if supplied the fallback routines get used
         """
-        url_csv = "https://www.arcgis.com/sharing/rest/content/items/66876b81065340a4a48710b062319336/data"
+        url_csv = "https://github.com/robert-koch-institut/SARS-CoV-2-Infektionen_in_Deutschland/raw/main/Aktuell_Deutschland_SarsCov2_Infektionen.csv"
 
         """
         Kwargs for pandas read csv
@@ -128,12 +128,12 @@ class RKI(Retrieval):
         df = self.data
         if "Meldedatum" in df.columns:
             df["date"] = df["Meldedatum"].apply(
-                lambda x: datetime.datetime.strptime(x, "%Y/%m/%d 00:00:00")
+                lambda x: datetime.datetime.strptime(x, "%Y-%m-%d")
             )
             df = df.drop(columns="Meldedatum")
         if "Refdatum" in df.columns:
             df["date_ref"] = df["Refdatum"].apply(
-                lambda x: datetime.datetime.strptime(x, "%Y/%m/%d 00:00:00")
+                lambda x: datetime.datetime.strptime(x, "%Y-%m-%d")
             )
             df = df.drop(columns="Refdatum")
 
