@@ -161,6 +161,7 @@ def lambda_t_with_sigmoids(
     if isinstance(shape, int):
         shape = (shape,)
 
+    # Get RV lists for log(lambda), transient time, and transient length of the change points
     lambda_log_list, tr_time_list, tr_len_list = _make_change_point_RVs(
         change_points_list,
         pr_median_lambda_0,
@@ -177,7 +178,7 @@ def lambda_t_with_sigmoids(
     lambda_log_t_list = [lambda_log_list[0] * at.ones((model.sim_len,) + shape)]
     lambda_before = lambda_log_list[0]
 
-    # Loop over all lambda values and there corresponding transient values
+    # Loop over all lambda values and their corresponding transient values
     for tr_time, tr_len, lambda_after in zip(
         tr_time_list, tr_len_list, lambda_log_list[1:]
     ):
@@ -188,8 +189,8 @@ def lambda_t_with_sigmoids(
         if shape:
             t = np.repeat(t[:, None], shape, axis=-1)
 
-        # Applies standart sigmoid nonlinearity
-        lambda_t = at.sigmoid((t - tr_time) / tr_len * 4) * (
+        # Applies standard sigmoid nonlinearity
+        lambda_t = at.nnet.basic.sigmoid((t - tr_time) / tr_len * 4) * (
             lambda_after - lambda_before
         )  # tr_len*4 because the derivative of the sigmoid at zero is 1/4, we want to set it to 1/tr_len
 
@@ -199,7 +200,6 @@ def lambda_t_with_sigmoids(
     # Sum up all lambda values from the list
     for i, lambda_t in enumerate(lambda_log_t_list):
         pm.Deterministic(f"{prefix_lambdas}lambda_t_part_{i}", lambda_t)
-
     lambda_t_log = sum(lambda_log_t_list)
 
     # Create responding lambda_t pymc3 variable with given name (from parameters)
@@ -288,7 +288,6 @@ def _make_change_point_RVs(
     shape=None,
 ):
     """
-
     Parameters
     ----------
     priors_dict
@@ -300,7 +299,8 @@ def _make_change_point_RVs(
 
     TODO
     ----
-        Documentation on this
+        Makes a Bayesian model returning lists for RVs for all log lambda, transient time and transient lengt.
+        Hierarchical and non-hierarchical (and partly hierarchical) possible.
 
         Add a way to name the changepoints
     """
@@ -309,6 +309,11 @@ def _make_change_point_RVs(
         shape = model.shape_of_regions
 
     def hierarchical_mod():
+        """
+        Creates hierarchical model for lambda (log), transient time, and transient length
+        """
+        
+        # Make hierarchical RV for lambda_0 and put it (and log) into list
         lambda_0_hc_L2_log, lambda_0_hc_L1_log = ut.hierarchical_normal(
             name_L1="lambda_0_hc_L1_log_",
             name_L2="lambda_0_hc_L2_log",
@@ -324,8 +329,9 @@ def _make_change_point_RVs(
         lambda_log_list.append(lambda_0_hc_L2_log)
         lambda_L1_log_list.append(lambda_0_hc_L1_log)
 
-        # Create lambda_log list
+        # Create lambda_log list for remaining time points (hierarchical RVs)
         for i, cp in enumerate(change_points_list):
+            # Option 1: Define log lambda using hierarchical RVs representing difference to previous log lambda 
             if cp["relative_to_previous"]:
                 if sigma_lambda_cp is None:
                     (
@@ -346,6 +352,7 @@ def _make_change_point_RVs(
                     lambda_cp_hc_L1_log = (
                         lambda_L1_log_list[-1] + factor_lambda_cp_hc_L2_log
                     )
+                # 
                 else:
                     if sigma_lambda_week_cp is None:
                         raise RuntimeError("sigma_lambda_week_cp needs also to be set")
@@ -369,7 +376,7 @@ def _make_change_point_RVs(
                         )
                         - pr_mean_lambda
                     ) * sigma_lambda_cp + pr_mean_lambda
-
+            # Option 2: Define log lambda directly as hierarchical RV
             else:
                 pr_mean_lambda = np.log(cp["pr_median_lambda"])
 
@@ -390,7 +397,10 @@ def _make_change_point_RVs(
         # Create transient time list
         dt_before = model.sim_begin
 
-        if hierarchical == "only_lambda":
+        # Make RVs for transient times and lengths
+        # Non-hierarchical version for variables beside lambda
+        if hierarchical == "only_lambda": 
+            # Fill transient time lists with RVs according to input change point list
             for i, cp in enumerate(change_points_list):
                 dt_begin_transient = cp["pr_mean_date_transient"]
                 if dt_before is not None and dt_before > dt_begin_transient:
@@ -420,8 +430,10 @@ def _make_change_point_RVs(
                     f"{prefix_lambdas}transient_len_{i + 1}",
                     at.softplus(tr_len_raw),
                 )
-                tr_len_list.append(at.softplus(tr_len_raw))
+                tr_len_list.append(at.nnet.basic.softplus(tr_len_raw))
+        # Hierarchical version for the variables beside lambda
         else:
+            # Fill transient time lists with RVs according to input change point list
             for i, cp in enumerate(change_points_list):
                 dt_begin_transient = cp["pr_mean_date_transient"]
                 if dt_before is not None and dt_before > dt_begin_transient:
@@ -471,6 +483,10 @@ def _make_change_point_RVs(
                 tr_len_list.append(at.softplus(tr_len_L2_raw))
 
     def non_hierarchical_mod():
+        """
+        Creates non-hierarchical model for lambda (log), transient time, and transient length
+        """
+        
         lambda_0_log = pm.Normal(
             name=f"{prefix_lambdas}lambda_0_log_",
             mu=np.log(pr_median_lambda_0),

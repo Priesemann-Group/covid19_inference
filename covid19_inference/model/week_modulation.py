@@ -69,7 +69,6 @@ def week_modulation(
 
     return cases
 
-
 def step_modulation(
     cases_raw,
     weekend_days=(6, 7),
@@ -85,7 +84,6 @@ def step_modulation(
 ):
     r""" Adds a step modulation to the cases to account for weekend not
     being reported or being reported less.
-
     .. math::
         \text{cases} &= \text{cases_raw} \cdot (1-f(t))\,, \qquad\text{with}\\
         f(t) &= \begin{cases}
@@ -96,30 +94,24 @@ def step_modulation(
     By default, weekend factor :math:`f_w` follows a LogNormal distribution with
     median ``weekend_factor_prior_mu`` and sigma ``weekend_factor_prior_sigma``. It is hierarchically
     constructed if the input is two-dimensional by the function :func:`hierarchical_normal` with default arguments.
-
     Weekends are defined to be Saturday and Sunday, but can be changed with
     the ``weekend_days`` parameter.
-
+    
     Parameters
     ----------
-
     cases_raw : :class:`~aesara.tensor.TensorVariable`
         The input array of daily new cases, can be one- or two-dimensional. First dimension
         has to be the time dimension.
-
     weekend_days : tuple of ints
         The days counted as weekend (isoweekday: 1 is Monday, 7 is Sunday). Default is Saturday and Sunday (6,7).
-
     weekend_factor : None or :class:`pymc.Continuous`
         The weekend factor :math:`f_w` can be passed as a PyMC distribution. If ``None`` it is
         constructed from the parameters ``weekend_factor_prior_mu`` and ``weekend_factor_prior_sigma`` using 
         a Lognormal distribution. If the input is two-dimensional, the distribution is hierarchically constructed
         using the function :func:`hierarchical_normal` with default arguments.
-
     weekend_factor_kwargs : dict
         Keyword arguments passed to the pymc distribution of ``weekend_factor`` if it is constructed.
         See :class:`pymc.Normal` for available arguments. Default is ``{"name":"weekend_factor", "mu": log(0.3), "sigma": 0.5}``.
-
     Returns
     -------
     cases : :class:`~aesara.tensor.TensorVariable`
@@ -181,6 +173,7 @@ def step_modulation(
     return cases
 
 
+
 def abs_sine_modulation(
     cases_raw,
     # weekend_factor,
@@ -201,47 +194,35 @@ def abs_sine_modulation(
     model=None,
 ):
     r"""Adds weekly modulation to the cases, following an absolute sine function.
-
     .. math::
         \text{cases} &= \text{cases_raw} \cdot (1-f(t))\,, \qquad\text{with}\\
         f(t) &= f_w \cdot \left(1 - \left|\sin\left(\frac{\pi}{7} t- \frac{1}{2}\Phi_w\right)\right| \right),
-
-
     By default, weekend factor :math:`f_w` follows a Lognormal distribution with
     median ``weekend_factor_prior_mu`` and sigma ``weekend_factor_prior_sigma``. It is hierarchically
     constructed if the input is two-dimensional by the function :func:`hierarchical_normal` with default arguments.
-
     The offset from Sunday :math:`\Phi_w` follows a flat :class:`pymc.VonMises`
     distribution and is the same for all regions.
-
     This method was used in the paper `Dehning et al. 2020`_. It might not be
     the best choice and depends on the reporting behavior of the region.
-
     .. _Dehning et al. 2020: https://www.science.org/doi/10.1126/science.abb9789
-
     Parameters
     ----------
     cases_raw : :class:`~aesara.tensor.TensorVariable`
         The input array of daily new cases, can be one- or two-dimensional. First dimension
         has to be the time dimension.
-
     weekend_factor : None or :class:`pymc.Continuous`
         The weekend factor :math:`f_w` can be passed as a Pymc distribution. If ``None`` it is
         constructed from the parameters ``weekend_factor_prior_mu`` and ``weekend_factor_prior_sigma`` using 
         a Lognormal distribution. If the input is two-dimensional, the distribution is hierarchically constructed
         using the function :func:`hierarchical_normal` with default arguments.
-
     weekend_factor_kwargs : dict
         Keyword arguments passed to the pymc distribution of ``weekend_factor`` if it is constructed.
         See :class:`pymc.Normal` for available arguments. Default is ``{"name":"weekend_factor", "mu": log(0.3), "sigma": 0.5}``.
-
     offset_modulation : None or :class:`pymc.Continuous`
         The offset from Sunday :math:`\Phi_w` can be passed as a PyMC distribution. If ``None`` it is a flat VonMises distribution (mu=0, kappa=0.01).
-
     offset_modulation_kwargs : dict
         Keyword arguments passed to the pymc distribution of ``offset_modulation`` if it is constructed.
         See :class:`pymc.VonMises` for available arguments. Default is ``{"name":"offset_modulation", "mu": 0, "kappa": 0.01}``.
-
     Returns
     -------
     cases : :class:`~aesara.tensor.TensorVariable`
@@ -308,9 +289,7 @@ def abs_sine_modulation(
 
 def by_weekday_modulation(cases, model=None):
     """Delayed cases by weekday.
-
     Only works for one region atm.
-
     Parameters
     TODO
     """
@@ -339,7 +318,7 @@ def by_weekday_modulation(cases, model=None):
     r_week = r_base + delta_r
 
     r_transformed_week = at.nnet.sigm.sigmoid(r_week)
-    pm.Deterministic("fraction_delayed_by_weekday", r_week)
+    pm.Deterministic("mean_fraction_delayed_by_weekday", r_transformed_week)
 
     t = np.arange(model.sim_shape[0]) + model.sim_begin.weekday()  # Monday @ zero
 

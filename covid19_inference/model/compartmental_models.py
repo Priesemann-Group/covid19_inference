@@ -362,33 +362,25 @@ def kernelized_spread(
     Implements a model similar to the susceptible-exposed-infected-recovered model.
     Instead of a exponential decaying incubation period, the length of the period is
     lognormal distributed.
-
     Parameters
     ----------
     R_t: :class:`~aesara.tensor.TensorVariable`
         Time series of of the reproduction number, 1 or 2-dimensional. If 2-dimensional, the first
         dimension is time.
         shape: (time) or (time, regions)
-
     name_new_I_t : str, optional
         Name of the ``new_I_t`` variable
-
     name_new_E_t : str, optional
         Name of the ``new_E_t`` variable
-
     name_S_t : str, optional
         Name of the ``S_t`` variable
-
     name_new_E_begin : str, optional
         Name of the ``new_E_begin`` variable
-
     name_median_incubation : str, optional
         The name under which the median incubation time is saved in the trace.
-
     pr_new_E_begin : float or array_like, optional
         Prior beta of the :class:`~pymc.distributions.continuous.HalfCauchy`
         distribution of :math:`E(0)`. Defaults to 50.
-
     pr_mean_median_incubation : number, optional
         Prior mean of the :class:`~pymc.distributions.continuous.Normal`
         distribution of the median incubation delay :math:`d_{\text{incubation}}`.
@@ -396,39 +388,31 @@ def kernelized_spread(
         important measure here is not exactly the incubation period, but the delay
         until a person becomes infectious which seems to be about 1 day earlier as
         showing symptoms).
-
     pr_sigma_median_incubation : number, optional
         Prior sigma of the :class:`~pymc.distributions.continuous.Normal`
         distribution of the median incubation delay  :math:`d_{\text{incubation}}`.
         If None, the incubation time will be fixed to the value of
         ``pr_mean_median_incubation`` instead of a random variable.
         Default is 1 day.
-
     sigma_incubation : number, optional
         Scale parameter of the :class:`~pymc.distributions.continuous.Lognormal`
         distribution of the incubation time/ delay until infectiousness. The default
         is set to 0.4, which is about the scale found in [Nishiura2020]_,
         [Lauer2020]_.
-
     model : :class:`Cov19Model`, optional
         if none, it is retrieved from the context
-
     return_all : bool, optional
         if True, returns ``name_new_I_t``, ``name_new_E_t``,  ``name_I_t``,
         ``name_S_t`` otherwise returns only ``name_new_I_t``
-
     Returns
     -------
     name_new_I_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly infected persons.
-
     name_new_E_t : :class:`~aesara.tensor.TensorVariable`
         time series of the number daily newly exposed persons. (if return_all set to
         True)
-
     name_S_t : :class:`~aesara.tensor.TensorVariable`
         time series of the susceptible (if return_all set to True)
-
     """
     log.info("kernelized spread")
     model = modelcontext(model)

@@ -171,7 +171,7 @@ def _distribution(
     # Annotations
     # ------------------------------------------------------------------------------ #
     # add the overlay with median and CI values. these are two strings
-    text_md, text_ci = _string_median_CI(array_posterior, prec=2)
+    text_md, text_ci = _string_median_CI(array_posterior, prec=4)
     if suffix == "":
         text_md = f"${dist_math}={text_md}$"
     else:
