@@ -283,7 +283,6 @@ def _make_delay_matrix(n_rows, n_columns, initial_delay=0):
 
 
 def _apply_delay(array, delay, sigma_delay, delay_mat, kernel_type="lognormal"):
-
     # Decide on the kernel type
     if kernel_type == "lognormal":
         mat = ut.tt_lognormal(delay_mat, mu=at.log(delay), sigma=sigma_delay)

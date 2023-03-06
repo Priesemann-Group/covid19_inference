@@ -80,7 +80,6 @@ params_model = dict(
 
 
 with cov19.model.Cov19Model(**params_model) as this_model:
-
     # We construct a typical slowly changing base reproduction number
     # using sigmoidals. Even though the function is called lambda_t
     # the specific values are controlled by the priors and are around one.
@@ -124,7 +123,9 @@ with cov19.model.Cov19Model(**params_model) as this_model:
 
     # Modulate the inferred cases by a abs(sin(x)) function, to account for weekend effects
     # Also adds the "new_cases" variable to the trace that has all model features.
-    new_cases = cov19.model.week_modulation(new_cases,week_modulation_type="by_weekday")
+    new_cases = cov19.model.week_modulation(
+        new_cases, week_modulation_type="by_weekday"
+    )
     pm.Deterministic("new_cases", new_cases)
 
     # Define the likelihood, uses the new_cases_obs set as model parameter
@@ -144,12 +145,14 @@ idata = pm.sample(model=this_model, tune=1000, draws=1000)
 You can run the box below to save the trace or load it.
 """
 with open("./germany_inferring_Rt_idata.pkl", "wb") as f:
-        pickle.dump(idata, f)
-        
-        
+    pickle.dump(idata, f)
+
+
 def load(fstr):
     with open(fstr, "rb") as f:
-         return pickle.load(f)
+        return pickle.load(f)
+
+
 idata = load("./germany_inferring_Rt_idata.pkl")
 
 
@@ -167,30 +170,16 @@ cases, dates_cases = get_array_from_idata_via_date(this_model, idata, "new_cases
 # Create figure
 fig, axes = plt.subplots(2, 1, figsize=(10, 5))
 # Plot Rt
-_timeseries(
-    x=dates_RT,
-    y=R_t,
-    ax=axes[0],
-    what="model"
-)
+_timeseries(x=dates_RT, y=R_t, ax=axes[0], what="model")
 # Plot cases (model)
-_timeseries(
-    x=dates_cases,
-    y=cases,
-    ax=axes[1],
-    what="model"
-)
+_timeseries(x=dates_cases, y=cases, ax=axes[1], what="model")
 # Plot cases (data)
-_timeseries(
-    x=new_cases_obs.index,
-    y=new_cases_obs,
-    ax=axes[1]
-)
+_timeseries(x=new_cases_obs.index, y=new_cases_obs, ax=axes[1])
 # Markup
 for ax in axes:
-    ax.set_xlim(this_model.data_begin,this_model.data_end)
+    ax.set_xlim(this_model.data_begin, this_model.data_end)
 
-# 
+#
 axes[0].set_ylabel("Reproduction number $R_t$")
-axes[1].set_ylabel("Reported cases") 
+axes[1].set_ylabel("Reported cases")
 plt.show()

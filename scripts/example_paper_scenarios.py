@@ -111,13 +111,9 @@ with cov19.Cov19Model(**params_model) as this_model:
     # Delay the cases by a lognormal reporting delay
     new_cases = cov19.model.delay_cases(
         cases=new_cases,
-        median_delay_kwargs={
-            "name": "delay",
-            "mu":pr_delay,
-            "sigma":0.2
-        }
+        median_delay_kwargs={"name": "delay", "mu": pr_delay, "sigma": 0.2},
     )
-    
+
     # Modulate the inferred cases by a abs(sin(x)) function, to account for weekend effects
     # Also adds the "new_cases" variable to the trace that has all model features.
     new_cases = cov19.model.week_modulation(cases=new_cases, name_cases="new_cases")
@@ -142,46 +138,61 @@ axes[1, 2].set_visible(False)
 
 # left column
 for i, (key, math) in enumerate(
-    zip(["weekend_factor", "mu", "lambda_0", "lambda_1", "lambda_2", "lambda_3"],
-    ["\Phi_w","\mu","\lambda_0", "\lambda_1", "\lambda_2", "\lambda_3"])
+    zip(
+        ["weekend_factor", "mu", "lambda_0", "lambda_1", "lambda_2", "lambda_3"],
+        ["\Phi_w", "\mu", "\lambda_0", "\lambda_1", "\lambda_2", "\lambda_3"],
+    )
 ):
     cov19.plot.distribution(this_model, idata, key, ax=axes[i, 0], dist_math=math)
 
 # mid column
 for i, (key, math) in enumerate(
-    zip([
-        "offset_modulation",
-        "sigma_obs",
-        "I_begin",
-        "transient_day_1",
-        "transient_day_2",
-        "transient_day_3",
-    ],    [
-        "f_w",
-        "\sigma_{obs}",
-        "I_0",
-        "t_1",
-        "t_2",
-        "t_3",
-    ])
+    zip(
+        [
+            "offset_modulation",
+            "sigma_obs",
+            "I_begin",
+            "transient_day_1",
+            "transient_day_2",
+            "transient_day_3",
+        ],
+        [
+            "f_w",
+            "\sigma_{obs}",
+            "I_0",
+            "t_1",
+            "t_2",
+            "t_3",
+        ],
+    )
 ):
-    cov19.plot.distribution(this_model, idata, key, ax=axes[i, 1],dist_math=math,)
+    cov19.plot.distribution(
+        this_model,
+        idata,
+        key,
+        ax=axes[i, 1],
+        dist_math=math,
+    )
 
 # right column
-for i, (key,math) in enumerate(
-    zip([
-        "delay",
-        "transient_len_1",
-        "transient_len_2",
-        "transient_len_3",
-    ],[
-        "D",
-        "\Delta t_1",
-        "\Delta t_2",
-        "\Delta t_3"
-    ])
+for i, (key, math) in enumerate(
+    zip(
+        [
+            "delay",
+            "transient_len_1",
+            "transient_len_2",
+            "transient_len_3",
+        ],
+        ["D", "\Delta t_1", "\Delta t_2", "\Delta t_3"],
+    )
 ):
-    cov19.plot.distribution(this_model, idata, key, ax=axes[i + 2, 2],dist_math=math,)
+    cov19.plot.distribution(
+        this_model,
+        idata,
+        key,
+        ax=axes[i + 2, 2],
+        dist_math=math,
+    )
 
 fig.tight_layout()
 fig  # To show figure in jupyter notebook

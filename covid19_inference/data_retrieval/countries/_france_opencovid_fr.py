@@ -18,7 +18,7 @@ class France(Retrieval):
     This class can be used to retrieve and filter the dataset from the online repository of the `France Government <https://www.data.gouv.fr/>`_.
 
     `Deaths <https://www.data.gouv.fr/fr/datasets/donnees-de-certification-electronique-des-deces-associes-au-covid-19-cepidc/>`_.
-    
+
     """
 
     @property
@@ -61,7 +61,7 @@ class France(Retrieval):
         """
         kwargs = {}  # Surpress warning
 
-     """
+        """
         fallback array can be anything a filepath or callable methods
         """
         fallbacks = [
@@ -82,7 +82,7 @@ class France(Retrieval):
         if auto_download:
             self.download_all_available_data()
 
-   def download_all_available_data(self, force_local=False, force_download=False):
+    def download_all_available_data(self, force_local=False, force_download=False):
         """
         Attempts to download from the main url (self.url_csv) which was given on initialization.
         If this fails download from the fallbacks. It can also be specified to use the local files
@@ -156,7 +156,7 @@ class France(Retrieval):
             last date for the returned data, if no value is given the most recent date in the dataset is used
         age_group : str, optional
             Possible are '0-4', '5-14', '15-24', '25-34', '35-44', '45-54', '55-64', '65-'
-            
+
         Returns
         -------
         : pandas.DataFrame

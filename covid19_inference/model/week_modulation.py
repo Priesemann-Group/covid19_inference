@@ -257,7 +257,7 @@ def abs_sine_modulation(
     if weekend_factor is None:
         # Create LogNormal distribution f_w
         weekend_factor_name = weekend_factor_kwargs.pop("name", "weekend_factor")
-        
+
         if not model.is_hierarchical:
             weekend_factor_log = pm.Normal(
                 name=weekend_factor_name + "_log", **weekend_factor_kwargs

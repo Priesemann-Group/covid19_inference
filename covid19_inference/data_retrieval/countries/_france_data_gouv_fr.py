@@ -259,7 +259,6 @@ class France(Retrieval):
     # ------------------------------------------------------------------------------ #
 
     def _download_csv_from_source(self, filepath, **kwargs):
-
         with requests.Session() as s:
             download = s.get(filepath)
 

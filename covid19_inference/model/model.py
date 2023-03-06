@@ -114,7 +114,6 @@ class Cov19Model(Model):
         name="",
         shifted_cases=True,
     ):
-
         super().__init__(name, model)
 
         new_cases_obs[

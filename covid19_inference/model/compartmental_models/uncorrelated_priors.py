@@ -183,7 +183,6 @@ def uncorrelated_prior_E(
             shape=((len_time,) + tuple(num_regions)),
         )
         if model.sim_ndim == 2:
-
             diff_E_begin_L2_log = (
                 diff_E_begin_L2_log * sigma_E_begi_log[:, None]
                 + diff_E_begin_L1_log[:, None]

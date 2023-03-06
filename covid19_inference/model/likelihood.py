@@ -122,7 +122,6 @@ def student_t_likelihood(
     if model.shifted_cases:
         no_cases = data_obs == 0
         if len(data_obs.shape) > 1:
-
             for c in range(data_obs.shape[-1]):
                 cases_obs_c = data_obs[..., c]
                 # find short intervals of 0 entries and set to NaN

@@ -120,7 +120,6 @@ def hierarchical_normal(
 # names
 # still do decide
 def hierarchical_beta(name, name_sigma, pr_mean, pr_sigma, len_L2, model=None):
-
     model = modelcontext(model)
 
     if not model.is_hierarchical:  # not hierarchical

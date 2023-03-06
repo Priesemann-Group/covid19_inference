@@ -39,8 +39,6 @@ def distribution_v2(
 
     data = idata.posterior[key]
 
-    
-
     # Chain, draw, ...
     if data.ndim == 4:
         # This function all may change in a future pymc3 version
@@ -63,7 +61,9 @@ def distribution_v2(
             axes = ax
 
         # Flatten chain and sample dimension
-        data = np.array(data).reshape((data.shape[0] * data.shape[1] *data.shape[2],) + data.shape[3:])
+        data = np.array(data).reshape(
+            (data.shape[0] * data.shape[1] * data.shape[2],) + data.shape[3:]
+        )
         for j, i in enumerate(indices):
             _distribution(
                 array_posterior=data[:, i],
@@ -114,9 +114,7 @@ def distribution_v2(
             prior = pm.sample_prior_predictive(
                 samples=nSamples_prior, model=model, var_names=[key]
             ).prior[key]
-            prior = np.array(prior).reshape(
-                (prior.shape[0] * prior.shape[1])
-            )
+            prior = np.array(prior).reshape((prior.shape[0] * prior.shape[1]))
         except ValueError:
             log.warning(f"Could not calculate prior for {key}")
             prior = None

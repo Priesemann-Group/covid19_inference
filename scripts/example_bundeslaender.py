@@ -112,7 +112,6 @@ pr_delay = 10
 # The true model is defined in a context manager.
 # Check https://docs.pymc.io/notebooks/getting_started.html for details on it.
 with cov19.model.Cov19Model(**params_model) as this_model:
-
     # Create the array of the time dependent infection rate lambda
     lambda_t_log = cov19.model.lambda_t_with_sigmoids(
         pr_median_lambda_0=0.4,

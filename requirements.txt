@@ -1,6 +1,6 @@
 numpy
 matplotlib
-pymc>=5.0.0
+pymc==5.*
 pytensor
 pandas
 pytest

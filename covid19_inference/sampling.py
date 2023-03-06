@@ -14,15 +14,14 @@ import numpy as np
 log = logging.getLogger(__name__)
 
 
-def get_start_points(trace, trace_az, frames_start=None, SD_chain_logl=2.5):
+def get_start_points(trace, frames_start=None, SD_chain_logl=2.5):
     r"""
     Returns the starting points such that the chains deviate at most SD_chain_logl
     standard deviations from the chain with the highest likelihood.
 
     Parameters
     ----------
-    trace : multitrace object
-    trace_az : arviz trace object
+    trace : arviz trace object
     frames_start : int
         Which frames to use for calculating the mean likelihood and its standard deviation.
         By default it is set to the last third of the tuning samples
@@ -38,7 +37,7 @@ def get_start_points(trace, trace_az, frames_start=None, SD_chain_logl=2.5):
         The mean log-likelihood of the starting points
 
     """
-    logl = trace_az.warmup_sample_stats["lp"]
+    logl = trace.warmup_sample_stats["lp"]
     n_tune = logl.shape[1]
     n_chains = logl.shape[0]
     if frames_start is None:
@@ -56,7 +55,14 @@ def get_start_points(trace, trace_az, frames_start=None, SD_chain_logl=2.5):
     start_points = []
     for i, keep_chain in enumerate(keep_chains):
         if keep_chain:
-            start_points.append(trace.point(-1, chain=i))
+            start_points.append(
+                {
+                    key: np.array(arr)
+                    for key, arr in dict(
+                        trace.warmup_posterior.isel(draw=-1, chain=i)
+                    ).items()
+                }
+            )
 
     return start_points, logl_mean[keep_chains]
 
@@ -95,7 +101,6 @@ class Callback:
     """
 
     def __call__(self, trace, draw):
-
         # Update values
         self.lengths[draw.chain] += 1
 
@@ -156,12 +161,13 @@ def burn_in(
                 model=model,
                 tune=n_tune,
                 draws=0,
-                start=start_points,
+                initvals=start_points,
                 chains=n_chains_burn_in,
-                return_inferencedata=False,
+                return_inferencedata=True,
                 discard_tuned_samples=False,
                 step=step_method,
                 callback=callback,
+                idata_kwargs=dict(save_warmup=True),
                 **sample_kwargs,
             )
         except RuntimeError as error:
@@ -177,11 +183,10 @@ def burn_in(
                 raise error
         i = 1000
 
-    trace_tuning_az = az.from_pymc(trace_tuning, model=model, save_warmup=True)
     if args_start_points is None:
         args_start_points = {}
     start_points, logl_starting_points = get_start_points(
-        trace_tuning, trace_tuning_az, SD_chain_logl=None, **args_start_points
+        trace_tuning, SD_chain_logl=None, **args_start_points
     )
     num_start_points = len(start_points)
 
@@ -193,12 +198,9 @@ def burn_in(
     elif num_start_points > n_chains_final:
         p = np.exp(logl_starting_points - max(logl_starting_points))
         start_points = np.random.choice(
-            start_points,
-            size=n_chains_final,
-            p=p / np.sum(p),
-            replace=False,
+            start_points, size=n_chains_final, p=p / np.sum(p), replace=False,
         )
-    return start_points, trace_tuning_az
+    return start_points, trace_tuning
 
 
 def robust_sample(
@@ -322,14 +324,14 @@ def robust_sample(
             tune=tune,
             draws=draws,
             chains=final_chains,
-            start=start_points,
-            return_inferencedata=False,
+            initvals=start_points,
+            return_inferencedata=True,
+            idata_kwargs=dict(save_warmup=True),
             discard_tuned_samples=False,
             step=default_nuts,
             callback=callback,
             **sample_kwargs,
         )
-        trace_az = az.from_pymc(trace, model=model, save_warmup=True)
 
         def append_burn_in_samples(trace, trace_burn_in, num):
             new_names = [
@@ -338,16 +340,15 @@ def robust_sample(
             ]
             with warnings.catch_warnings():
                 warnings.filterwarnings(
-                    "ignore",
-                    message="The group .* is not defined in the .* scheme",
+                    "ignore", message="The group .* is not defined in the .* scheme",
                 )
                 trace.add_groups(
                     {n: o for n, o in zip(new_names, trace_burn_in.values())}
                 )
             return trace
 
-        trace_az = append_burn_in_samples(trace_az, trace_burn_in_1_az, 1)
+        trace = append_burn_in_samples(trace, trace_burn_in_1_az, 1)
         if burnin_chains_2nd is not None:
-            trace_az = append_burn_in_samples(trace_az, trace_burn_in_2_az, 2)
+            trace = append_burn_in_samples(trace, trace_burn_in_2_az, 2)
 
-    return trace, trace_az
+    return trace
