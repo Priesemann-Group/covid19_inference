@@ -2,7 +2,7 @@
     # Example for one region (bundesland)
     Non-hierarchical model using rki data.
 
-    Runtime ~ 15 min
+    Runtime ~ 1 hour
 
     The first thing we need to do is import some essential stuff. Theses have to be installed and are prerequisites.
 """
@@ -147,7 +147,7 @@ with cov19.model.Cov19Model(**params_model) as this_model:
         delay_kernel="lognormal",
         median_delay_kwargs={
             "name": "delay",
-            "mu": np.log(pr_delay),
+            "mu": pr_delay,
             "sigma": 0.2,
         },
     )
