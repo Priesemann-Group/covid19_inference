@@ -259,7 +259,7 @@ def _plot_prior(x, ax=None, **kwargs):
         xlim = ax.get_xlim()
         reset_xlim = True
     try:
-        prior = stats.kde.gaussian_kde(
+        prior = stats.gaussian_kde(
             x,
         )
     except Exception as e:  # Probably only one value of x
