@@ -259,8 +259,13 @@ def _plot_prior(x, ax=None, **kwargs):
         xlim = ax.get_xlim()
         reset_xlim = True
     try:
+        assert np.array(x).ndim == 1
+        scotts_factor = len(x)**(-1/5)
+        IQR = np.diff(np.percentile(x, q=(25,75)))
+        std_eqv_IQR = IQR/1.349
+        corr_factor = std_eqv_IQR/np.std(x) * 1.3 #1.3 factor for robustness
         prior = stats.gaussian_kde(
-            x,
+            x, bw_method=float(scotts_factor*corr_factor)
         )
     except Exception as e:  # Probably only one value of x
         log.warning(f"Could not plot prior! {x}")
