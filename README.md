@@ -29,7 +29,7 @@ pip install covid19_inference
 ## Related Publications
 These research articles use this package:
 - *Impact of the Euro 2020 championship on the spread of COVID-19*
-    - This research article [is available on arXiv](https://arxiv.org/pdf/2301.07659.pdf) (**updated on January 18 2023**) and was published [in NatureComm]((https://www.nature.com/articles/s41467-022-35512-x).
+    - This research article [is available on arXiv](https://arxiv.org/pdf/2301.07659.pdf) (**updated on January 18 2023**) and was published [in NatureComm](https://www.nature.com/articles/s41467-022-35512-x).
     - The code used to produce the figures is available in the other repository [here](https://github.com/Priesemann-Group/covid19_soccer) but uses this package as dependency.
 - *Inferring change points in the spread of COVID-19 reveals the effectiveness of interventions*
     - This research article [is available on arXiv](https://arxiv.org/abs/2004.01105) (**updated on April 13 2020**) and was published [in Science](https://www.science.org/doi/10.1126/science.abb9789).
