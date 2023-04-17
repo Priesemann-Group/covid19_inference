@@ -18,6 +18,7 @@ def distribution(
     dist_math="x",
     indices=None,
     ax=None,
+    same_x_lim=False,
 ):
     """
     High level plotting function for distribution overviews.
@@ -35,6 +36,12 @@ def distribution(
         Number of samples to draw for the prior kernel density estimation.
     indices : array-like int
         Which dimensions do you want to plot from the variable? default: None i.e. all
+    ax : mpl axes element, optional
+        Plot into an existing axes element
+        Default: :code:`None`
+    same_x_lim : bool, optional
+        Set the same x limits for all axes
+        Default: False
     """
 
     data = idata.posterior[key]
@@ -121,6 +128,13 @@ def distribution(
     else:
         print("Dimension of data not supported!")
 
+    # Set same x limits
+    if same_x_lim and data.ndim > 1:
+        x_min = min([ax.get_xlim()[0] for ax in axes])
+        x_max = max([ax.get_xlim()[1] for ax in axes])
+        for ax in axes:
+            ax.set_xlim(x_min, x_max)
+
 
 # ------------------------------------------------------------------------------ #
 # Low level functions (copied from npis europe project)
@@ -128,7 +142,12 @@ def distribution(
 
 
 def _distribution(
-    array_posterior, array_prior, dist_name, dist_math, suffix="", ax=None,
+    array_posterior,
+    array_prior,
+    dist_name,
+    dist_math,
+    suffix="",
+    ax=None,
 ):
     """
     Low level function to plots posterior and prior from arrays.
