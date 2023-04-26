@@ -122,7 +122,6 @@ def student_t_likelihood(
     if model.shifted_cases:
         no_cases = data_obs == 0
         if len(data_obs.shape) > 1:
-
             for c in range(data_obs.shape[-1]):
                 cases_obs_c = data_obs[..., c]
                 # find short intervals of 0 entries and set to NaN
@@ -178,7 +177,8 @@ def student_t_likelihood(
         sigma=sigma[~np.isnan(data_obs)],
         observed=data_obs[~np.isnan(data_obs)],
     )
-    #print(cases[~np.isnan(data_obs)].shape.eval())
+    # print(cases[~np.isnan(data_obs)].shape.eval())
+
 
 def student_t_likelihood_without_shift(
     cases,
@@ -284,6 +284,25 @@ def student_t_likelihood_without_shift(
             at.abs(cases + offset_sigma) ** 0.5 * sigma_obs
         )  # offset and at.abs to avoid nans
 
+    # Check if the data is shifted
+    if model.shifted_cases:
+        no_cases = data_obs == 0
+        if len(data_obs.shape) > 1:
+            for c in range(data_obs.shape[-1]):
+                cases_obs_c = data_obs[..., c]
+                # find short intervals of 0 entries and set to NaN
+                no_cases_blob, n_blob = ndi.label(no_cases[..., c])
+                for i in range(n_blob):
+                    if (no_cases_blob == (i + 1)).sum() < 10:
+                        data_obs[no_cases_blob == i + 1, ..., c] = np.NaN
+
+        else:
+            # find short intervals of 0 entries and set to NaN
+            no_cases_blob, n_blob = ndi.label(no_cases)
+            for i in range(n_blob):
+                if (no_cases_blob == (i + 1)).sum() < 10:
+                    data_obs[no_cases_blob == i + 1] = np.NaN
+
     # StudentT likelihood
     pm.StudentT(
         name=name_student_t,
@@ -292,4 +311,3 @@ def student_t_likelihood_without_shift(
         sigma=sigma[~np.isnan(data_obs)],
         observed=data_obs[~np.isnan(data_obs)],
     )
-    #print(cases[~np.isnan(data_obs)].shape.eval())

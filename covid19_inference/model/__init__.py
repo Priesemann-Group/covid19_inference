@@ -12,7 +12,7 @@ from .compartmental_models import (
 )
 from .delay import delay_cases
 from .spreading_rate import lambda_t_with_sigmoids, lambda_t_with_linear_interp
-from .likelihood import student_t_likelihood
+from .likelihood import student_t_likelihood, student_t_likelihood_without_shift
 from .week_modulation import week_modulation
 
 # make everything available but hidden
