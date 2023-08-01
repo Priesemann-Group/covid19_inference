@@ -142,8 +142,13 @@ def tt_lognormal(x, mu, sigma):
     """
     Calculates a lognormal pdf for integer spaced x input.
     """
-    x = at.maximum(x, 1e-12)  # clip values at 1e-12
-    distr = 1 / x * at.exp(-((at.log(x) - mu) ** 2) / (2 * sigma**2))
+    # ignore occuring nans:
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*invalid value encountered.*")
+        distr = 1 / x * at.exp(-((at.log(x) - mu) ** 2) / (2 * sigma**2))
+
+    # replace nans by zero
+    distr = at.where(at.isnan(distr), at.zeros_like(distr), distr)
 
     # normalize, add a small offset in case the sum is zero
     return distr / at.sum(distr, axis=0) + 1e-8
@@ -158,9 +163,10 @@ def tt_gamma(x, mu=None, sigma=None, alpha=None, beta=None):
     if alpha is None and beta is None:
         alpha = mu**2 / (sigma**2 + 1e-8)
         beta = mu / (sigma**2 + 1e-8)
-    x = at.maximum(x, 1e-12)  # clip values at 1e-12
-    distr = beta**alpha * x ** (alpha - 1) * at.exp(-beta * x)
-
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message=".*invalid value encountered.*")
+        distr = beta**alpha * x ** (alpha - 1) * at.exp(-beta * x)
+    distr = at.where(at.isnan(distr), at.zeros_like(distr), distr)
     # normalize, add a small offset in case the sum is zero
     return distr / (at.sum(distr, axis=0) + 1e-8)
 

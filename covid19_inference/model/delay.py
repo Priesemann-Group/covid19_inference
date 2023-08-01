@@ -209,8 +209,6 @@ def _delay_kernel(
         n_columns=len_output_arr,
         initial_delay=delay_betw_input_output,
     )
-    # avoid negative values that lead to nans in the lognormal distribution
-    delay_mat[delay_mat < 0.01] = 0.01
 
     # add a dim if hierarchical
     if input_arr.ndim == 2:
